@@ -204,6 +204,7 @@ std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>&
 template <typename CharT, typename Traits>
 std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const Number& num)
 {
+/*
     return std::visit([&os](auto x) -> decltype(os) {
         if constexpr (std::is_same_v<Int, decltype(x)>)
             return os << x;
@@ -211,6 +212,13 @@ std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>&
             return os << std::scientific << x;
     },
         static_cast<Number::base_type>(num));
+*/
+  overloads stream{
+    [&os](const Int& val) -> std::wostream& { return os << val; },
+    [&os](const Float& val) -> std::wostream& { return os << std::scientific << val; },
+    [&os](auto& val) -> std::wostream& { return os << std::scientific << val; }
+  };
+  return std::visit(std::move(stream), static_cast<const Number::base_type&>(num));
 }
 
 bool operator!=(const Number& lhs, const Number& rhs);
