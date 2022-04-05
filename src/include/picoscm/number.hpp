@@ -88,13 +88,6 @@ struct Number : std::variant<Int, Float, Complex> {
         : base_type{ x }
     {
     }
-    /**
-     * Converting constructor for complex type arguments.
-     */
-    constexpr Number(const Complex& z)
-        : Number{ z.real(), z.imag() }
-    {
-    }
 
     template <typename RE, typename IM>
     constexpr Number(RE x, IM y)
@@ -103,6 +96,14 @@ struct Number : std::variant<Int, Float, Complex> {
             *this = base_type{ Complex{ static_cast<Float>(x), static_cast<Float>(y) } };
         else
             *this = Number{ x };
+    }
+
+    /**
+     * Converting constructor for complex type arguments.
+     */
+    constexpr Number(const Complex& z)
+        : Number{ z.real(), z.imag() }
+    {
     }
 
     /**
