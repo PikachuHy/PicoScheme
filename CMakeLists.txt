@@ -19,3 +19,10 @@ target_include_directories(pscm PUBLIC src/include/picoscm src/include)
 
 add_executable(pscm_test test/picoscm.cpp)
 target_link_libraries(pscm_test PRIVATE pscm)
+
+add_executable(pscm_main main.cpp)
+target_link_libraries(pscm_main PRIVATE pscm)
+set_target_properties(pscm_main
+        PROPERTIES
+        OUTPUT_NAME pscm
+        )
