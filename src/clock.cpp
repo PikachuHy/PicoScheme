@@ -1,7 +1,7 @@
 
 #include <iostream>
 
-#include "clock.hpp"
+#include "picoscm/clock.hpp"
 
 namespace pscm {
 

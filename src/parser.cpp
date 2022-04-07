@@ -10,7 +10,7 @@
 #include <cctype>
 #include <cstring>
 
-#include "parser.hpp"
+#include "picoscm/parser.hpp"
 
 namespace pscm {
 

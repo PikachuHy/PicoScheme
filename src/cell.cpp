@@ -1,4 +1,4 @@
-#include "cell.hpp"
+#include "picoscm/cell.hpp"
 
 namespace pscm {
 

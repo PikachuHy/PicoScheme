@@ -10,7 +10,7 @@
 #include <cmath>
 #include <limits>
 
-#include "number.hpp"
+#include "picoscm/number.hpp"
 
 namespace pscm {
 

@@ -8,7 +8,7 @@
  *************************************************************************************/
 #include <set>
 
-#include "scheme.hpp"
+#include "picoscm/scheme.hpp"
 
 namespace pscm {
 

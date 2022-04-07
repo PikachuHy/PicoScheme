@@ -1,7 +1,7 @@
 #include <iomanip>
 
-#include "gc.hpp"
-#include "scheme.hpp"
+#include "picoscm/gc.hpp"
+#include "picoscm/scheme.hpp"
 
 #define car get<0>
 #define cdr get<1>

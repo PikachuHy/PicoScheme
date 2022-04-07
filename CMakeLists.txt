@@ -15,7 +15,7 @@ target_sources(pscm PUBLIC
         src/scheme.cpp
         src/port.cpp
         )
-target_include_directories(pscm PUBLIC src/include/picoscm src/include)
+target_include_directories(pscm PUBLIC src/include)
 
 add_executable(pscm_test test/picoscm.cpp)
 target_link_libraries(pscm_test PRIVATE pscm)

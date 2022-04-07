@@ -9,10 +9,10 @@
 #include <functional>
 #include <iomanip>
 
-#include "gc.hpp"
-#include "parser.hpp"
-#include "primop.hpp"
-#include "scheme.hpp"
+#include "picoscm/gc.hpp"
+#include "picoscm/parser.hpp"
+#include "picoscm/primop.hpp"
+#include "picoscm/scheme.hpp"
 
 namespace pscm {
 

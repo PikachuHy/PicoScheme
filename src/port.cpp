@@ -8,8 +8,8 @@
  *************************************************************************************/
 #include <cstring>
 
-#include "port.hpp"
-#include "scheme.hpp"
+#include "picoscm/port.hpp"
+#include "picoscm/scheme.hpp"
 
 namespace pscm {
 

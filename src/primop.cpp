@@ -14,11 +14,11 @@
 #include <iostream>
 #include <memory>
 
-#include "gc.hpp"
-#include "parser.hpp"
-#include "primop.hpp"
-#include "procedure.hpp"
-#include "scheme.hpp"
+#include "picoscm/gc.hpp"
+#include "picoscm/parser.hpp"
+#include "picoscm/primop.hpp"
+#include "picoscm/procedure.hpp"
+#include "picoscm/scheme.hpp"
 
 using varg = std::vector<pscm::Cell>;
 

@@ -1,7 +1,7 @@
 //
 // Created by PikachuHy on 2022/4/5.
 //
-#include <pscm>
+#include <picoscm/pscm>
 using namespace pscm;
 int main(int argc, char* argv[]) {
   Scheme scm;
