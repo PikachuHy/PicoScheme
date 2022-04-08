@@ -208,6 +208,33 @@ Cell Scheme::syntax_unless(const SymenvPtr& env, Cell args)
     return none;
 }
 
+Cell Scheme::syntax_let(const SymenvPtr& env, Cell args, bool star)
+{
+    SymenvPtr cur_env = env;
+    Cell cur_args = args;
+    if (is_pair(car(args))) {
+        auto bindings = car(args);
+        auto sub_env = env->create(env);
+        for (; !is_nil(bindings) && is_pair(car(bindings)); bindings = cdr(bindings)) {
+            auto binding = car(bindings);
+            auto var = car(binding);
+            auto val = cadr(binding);
+            auto sym = get<Symbol>(var);
+            auto _env = star ? sub_env : env;
+            auto v = eval(_env, val);
+            sub_env->add(sym, v);
+        }
+        cur_args = cdr(args);
+        cur_env = sub_env;
+    }
+    Cell expr = none;
+    while (!is_nil(cur_args)) {
+        expr = eval(cur_env, car(cur_args));
+        cur_args = cdr(cur_args);
+    }
+    return expr;
+}
+
 Cell Scheme::syntax_and(const SymenvPtr& env, Cell args)
 {
     Cell res = true;
@@ -324,6 +351,7 @@ Cell Scheme::eval(SymenvPtr env, Cell expr)
             continue;
         }
         args = cdr(expr);
+        if (!is_intern(proc)) return proc;
         switch (auto opcode = get<Intern>(proc)) {
 
         case Intern::_quote:
@@ -377,6 +405,14 @@ Cell Scheme::eval(SymenvPtr env, Cell expr)
 
         case Intern::_unless:
             expr = syntax_unless(env, args);
+            break;
+
+        case Intern::_let:
+            expr = syntax_let(env, args);
+            break;
+
+        case Intern::_let_star:
+            expr = syntax_let(env, args, true);
             break;
 
         case Intern::_and:

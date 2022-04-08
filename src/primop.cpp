@@ -2661,6 +2661,8 @@ void add_environment_defaults(Scheme& scm)
           /* Basic scheme syntax opcodes */
           { scm.symbol("or"),               Intern::_or },
           { scm.symbol("and"),              Intern::_and },
+          { scm.symbol("let"),              Intern::_let },
+          { scm.symbol("let*"),             Intern::_let_star },
           { scm.symbol("if"),               Intern::_if },
           { scm.symbol("cond"),             Intern::_cond },
           { scm.symbol("else"),             Intern::_else },

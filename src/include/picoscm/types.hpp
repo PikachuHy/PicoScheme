@@ -71,6 +71,8 @@ enum class Intern {
     /* Scheme syntax opcodes: */
     _or,
     _and,
+    _let,
+    _let_star,
     _if,
     _cond,
     _else,
