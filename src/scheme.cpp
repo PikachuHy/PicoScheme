@@ -235,6 +235,17 @@ Cell Scheme::syntax_let(const SymenvPtr& env, Cell args, bool star)
     return expr;
 }
 
+Cell Scheme::syntax_with_let(const SymenvPtr& env, Cell args) {
+    auto cur_env = get<SymenvPtr>(eval(env, car(args)));
+    auto cur_args = cdr(args);
+    Cell expr = none;
+    while (!is_nil(cur_args)) {
+        expr = eval(cur_env, cur_args);
+        cur_args = cdr(cur_args);
+    }
+    return expr;
+}
+
 Cell Scheme::syntax_and(const SymenvPtr& env, Cell args)
 {
     Cell res = true;
@@ -413,6 +424,10 @@ Cell Scheme::eval(SymenvPtr env, Cell expr)
 
         case Intern::_let_star:
             expr = syntax_let(env, args, true);
+            break;
+
+        case Intern::_with_let:
+            expr = syntax_with_let(env, args);
             break;
 
         case Intern::_and:
