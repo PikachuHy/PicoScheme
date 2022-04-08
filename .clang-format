@@ -1,0 +1,13 @@
+ColumnLimit: 150
+ReferenceAlignment: Left
+IndentWidth: 4
+AccessModifierOffset: -4
+AlwaysBreakTemplateDeclarations: Yes
+AllowShortFunctionsOnASingleLine: None
+BreakInheritanceList: BeforeComma
+PackConstructorInitializers: Never
+BreakBeforeBraces: Custom
+Cpp11BracedListStyle: false
+BraceWrapping:
+  AfterFunction: true
+  SplitEmptyFunction: true
