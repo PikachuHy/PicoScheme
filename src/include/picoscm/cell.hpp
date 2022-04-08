@@ -183,6 +183,8 @@ inline const Cell& cdar(const Cell& cons) { return cdr(car(cons)); }
 inline const Cell& cddr(const Cell& cons) { return cdr(cdr(cons)); }
 inline const Cell& cadr(const Cell& cons) { return car(cdr(cons)); }
 inline const Cell& caddr(const Cell& cons) { return car(cddr(cons)); }
+inline const Cell& cdddr(const Cell& cons) { return cdr(cddr(cons)); }
+inline const Cell& cadddr(const Cell& cons) { return car(cdddr(cons)); }
 
 //! Set the first cell of a Cons cell-pair.
 template <typename T>
