@@ -16,6 +16,7 @@
 #include "port.hpp"
 #include "procedure.hpp"
 #include "types.hpp"
+#include "cobj.h"
 
 namespace pscm {
 
@@ -128,6 +129,7 @@ struct hash {
             [](const Procedure& arg) -> result_type { return Procedure::hash{}(arg); },
             [](const Symbol& arg)    -> result_type { return Symbol::hash{}(arg); },
             [](const StringPtr& arg) -> result_type { return std::hash<String>{}(*arg);},
+            [](const CObjPtr& arg)   -> result_type { return CObj::hash{}(*arg);},
             [](auto& arg)            -> result_type { return std::hash<std::decay_t<decltype(arg)>>{}(arg); },
         }; // clang-format on
         return std::visit(hash, static_cast<const typename Cell::base_type&>(cell));
@@ -152,6 +154,7 @@ inline bool is_pair   (const Cell& cell) { return is_type<Cons*>(cell); }
 inline bool is_intern (const Cell& cell) { return is_type<Intern>(cell); }
 inline bool is_port   (const Cell& cell) { return is_type<PortPtr>(cell); }
 inline bool is_clock  (const Cell& cell) { return is_type<ClockPtr>(cell); }
+inline bool is_cobj   (const Cell& cell) { return is_type<CObjPtr>(cell); }
 inline bool is_number (const Cell& cell) { return is_type<Number>(cell); }
 inline bool is_symbol (const Cell& cell) { return is_type<Symbol>(cell); }
 inline bool is_symenv (const Cell& cell) { return is_type<SymenvPtr>(cell); }

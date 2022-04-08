@@ -25,6 +25,7 @@ struct Number;
 class  Clock;
 class  Procedure;
 class  Function;
+class  CObj;
 enum class Intern;
 template<typename Cell> struct less;
 
@@ -38,6 +39,7 @@ using StringPtr   = std::shared_ptr<String>;
 using ClockPtr    = std::shared_ptr<Clock>;
 using RegexPtr    = std::shared_ptr<std::basic_regex<Char>>;
 using MapPtr      = std::shared_ptr<std::multimap<Cell,Cell,less<Cell>>>;
+using CObjPtr     = std::shared_ptr<CObj>;
 using VectorPtr   = std::shared_ptr<std::vector<Cell>>;
 using PortPtr     = std::shared_ptr<Port<Char>>;
 using FunctionPtr = std::shared_ptr<Function>;
@@ -58,7 +60,7 @@ using Variant = std::variant <
     Cons*, StringPtr, VectorPtr, PortPtr, FunctionPtr, SymenvPtr,
 
     /* Extensions: */
-    RegexPtr, ClockPtr, MapPtr
+    RegexPtr, ClockPtr, MapPtr, CObjPtr
 >;
 
 static const None none {}; //!< void return symbol
