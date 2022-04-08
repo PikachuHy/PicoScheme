@@ -151,6 +151,19 @@ public:
      * @return Evaluation result or special symbol @em none for no result.
      */
     Cell eval(SymenvPtr env, Cell expr);
+    /**
+     * Evaluate a scheme code at the argument symbol environment.
+     *
+     * @param env Shared pointer to the symbol environment, where to
+     *            to evaluate expr.
+     * @param code Scheme code to evaluate.
+     * @return Evaluation result or special symbol @em none for no result.
+     */
+    Cell eval(SymenvPtr env, const String& code);
+    template <typename StringT>
+    Cell eval(SymenvPtr env, StringT code) {
+        return eval(env, string_convert<Char>(code));
+    }
 
     /**
      * Return a new list of evaluated expressions in argument list.
