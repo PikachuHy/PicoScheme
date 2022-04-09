@@ -116,24 +116,7 @@ struct hash {
     using argument_type = Cell;
     using result_type = std::size_t;
 
-    result_type operator()(const Cell& cell) const
-    {
-        // clang-format off
-        static overloads hash{
-            [](None)                 -> result_type { return 0; },
-            [](Nil)                  -> result_type { return 0; },
-            [](Bool arg)             -> result_type { return static_cast<result_type>(arg); },
-            [](Char arg)             -> result_type { return std::hash<Char>{}(arg); },
-            [](Intern arg)           -> result_type { return std::hash<Intern>{}(arg); },
-            [](Number arg)           -> result_type { return Number::hash{}(arg); },
-            [](const Procedure& arg) -> result_type { return Procedure::hash{}(arg); },
-            [](const Symbol& arg)    -> result_type { return Symbol::hash{}(arg); },
-            [](const StringPtr& arg) -> result_type { return std::hash<String>{}(*arg);},
-            [](const CObjPtr& arg)   -> result_type { return CObj::hash{}(*arg);},
-            [](auto& arg)            -> result_type { return std::hash<std::decay_t<decltype(arg)>>{}(arg); },
-        }; // clang-format on
-        return std::visit(hash, static_cast<const typename Cell::base_type&>(cell));
-    }
+    result_type operator()(const Cell& cell) const;
 };
 
 //! Return the use count of a shared pointer cell or zero for a value type cell;
@@ -361,6 +344,31 @@ private:
             return "#<unknown>";
     }
 };
+
+template <typename Cell>
+std::size_t hash<Cell>::operator()(const Cell& cell) const
+{
+    // clang-format off
+    static overloads hash{
+        [](None)                 -> result_type { return 0; },
+        [](Nil)                  -> result_type { return 0; },
+        [](Bool arg)             -> result_type { return static_cast<result_type>(arg); },
+        [](Char arg)             -> result_type { return std::hash<Char>{}(arg); },
+        [](Intern arg)           -> result_type { return std::hash<Intern>{}(arg); },
+        [](Number arg)           -> result_type { return Number::hash{}(arg); },
+        [](const Procedure& arg) -> result_type { return Procedure::hash{}(arg); },
+        [](const Symbol& arg)    -> result_type { return Symbol::hash{}(arg); },
+        [](const StringPtr& arg) -> result_type { return std::hash<String>{}(*arg);},
+        [](const CObjPtr& arg)   -> result_type { return CObj::hash{}(*arg);},
+        [](auto& arg)            -> result_type { return std::hash<std::decay_t<decltype(arg)>>{}(arg); },
+    }; // clang-format on
+    if (is_pair(cell)) {
+        return std::visit(hash, static_cast<const typename Cell::base_type&>(car(cell)));
+    }
+    return std::visit(hash, static_cast<const typename Cell::base_type&>(cell));
+}
+
+
 } // namespace pscm
 
 namespace std {

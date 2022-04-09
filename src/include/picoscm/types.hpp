@@ -28,6 +28,13 @@ class  Function;
 class  CObj;
 enum class Intern;
 template<typename Cell> struct less;
+template<typename Cell> struct hash;
+template <typename Cell>
+struct cell_equal {
+    bool operator()(const Cell& lhs, const Cell& rhs) const {
+        return is_equal(lhs, rhs);
+    }
+};
 
 using None        = std::monostate;
 using Nil         = std::nullptr_t;
@@ -39,6 +46,7 @@ using StringPtr   = std::shared_ptr<String>;
 using ClockPtr    = std::shared_ptr<Clock>;
 using RegexPtr    = std::shared_ptr<std::basic_regex<Char>>;
 using MapPtr      = std::shared_ptr<std::multimap<Cell,Cell,less<Cell>>>;
+using HashMapPtr  = std::shared_ptr<std::unordered_map<Cell,Cell,hash<Cell>, cell_equal<Cell>>>;
 using CObjPtr     = std::shared_ptr<CObj>;
 using VectorPtr   = std::shared_ptr<std::vector<Cell>>;
 using PortPtr     = std::shared_ptr<Port<Char>>;
@@ -60,7 +68,7 @@ using Variant = std::variant <
     Cons*, StringPtr, VectorPtr, PortPtr, FunctionPtr, SymenvPtr,
 
     /* Extensions: */
-    RegexPtr, ClockPtr, MapPtr, CObjPtr
+    RegexPtr, ClockPtr, MapPtr, HashMapPtr, CObjPtr
 >;
 
 static const None none {}; //!< void return symbol
@@ -392,6 +400,10 @@ enum class Intern {
     op_dict_equal_range,
     op_dict2list,
     op_list2dict,
+
+    op_make_hash_table,
+    op_hash_table_ref,
+    op_hash_table_set,
 
     op_usecount,
     op_hash,

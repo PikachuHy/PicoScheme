@@ -2131,6 +2131,26 @@ static Cell list2dict(const varg& args)
     return dict;
 }
 
+static Cell make_hash_table()
+{
+    return std::make_shared<HashMapPtr::element_type>();
+}
+
+static Cell hash_table_ref(const varg& args) {
+    auto hash_table = get<HashMapPtr>(args[0]);
+    auto it = hash_table->find(args[1]);
+    if (it == hash_table->end()) {
+        return nil;
+    }
+    return it->second;
+}
+
+static Cell hash_table_set(const varg& args) {
+    auto hash_table = get<HashMapPtr>(args[0]);
+    hash_table->insert_or_assign(args[1], args[2]);
+    return none;
+}
+
 } // namespace pscm::primop
 
 namespace pscm {
@@ -2636,7 +2656,12 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args)
         return primop::dict2list(scm, args);
     case Intern::op_list2dict:
         return primop::list2dict(args);
-
+    case Intern::op_make_hash_table:
+        return primop::make_hash_table();
+    case Intern::op_hash_table_ref:
+        return primop::hash_table_ref(args);
+    case Intern::op_hash_table_set:
+        return primop::hash_table_set(args);
     default:
         throw std::invalid_argument("invalid primary opcode");
     }
@@ -2945,6 +2970,10 @@ void add_environment_defaults(Scheme& scm)
           { scm.symbol("dict-erase!"),  Intern::op_dict_erase},
           { scm.symbol("dict->list"),   Intern::op_dict2list},
           { scm.symbol("list->dict"),   Intern::op_list2dict},
+
+          { scm.symbol("make-hash-table"),   Intern::op_make_hash_table},
+          { scm.symbol("hash-table-ref"),   Intern::op_hash_table_ref},
+          { scm.symbol("hash-table-set!"),   Intern::op_hash_table_set},
 
           { scm.symbol("use-count"),    Intern::op_usecount },
           { scm.symbol("hash"),         Intern::op_hash },
