@@ -2579,7 +2579,12 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args)
 
     /* Section 6.14: System interface */
     case Intern::op_load:
-        scm.load(*get<StringPtr>(args.at(0)), senv);
+        if (args.size() == 2) {
+            auto load_env = get<SymenvPtr>(args.at(1));
+            scm.load(*get<StringPtr>(args.at(0)), load_env);
+        } else {
+            scm.load(*get<StringPtr>(args.at(0)), senv);
+        }
         return none;
 
     /* Section extensions - Regular expressions */
