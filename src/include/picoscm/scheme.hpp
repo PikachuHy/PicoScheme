@@ -62,6 +62,9 @@ public:
     //! or if null-pointer, connected to the top environment of this interpreter.
     SymenvPtr newenv(const SymenvPtr& env = nullptr) { return Symenv::create(env ? env : topenv); }
 
+    void enable_debug() { debug = true; }
+    void disable_debug() { debug = false; }
+    bool debugging() { return debug; }
     /**
      * Return a pointer to a new cons-cell from the internal cons-cell store.
      * The new cons-cell is initialized by argument car and cdr values. The pointer
@@ -283,6 +286,8 @@ private:
     std::unordered_map<Cell, SymenvPtr, hash<Cell>, cell_equal<Cell>> module_table;
     std::vector<String> module_paths;
     std::stack<Cell> module_stack;
+
+    bool debug = false;
 };
 
 } // namespace pscm
