@@ -183,6 +183,9 @@ Parser::Token Parser::lex_regex(String& str, istream_type& in)
      */
 Parser::Token Parser::lex_symbol(const String& str)
 {
+    if (str == L"1+" || str == L"1-") {
+        return Token::Symbol;
+    }
     if (str.empty() || !is_alpha(str.front()))
         return Token::Error;
 
@@ -384,6 +387,7 @@ bool Parser::is_digit(const String& str, size_t n)
 
     bool has_digit = iswdigit(str.front()),
          has_sign = strchr("+-", str.front()),
+         end_with_sign = strchr("+-", str.back()),
          has_imag = false;
 
     if (str.empty() || (str.size() == 1 && !has_digit))
@@ -399,7 +403,7 @@ bool Parser::is_digit(const String& str, size_t n)
             if (!iswdigit(*ic) && !strchr("+-.iIeE", *ic))
                 return false;
         }
-    return has_digit || (str.size() <= 2 && (has_sign || has_imag));
+    return (has_digit && !end_with_sign) || (str.size() <= 2 && (has_sign || has_imag));
 }
 
 //! Predicate returns true if the argument character is a special
