@@ -8,14 +8,17 @@
  *************************************************************************************/
 #include <functional>
 #include <iomanip>
+#include <filesystem>
 
 #include "picoscm/gc.hpp"
 #include "picoscm/parser.hpp"
 #include "picoscm/primop.hpp"
 #include "picoscm/scheme.hpp"
+#include "picoscm/port.hpp"
+
 
 namespace pscm {
-
+namespace fs = std::filesystem;
 using namespace std::string_literals;
 
 static_assert(std::is_same_v<Char, String::value_type>);
@@ -29,9 +32,43 @@ static_assert(std::is_same_v<Function, FunctionPtr::element_type>);
 Scheme::Scheme(const SymenvPtr& env)
     : topenv{ Symenv::create(env) }
 {
+    auto cwd = fs::current_path().string();
+    module_paths.push_back(string_convert<Char>(cwd));
     pscm::add_environment_defaults(*this);
+    Cell current_module = list(symbol("root"));
+    module_table[current_module] = topenv;
+    module_stack.push(current_module);
 }
-
+SymenvPtr Scheme::get_module_env(const Cell& module_name) {
+    auto it = module_table.find(module_name);
+    if (it != module_table.end()) {
+        return it->second;
+    }
+    // load module
+    return load_module(module_name, get_current_module_env());
+}
+SymenvPtr Scheme::load_module(const Cell& module_name, const SymenvPtr& env) {
+    String module_file;
+    Cell name = module_name;
+    while (is_pair(name)) {
+        module_file += L"/";
+        module_file += get<Symbol>(car(name)).value();
+        name = cdr(name);
+    }
+    for(const auto& path: module_paths) {
+        String module_path = path + module_file  + L".scm";
+        if (!fs::exists(module_path)) {
+            continue;
+        }
+        load(module_path);
+        auto it = module_table.find(module_name);
+        if (it == module_table.end()) {
+            throw module_error("load module, no module defined", module_name);
+        }
+        return it->second;
+    }
+    throw module_error("no module: ", module_name);
+}
 Cell Scheme::apply(const SymenvPtr& env, Intern opcode, const std::vector<Cell>& args)
 {
     return pscm::call(*this, env, opcode, args);
@@ -93,6 +130,7 @@ void Scheme::repl(const SymenvPtr& env)
 
 void Scheme::load(const String& filename, const SymenvPtr& env)
 {
+    module_stack.push(get_current_module());
     using file_port = FilePort<Char>;
     const SymenvPtr& senv = env ? env : getenv();
 
@@ -119,6 +157,7 @@ void Scheme::load(const String& filename, const SymenvPtr& env)
         else
             out << e.what() << ": " << expr << '\n';
     }
+    module_stack.pop();
 }
 
 Cell Scheme::syntax_begin(const SymenvPtr& env, Cell args)
@@ -445,13 +484,68 @@ Cell Scheme::eval(SymenvPtr env, Cell expr)
         case Intern::_or:
             expr = syntax_or(env, args);
             break;
-
+        case Intern::_module:
+            expr = syntax_module(env, args);
+            break;
+        case Intern::_inherit_module:
+            expr = syntax_inherit_module(env, args);
+            break;
+        case Intern::_use_module:
+            expr = syntax_use_module(env, args);
+            break;
         default:
             return apply(env, opcode, eval_args(env, args));
         }
     }
 }
 
+Cell Scheme::syntax_module(const SymenvPtr& senv, const Cell& args) {
+    auto module_name = car(args);
+    auto it = module_table.find(module_name);
+    if (it != module_table.end()) {
+        throw module_error("module exist: ", module_name);
+    }
+    auto cur_env = get_current_module_env();
+    auto env = newenv(cur_env);
+    module_table[module_name] = env;
+    module_stack.push(module_name);
+    if (!is_nil(cdr(args))) {
+        auto use = cadr(args);
+        if (get<Symbol>(car(use)).value() == L":use") {
+            return syntax_use_module(senv, cdr(use));
+        }
+        throw module_error("module syntax error: ", module_name);
+
+    }
+    return none;
+}
+
+Cell Scheme::syntax_inherit_module(const SymenvPtr& senv, Cell args) {
+    auto cur_env = get_current_module_env();
+    while (is_pair(args)) {
+        auto env = get_module_env(car(args));
+        cur_env->inherit(*env);
+        args = cdr(args);
+    }
+    return none;
+}
+
+Cell Scheme::syntax_use_module(const SymenvPtr& senv, Cell args) {
+    auto cur_env = get_current_module_env();
+    while (is_pair(args)) {
+        auto env = get_module_env(car(args));
+        cur_env->use(*env);
+        args = cdr(args);
+    }
+    return none;
+}
+Cell Scheme::append_module_path(const std::vector<Cell>& vargs) {
+    for(const auto& args: vargs) {
+        auto path = get<StringPtr>(args);
+        module_paths.push_back(*path);
+    }
+    return none;
+}
 Cell Scheme::eval_string(SymenvPtr env, const String& code) {
     Parser parser{ *this };
     Cell expr = none;

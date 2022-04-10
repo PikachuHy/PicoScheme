@@ -2683,6 +2683,10 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args)
         return primop::is_keyword(args);
     case Intern::op_defined:
         return primop::defined_sym(scm, args);
+    case Intern::op_current_module:
+        return scm.get_current_module();
+    case Intern::op_append_module_path:
+        return scm.append_module_path(args);
     default:
         throw std::invalid_argument("invalid primary opcode");
     }
@@ -3003,6 +3007,12 @@ void add_environment_defaults(Scheme& scm)
 
           { scm.symbol("keyword?"),     Intern::op_is_keyword },
           { scm.symbol("defined?"),     Intern::op_defined },
+
+          { scm.symbol("current-module"),     Intern::op_current_module },
+          { scm.symbol("module"),             Intern::_module },
+          { scm.symbol("inherit-module"),     Intern::_inherit_module },
+          { scm.symbol("use-module"),         Intern::_use_module },
+          { scm.symbol("append-module-path"), Intern::op_append_module_path },
        });
     // clang-format on
 }

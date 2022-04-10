@@ -53,7 +53,7 @@ struct SymbolTable {
         bool operator!=(const Symbol& sym) const noexcept { return ptr != sym.ptr; }
         bool operator<(const Symbol& sym) const noexcept { return ptr < sym.ptr; }
 
-        struct hash : private std::hash<const T*> {
+        struct hash : private std::hash<const T *> {
             using argument_type = Symbol;
             using result_type = std::size_t;
 
@@ -128,6 +128,37 @@ public:
     using std::enable_shared_from_this<SymbolEnv>::shared_from_this;
     using std::enable_shared_from_this<SymbolEnv>::weak_from_this;
 
+    std::wstring statistics() const
+    {
+        using Port = StringPort<wchar_t>;
+        Port os{ Port::out };
+        os << L"table: ";
+        os << table.size() << " ";
+        os << public_table.size() << " ";
+        os << use_table.size();
+        return os.str();
+    }
+
+    void inherit(const SymbolEnv& env)
+    {
+        for (const auto& [k, v] : env.public_table) {
+            public_table[k] = v;
+        }
+        for (const auto& [k, v] : env.table) {
+            table[k] = v;
+        }
+        for (const auto& [k, v] : env.use_table) {
+            use_table[k] = v;
+        }
+    }
+
+    void use(const SymbolEnv& env)
+    {
+        for (const auto& [k, v] : env.public_table) {
+            use_table[k] = v;
+        }
+    }
+
     //! Create a new empty symbol environment, optionally as a child
     //! of the argument parent environment.
     static shared_type create(const shared_type& parent = nullptr)
@@ -148,11 +179,9 @@ public:
     {
         if (is_public) {
             public_table.insert_or_assign(sym, val);
-        } 
-        else {
+        } else {
             table.insert_or_assign(sym, val);
         }
-        
     }
 
     //! Insert or reassign zero or more (symbol,value)-pairs into this environment.
@@ -169,7 +198,7 @@ public:
      */
     void set(const Sym& sym, const T& arg)
     {
-        SymbolEnv* senv = this;
+        SymbolEnv *senv = this;
 
         do {
             auto iter = senv->table.find(sym);
@@ -191,17 +220,27 @@ public:
      */
     const T& get(const Sym& sym) const
     {
-        const SymbolEnv* senv = this;
-
-        do {
-            auto iter = senv->table.find(sym);
-
-            if (iter != senv->table.end())
-                return iter->second;
-
-        } while ((senv = senv->next.get()));
-
-        throw symenv_exception{ sym };
+        {
+            auto it = use_table.find(sym);
+            if (it != use_table.end()) {
+                return it->second;
+            }
+        }
+        {
+            auto it = public_table.find(sym);
+            if (it != public_table.end()) {
+                return it->second;
+            }
+        }
+        return _get(sym);
+    }
+    bool defined_sym(const Sym& sym) const
+    {
+        if (use_table.find(sym) != use_table.end())
+            return true;
+        if (public_table.find(sym) != use_table.end())
+            return true;
+        return _defined_sym(sym);
     }
     /**
      * Cursor as (begin,end)-iterator range to iterate over all (symbol,value)-pairs
@@ -229,7 +268,29 @@ public:
         }
         std::weak_ptr<SymbolEnv> env;
     };
+    const T& _get(const Sym& sym) const
+    {
+        const SymbolEnv *senv = this;
 
+        do {
+            auto iter = senv->table.find(sym);
+
+            if (iter != senv->table.end())
+                return iter->second;
+
+        } while ((senv = senv->next.get()));
+
+        throw symenv_exception{ sym };
+    }
+    bool _defined_sym(const Sym& sym) const
+    {
+        const SymbolEnv *senv = this;
+        do {
+            if (senv->table.find(sym) != senv->table.end())
+                return true;
+        } while ((senv = senv->next.get()));
+        return false;
+    }
     //! Return a cursor
     Cursor cursor() { return Cursor{ weak_from_this() }; }
     Cursor cursor() const { return Cursor{ weak_from_this() }; }
@@ -258,6 +319,8 @@ private:
 private:
     const std::shared_ptr<SymbolEnv> next = nullptr;
     std::unordered_map<Sym, T, Hash> table;
+    std::unordered_map<Sym, T, Hash> public_table;
+    std::unordered_map<Sym, T, Hash> use_table;
 };
 
 } // namespace pscm

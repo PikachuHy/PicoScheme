@@ -10,6 +10,7 @@
 #define SCHEME_HPP
 
 #include <list>
+#include <stack>
 
 #include "cell.hpp"
 #include "gc.hpp"
@@ -17,6 +18,20 @@
 namespace pscm {
 
 class GCollector;
+class module_error: public std::runtime_error {
+public:
+    module_error(const std::string& msg, const Cell& module_name)
+        : runtime_error("module error: " + msg + to_string(module_name))
+    {
+
+    }
+    static std::string to_string(const Cell& module_name) {
+        using Port = StringPort<Char>;
+        Port os{ Port::out };
+        os << module_name;
+        return string_convert<char>(os.str());
+    }
+};
 
 /**
  * Scheme interpreter class.
@@ -28,7 +43,13 @@ public:
 
     //! Return a shared pointer to the top environment of this interpreter.
     SymenvPtr getenv() const { return topenv; }
-
+    const Cell& get_current_module() const { return module_stack.top(); }
+    SymenvPtr& get_current_module_env() { return module_table[get_current_module()]; };
+    const SymenvPtr& get_current_module_env() const { return module_table.at(get_current_module()); };
+    SymenvPtr get_module_env(const Cell& module_name);
+    SymenvPtr load_module(const Cell& module_name, const SymenvPtr& env);
+    Cell append_module_path(const std::vector<Cell>& vargs);
+    
     //! Insert a new symbol and value or reassign an already bound value of an existing symbol
     //! at the top environment of this scheme interpreter.
     void addenv(const Symbol& sym, const Cell& val) { topenv->add(sym, val); }
@@ -239,6 +260,11 @@ protected:
 
     Cell syntax_or(const SymenvPtr& env, Cell args);
 
+    Cell syntax_module(const SymenvPtr& senv, const Cell& args);
+
+    Cell syntax_inherit_module(const SymenvPtr& senv, Cell args);
+
+    Cell syntax_use_module(const SymenvPtr& senv, Cell args);
 private:
     friend class GCollector;
     static constexpr size_t dflt_bucket_count = 1024; //<! Initial default hash table bucket count.
@@ -254,6 +280,9 @@ private:
 
     Symtab symtab{ dflt_bucket_count };
     SymenvPtr topenv = nullptr;
+    std::unordered_map<Cell, SymenvPtr, hash<Cell>, cell_equal<Cell>> module_table;
+    std::vector<String> module_paths;
+    std::stack<Cell> module_stack;
 };
 
 } // namespace pscm

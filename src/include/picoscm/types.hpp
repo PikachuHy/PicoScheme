@@ -412,6 +412,12 @@ enum class Intern {
 
     op_is_keyword,
     op_defined,
+
+    op_current_module,
+    _module,
+    _inherit_module,
+    _use_module,
+    op_append_module_path,
 };
 }
 #endif // TYPES_HPP
