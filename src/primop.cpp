@@ -2162,6 +2162,12 @@ static Cell is_keyword(const varg& args) {
     }
     return symstr.back() == ':' || symstr.front() == ':';
 }
+
+static bool defined_sym(Scheme& scm, const varg& args) {
+    auto sym = get<Symbol>(args[0]);
+    auto cur_env = scm.get_current_module_env();
+    return cur_env->defined_sym(sym);
+}
 } // namespace pscm::primop
 
 namespace pscm {
@@ -2675,6 +2681,8 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args)
         return primop::hash_table_set(args);
     case Intern::op_is_keyword:
         return primop::is_keyword(args);
+    case Intern::op_defined:
+        return primop::defined_sym(scm, args);
     default:
         throw std::invalid_argument("invalid primary opcode");
     }
@@ -2994,6 +3002,7 @@ void add_environment_defaults(Scheme& scm)
           { scm.symbol("hash"),         Intern::op_hash },
 
           { scm.symbol("keyword?"),     Intern::op_is_keyword },
+          { scm.symbol("defined?"),     Intern::op_defined },
        });
     // clang-format on
 }

@@ -411,6 +411,7 @@ enum class Intern {
     op_hash,
 
     op_is_keyword,
+    op_defined,
 };
 }
 #endif // TYPES_HPP
