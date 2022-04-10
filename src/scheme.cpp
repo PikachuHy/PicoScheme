@@ -378,6 +378,12 @@ Cell Scheme::eval(SymenvPtr env, Cell expr)
             else
                 env->add(get<Symbol>(car(args)), eval(env, cadr(args)));
             return none;
+        case Intern::_define_public:
+            if (is_pair(car(args)))
+                env->add(get<Symbol>(caar(args)), Procedure{ env, cdar(args), cdr(args) }, true);
+            else
+                env->add(get<Symbol>(car(args)), eval(env, cadr(args)), true);
+            return none;
 
         case Intern::_lambda:
             return Procedure{ env, car(args), cdr(args) };
@@ -385,7 +391,9 @@ Cell Scheme::eval(SymenvPtr env, Cell expr)
         case Intern::_macro:
             env->add(get<Symbol>(caar(args)), Procedure{ env, cdar(args), cdr(args), true });
             return none;
-
+        case Intern::_macro_public:
+            env->add(get<Symbol>(caar(args)), Procedure{ env, cdar(args), cdr(args), true }, true);
+            return none;
         case Intern::_apply:
             if (is_proc(proc = eval(env, car(args)))) {
                 if (is_macro(proc))

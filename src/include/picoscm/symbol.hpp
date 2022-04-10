@@ -144,9 +144,15 @@ public:
 
     //! Insert a new symbol and value or reassigns a bound value of an existing symbol
     //! in this environment only.
-    void add(const Sym& sym, const T& val)
+    void add(const Sym& sym, const T& val, bool is_public = false)
     {
-        table.insert_or_assign(sym, val);
+        if (is_public) {
+            public_table.insert_or_assign(sym, val);
+        } 
+        else {
+            table.insert_or_assign(sym, val);
+        }
+        
     }
 
     //! Insert or reassign zero or more (symbol,value)-pairs into this environment.
