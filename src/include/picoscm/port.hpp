@@ -225,5 +225,18 @@ private:
     std::string reason;
 };
 
+template<typename T>
+void debug_output_helper(T t) {
+    std::wcout << t << std::endl;
+}
+template<typename U, typename ...T>
+void debug_output_helper(U u, T...t) {
+    std::wcout << u << " ";
+    debug_output_helper(t...);
+}
+
+#define DEBUG_OUTPUT(...) std::wcout << __FILE__ << ":" << __LINE__ << " [" << __func__ << "] "; \
+debug_output_helper(__VA_ARGS__)
+
 } // namespace pscm
 #endif // PORT_HPP
