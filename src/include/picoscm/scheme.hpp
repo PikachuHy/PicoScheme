@@ -159,9 +159,9 @@ public:
      * @param code Scheme code to evaluate.
      * @return Evaluation result or special symbol @em none for no result.
      */
-    Cell eval(SymenvPtr env, const String& code);
+    Cell eval_string(SymenvPtr env, const String& code);
     template <typename StringT>
-    Cell eval(SymenvPtr env, StringT code) {
+    Cell eval_string(SymenvPtr env, StringT code) {
         return eval(env, string_convert<Char>(code));
     }
 

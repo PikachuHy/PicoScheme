@@ -444,7 +444,7 @@ Cell Scheme::eval(SymenvPtr env, Cell expr)
     }
 }
 
-Cell Scheme::eval(SymenvPtr env, const String& code) {
+Cell Scheme::eval_string(SymenvPtr env, const String& code) {
     Parser parser{ *this };
     Cell expr = none;
     std::wstringstream ss;
