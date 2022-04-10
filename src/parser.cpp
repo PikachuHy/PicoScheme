@@ -203,6 +203,8 @@ Parser::Token Parser::lex_char(const String& str, Char& c, istream_type& in)
         Int c;
     } stab[]{
         // clang-format off
+            // https://www.gnu.org/software/guile/manual/html_node/Characters.html
+            { L"#\\ht",         wchar_t(9)},
             { L"#\\eof",        EOF},
             { L"#\\alarm",     '\a'},
             { L"#\\backspace", '\b'},
