@@ -6,6 +6,7 @@ AlwaysBreakTemplateDeclarations: Yes
 AllowShortFunctionsOnASingleLine: None
 BreakInheritanceList: BeforeComma
 PackConstructorInitializers: Never
+AlignArrayOfStructures: Right
 BreakBeforeBraces: Custom
 Cpp11BracedListStyle: false
 BraceWrapping:
