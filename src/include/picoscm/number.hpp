@@ -215,9 +215,9 @@ std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>&
         static_cast<Number::base_type>(num));
 */
   overloads stream{
-    [&os](const Int& val) -> std::wostream& { return os << val; },
-    [&os](const Float& val) -> std::wostream& { return os << std::scientific << val; },
-    [&os](auto& val) -> std::wostream& { return os << std::scientific << val; }
+    [&os](const Int& val) -> std::basic_ostream<CharT, Traits>& { return os << val; },
+    [&os](const Float& val) -> std::basic_ostream<CharT, Traits>& { return os << std::scientific << val; },
+    [&os](auto& val) -> std::basic_ostream<CharT, Traits>& { return os << std::scientific << val; }
   };
   return std::visit(std::move(stream), static_cast<const Number::base_type&>(num));
 }
