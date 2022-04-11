@@ -676,4 +676,227 @@ Number abs(const Number& x)
         static_cast<const Number::base_type&>(x));
 }
 
+void NumberParser::parse()
+{
+    if (s.empty()) {
+        mark_parse_fail();
+        return;
+    }
+    if (s == L"i") {
+        mark_parse_fail();
+        return;
+    }
+    if (last_char() == 'i') {
+        auto num_opt = parse_complex();
+        if (parse_fail()) {
+            return;
+        }
+        num = num_opt.value();
+    } else {
+        auto sign = parse_sign(true).value_or(false);
+        auto num_opt = parse_num();
+        if (parse_fail()) {
+            return;
+        }
+        num = num_opt.value();
+        if (sign) {
+            num = -num;
+        }
+    }
+    if (!reach_last()) {
+        mark_parse_fail();
+        return;
+    }
+}
+std::optional<bool> NumberParser::parse_sign(bool optional)
+{
+    if (parse_fail()) return std::nullopt;
+    if (s[index] == '-') {
+        advance();
+        return true;
+    } else if (s[index] == '+') {
+        advance();
+        return false;
+    } else if (optional) {
+        return std::nullopt;
+    } else {
+        mark_parse_fail();
+        return std::nullopt;
+    }
+}
+std::optional<Int> NumberParser::parse_digit(bool optional)
+{
+    if (parse_fail()) return std::nullopt;
+    if (exceed_max_len()) {
+        mark_parse_fail();
+        return std::nullopt;
+    }
+    int count = 0;
+    Int ret = 0;
+    while (!exceed_max_len() && is_digit()) {
+        ret = ret * 10 + (s[index] - '0');
+        advance();
+        count++;
+    }
+    if (count == 0) {
+        if (optional) {
+            return std::nullopt;
+        }
+        mark_parse_fail();
+        return std::nullopt;
+    }
+    return ret;
+}
+std::optional<Number> NumberParser::parse_num(bool optional)
+{
+    auto cur_index = index;
+    if (parse_fail()) return std::nullopt;
+    auto num = parse_digit(optional);
+    if (parse_fail()) {
+        return std::nullopt;
+    }
+    if (!num.has_value()) {
+        if (optional) return std::nullopt;
+        mark_parse_fail();
+        return std::nullopt;
+    }
+    bool has_point = false;
+    Int point_num;
+    if (s[index] == '.') {
+        is_flo = true;
+        has_point = true;
+        advance();
+        point_num = parse_digit().value();
+    }
+    Float val = num.value() * 1.0;
+    bool has_e = false;
+    Int e_num;
+    if (s[index] == 'e' || s[index] == 'E') {
+        has_e = true;
+        advance();
+        auto sign = parse_sign(true);
+        e_num = parse_digit().value();
+        if (sign.value_or(false)) {
+            e_num = -e_num;
+        }
+    }
+    auto new_index = index;
+    if (has_point || has_e) {
+        // convert str to Float
+        return convert_str_to_float(s.substr(cur_index, new_index - cur_index));
+    } else {
+        // just Int
+        return num;
+    }
+}
+std::optional<Number> NumberParser::parse_complex()
+{
+    Number ret;
+    auto sign1 = parse_sign(true).value_or(false);
+    if (has_sign_after(index)) {
+        auto num1_opt = parse_num();
+        if (parse_fail()) {
+            return std::nullopt;
+        }
+        auto sign2_opt = parse_sign();
+        if (parse_fail()) {
+            return std::nullopt;
+        }
+        auto num1 = num1_opt.value();
+        if (sign1) {
+            num1 = -num1;
+        }
+        auto num2 = parse_num(true).value_or(1);
+        auto sign2 = sign2_opt.value();
+        if (sign2) {
+            num2 = -num2;
+        }
+        ret = Number(num1, num2);
+    } else {
+        auto num_opt = parse_num(true);
+        if (parse_fail()) {
+            return std::nullopt;
+        }
+        auto num = num_opt.value_or(1);
+        if (sign1) {
+            num = -num;
+        }
+        ret = Number(0, num);
+    }
+    if (exceed_max_len()) {
+        mark_parse_fail();
+        return std::nullopt;
+    }
+    if (s[index] != 'i') {
+        mark_parse_fail();
+        return std::nullopt;
+    }
+    advance();
+    return ret;
+}
+void NumberParser::advance()
+{
+    index++;
+}
+bool NumberParser::is_digit()
+{
+    return iswdigit(s[index]);
+}
+bool NumberParser::is_sign(size_t i)
+{
+    return s[i] == '+' || s[i] == '-';
+}
+void NumberParser::mark_parse_fail()
+{
+    success = false;
+}
+bool NumberParser::parse_fail() const
+{
+    return !success;
+}
+Char NumberParser::last_char() const
+{
+    return s.at(max_len - 1);
+}
+bool NumberParser::exceed_max_len() const
+{
+    return index >= max_len;
+}
+bool NumberParser::reach_last() const
+{
+    return index == max_len;
+}
+bool NumberParser::has_sign_after(size_t i)
+{
+    while (i < max_len) {
+        if (is_sign(i)) {
+            return true;
+        }
+        i++;
+    }
+    return false;
+}
+Number NumberParser::parsed_number() const
+{
+    return num;
+}
+std::optional<Float> NumberParser::convert_str_to_float(const String& str)
+{
+    errno = 0;
+    wchar_t* end;
+    double x = std::wcstod(str.c_str(), &end);
+    // TODO: use big number
+    if (errno == ERANGE) { // Ignore it for denormals
+        if (!(x != 0 && x > -HUGE_VAL && x < HUGE_VAL)) {
+            mark_parse_fail();
+            DEBUG_OUTPUT("strtod: ERANGE");
+            return std::nullopt;
+        }
+    } else if (errno) {
+        mark_parse_fail();
+        DEBUG_OUTPUT("strtod failed");
+        return std::nullopt;
+    }
+    return x;
+}
 } // namespace pscm

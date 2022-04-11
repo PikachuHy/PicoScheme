@@ -26,3 +26,5 @@ set_target_properties(pscm_main
         PROPERTIES
         OUTPUT_NAME pscm
         )
+
+add_subdirectory(test)

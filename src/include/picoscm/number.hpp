@@ -12,8 +12,10 @@
 #include <complex>
 #include <iostream>
 #include <variant>
+#include <optional>
 
 #include "utils.hpp"
+#include "types.hpp"
 
 namespace pscm {
 
@@ -286,6 +288,43 @@ Number rect(const Number& x, const Number& y);
 Number polar(const Number& r, const Number& theta);
 Number hypot(const Number& x, const Number& y);
 Number hypot(const Number& x, const Number& y, const Number& z);
+
+class NumberParser {
+public:
+    NumberParser(const String& s): s(s), max_len(s.size()) {
+
+    }
+    NumberParser(const String& s, size_t n): s(s), max_len(std::min(s.size(), n)) {
+
+    }
+    void parse();
+    bool parse_success() const { return success; }
+    Number parsed_number() const;
+private:
+    std::optional<bool> parse_sign(bool optional = false);
+    std::optional<Number> parse_complex();
+    std::optional<Number> parse_num(bool optional = false);
+    std::optional<Int> parse_digit(bool optional = false);
+    void advance();
+    bool is_digit();
+    bool is_sign(size_t i);
+    void mark_parse_fail();
+    bool parse_fail() const;
+    Char last_char() const;
+    bool exceed_max_len() const;
+    bool reach_last() const;
+    bool has_sign_after(size_t i);
+    std::optional<Float> convert_str_to_float(const String& str);
+private:
+    const String& s;
+    std::size_t max_len;
+    bool success = true;
+    int index = 0;
+    bool is_flo = false;
+    bool is_cpx = false;
+    Number num;
+};
+
 
 } // namspace pscm
 

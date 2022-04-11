@@ -43,76 +43,14 @@ double str2double(const wchar_t* str, std::size_t* pos = nullptr)
  */
 Parser::Token Parser::lex_number(const String& str, Number& num)
 {
-    if (str.empty())
+    NumberParser numberParser(str);
+    numberParser.parse();
+    if (numberParser.parse_success()) {
+        num = numberParser.parsed_number();
+        return Token::Number;
+    } else {
         return Token::Error;
-
-    bool is_flo = false, is_cpx = false;
-
-    num = Int{ 0 };
-    Complex z = { 0, 1 };
-
-    auto ic = str.begin();
-    size_t pos = 0, ip = 0;
-
-    // Positive or negative imaginary number: +i or -i
-    if (strchr("+-", *ic) && strchr("iI", *(ic + 1))) {
-        num = *ic != '-' ? z : -z;
-        return Token::Number;
     }
-
-    // Sign character of floating point:
-    if (strchr("+-.", *ic)) {
-        is_flo = *ic == '.';
-        ++ic;
-        ++ip;
-    }
-
-    if (iswdigit(*ic)) {
-
-        while (++ic != str.end()) {
-            ++ip;
-
-            if (iswdigit(*ic))
-                continue;
-
-            else if (strchr(".eE", *ic))
-                is_flo = true;
-
-            else if (strchr("+-", *ic)) {
-
-                if (!strchr("eE", *(ic - 1))) {
-                    is_cpx = true;
-                    z.real(std::stod(str.substr(0, pos = ip)));
-
-                    if (*ic != '+')
-                        z.imag(-1);
-                }
-            } else if (strchr("iI", *ic) && &(*ic) == &str.back()) {
-                is_cpx = true;
-
-                if (iswdigit(str.at(pos)) || pos + 2 < str.size())
-                    z.imag(z.imag() >= 0 ? std::stod(str.substr(pos, str.size()))
-                                         : -std::stod(str.substr(pos, str.size())));
-            } else
-                return Token::Error;
-        }
-        if (is_cpx)
-            num = z;
-
-        else if (is_flo) {
-            num = str2double(str.c_str());
-
-            //   num = Number{ std::stod(str) };
-        } else {
-            try {
-                num = std::stol(str);
-            } catch (std::out_of_range&) {
-                num = Number{ std::stod(str) };
-            }
-        }
-        return Token::Number;
-    }
-    return Token::Error;
 }
 
 Cell Parser::strnum(const String& str)
@@ -487,10 +425,14 @@ Parser::Token Parser::get_token(istream_type& in)
         [[fallthrough]];
 
     default:
-        if (is_digit(strtok, 2))
-            return lex_number(strtok, numtok);
-        else
+        NumberParser numberParser(strtok, 2);
+        numberParser.parse();
+        if (numberParser.parse_success()) {
+            numtok = numberParser.parsed_number();
+            return Token::Number;
+        } else {
             return lex_symbol(strtok);
+        }
     }
 }
 
