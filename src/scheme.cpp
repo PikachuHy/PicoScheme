@@ -30,13 +30,12 @@ static_assert(std::is_same_v<Symenv, SymenvPtr::element_type>);
 static_assert(std::is_same_v<Function, FunctionPtr::element_type>);
 
 Scheme::Scheme(const SymenvPtr& env)
-    : topenv{ Symenv::create(env) }
 {
+    auto std_env = add_environment_defaults(*this);
     auto cwd = fs::current_path().string();
     module_paths.push_back(string_convert<Char>(cwd));
-    pscm::add_environment_defaults(*this);
     Cell current_module = list(symbol("root"));
-    module_table[current_module] = topenv;
+    module_table[current_module] = Symenv::create(std_env);
     module_stack.push(current_module);
 }
 SymenvPtr Scheme::get_module_env(const Cell& module_name) {
@@ -99,7 +98,7 @@ Cell Scheme::expand(const Cell& macro, Cell& args)
 
 void Scheme::repl(const SymenvPtr& env)
 {
-    const SymenvPtr& senv = env ? env : getenv();
+    const SymenvPtr& senv = env ? env : get_current_module_env();
     Parser parser{ *this };
 
     auto &out = outPort().stream(), &in = inPort().stream();
@@ -132,7 +131,7 @@ void Scheme::load(const String& filename, const SymenvPtr& env)
 {
     module_stack.push(get_current_module());
     using file_port = FilePort<Char>;
-    const SymenvPtr& senv = env ? env : getenv();
+    const SymenvPtr& senv = env ? env : get_current_module_env();
 
     Parser parser{ *this };
     Cell expr = none;
@@ -573,5 +572,17 @@ Cell Scheme::eval_string(SymenvPtr env, const String& code) {
     expr = parser.read(ss);
     expr = eval(env, expr);
     return expr;
+}
+void Scheme::addenv(const Symbol& sym, const Cell& val)
+{
+    get_current_module_env()->add(sym, val);
+}
+void Scheme::addenv(std::initializer_list<std::pair<Symbol, Cell>> args)
+{
+    get_current_module_env()->add(args);
+}
+SymenvPtr Scheme::newenv(const SymenvPtr& env)
+{
+    return Symenv::create(env ? env : get_current_module_env());
 }
 } // namespace pscm

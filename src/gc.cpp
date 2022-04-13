@@ -12,7 +12,7 @@ namespace pscm {
 void GCollector::collect(Scheme& scm, const SymenvPtr& env)
 {
     // Mark phase: mark all reacheable cons-cells
-    end = scm.getenv();
+    end = scm.get_current_module_env();
     mark(env ? env : end);
     mset.clear();
 

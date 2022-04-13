@@ -40,10 +40,9 @@ class Scheme {
 public:
     //! Optional connect this scheme interpreter to the environment of another interpreter.
     Scheme(const SymenvPtr& env = nullptr);
-
-    //! Return a shared pointer to the top environment of this interpreter.
-    SymenvPtr getenv() const { return topenv; }
+    //! Return the current module name
     const Cell& get_current_module() const { return module_stack.top(); }
+    //! Return a shared pointer to the current module environment of this interpreter.
     SymenvPtr& get_current_module_env() { return module_table[get_current_module()]; };
     const SymenvPtr& get_current_module_env() const { return module_table.at(get_current_module()); };
     SymenvPtr get_module_env(const Cell& module_name);
@@ -52,15 +51,15 @@ public:
     
     //! Insert a new symbol and value or reassign an already bound value of an existing symbol
     //! at the top environment of this scheme interpreter.
-    void addenv(const Symbol& sym, const Cell& val) { topenv->add(sym, val); }
+    void addenv(const Symbol& sym, const Cell& val);
 
     //! Insert or reassign zero or more symbol, value pairs into the
     //! top environment of this interpreter.
-    void addenv(std::initializer_list<std::pair<Symbol, Cell>> args) { topenv->add(args); }
+    void addenv(std::initializer_list<std::pair<Symbol, Cell>> args);
 
     //! Create a new empty child environment, connected to the argument parent environment
     //! or if null-pointer, connected to the top environment of this interpreter.
-    SymenvPtr newenv(const SymenvPtr& env = nullptr) { return Symenv::create(env ? env : topenv); }
+    SymenvPtr newenv(const SymenvPtr& env = nullptr);
 
     void enable_debug() { debug = true; }
     void disable_debug() { debug = false; }
@@ -129,7 +128,7 @@ public:
         if (env)
             env->add(sym, funptr);
         else
-            topenv->add(sym, funptr);
+            get_current_module_env()->add(sym, funptr);
 
         return funptr;
     }
@@ -284,7 +283,6 @@ private:
     size_t store_size = 0;
 
     Symtab symtab{ dflt_bucket_count };
-    SymenvPtr topenv = nullptr;
     std::unordered_map<Cell, SymenvPtr, hash<Cell>, cell_equal<Cell>> module_table;
     std::vector<String> module_paths;
     std::stack<Cell> module_stack;

@@ -2692,10 +2692,11 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args)
     }
 }
 
-void add_environment_defaults(Scheme& scm)
+SymenvPtr add_environment_defaults(Scheme& scm)
 {
+    auto std_env = Symenv::create();
     // clang-format off
-    scm.addenv(
+    std_env->add(
        {  { scm.symbol("#t"),               true },
           { scm.symbol("#f"),               false },
           { scm.symbol("#true"),            true },
@@ -3016,5 +3017,6 @@ void add_environment_defaults(Scheme& scm)
           { scm.symbol("append-module-path"), Intern::op_append_module_path },
        });
     // clang-format on
+    return std_env;
 }
 } // namespace pscm
