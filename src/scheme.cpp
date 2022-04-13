@@ -285,6 +285,21 @@ Cell Scheme::syntax_with_let(const SymenvPtr& env, Cell args) {
     return expr;
 }
 
+Cell Scheme::syntax_with_module(const SymenvPtr& env, Cell args) {
+    auto cur_m = eval(env, car(args));
+    if (module_table.find(cur_m) == module_table.end()) {
+        throw module_error("No modules:", car(args));
+    }
+    auto cur_env = module_table[cur_m];
+    auto cur_args = cdr(args);
+    Cell expr = none;
+    while (!is_nil(cur_args)) {
+        expr = eval(cur_env, cur_args);
+        cur_args = cdr(cur_args);
+    }
+    return expr;
+}
+
 Cell Scheme::syntax_and(const SymenvPtr& env, Cell args)
 {
     Cell res = true;
@@ -475,6 +490,10 @@ Cell Scheme::eval(SymenvPtr env, Cell expr)
 
         case Intern::_with_let:
             expr = syntax_with_let(env, args);
+            break;
+
+        case Intern::_with_module:
+            expr = syntax_with_module(env, args);
             break;
 
         case Intern::_and:

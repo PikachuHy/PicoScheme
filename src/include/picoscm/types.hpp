@@ -82,6 +82,7 @@ enum class Intern {
     _let,
     _let_star,
     _with_let,
+    _with_module,
     _if,
     _cond,
     _else,

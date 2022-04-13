@@ -2719,6 +2719,7 @@ void add_environment_defaults(Scheme& scm)
           { scm.symbol("let"),              Intern::_let },
           { scm.symbol("let*"),             Intern::_let_star },
           { scm.symbol("with-let"),         Intern::_with_let },
+          { scm.symbol("with-module"),      Intern::_with_module },
           { scm.symbol("if"),               Intern::_if },
           { scm.symbol("cond"),             Intern::_cond },
           { scm.symbol("else"),             Intern::_else },

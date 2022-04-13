@@ -259,6 +259,8 @@ protected:
 
     Cell syntax_with_let(const SymenvPtr& env, Cell args);
 
+    Cell syntax_with_module(const SymenvPtr& env, Cell args);
+
     Cell syntax_and(const SymenvPtr& env, Cell args);
 
     Cell syntax_or(const SymenvPtr& env, Cell args);
