@@ -215,21 +215,18 @@ public:
      *
      * @throws a symenv_exception exception for unknown or unreachable symbols.
      */
-    const T& get(const Sym& sym) const
+    T get(const Sym& sym) const
     {
-        {
-            auto it = use_table.find(sym);
-            if (it != use_table.end()) {
-                return it->second;
+        const SymbolEnv *senv = this;
+
+        do {
+            auto ret = senv->_get(sym);
+            if (ret.has_value()) {
+                return ret.value();
             }
-        }
-        {
-            auto it = public_table.find(sym);
-            if (it != public_table.end()) {
-                return it->second;
-            }
-        }
-        return _get(sym);
+
+        } while ((senv = senv->next.get()));
+        throw symenv_exception{ sym };
     }
     bool defined_sym(const Sym& sym) const
     {
@@ -265,19 +262,27 @@ public:
         }
         std::weak_ptr<SymbolEnv> env;
     };
-    const T& _get(const Sym& sym) const
+    std::optional<T> _get(const Sym& sym) const
     {
-        const SymbolEnv *senv = this;
-
-        do {
-            auto iter = senv->table.find(sym);
-
-            if (iter != senv->table.end())
-                return iter->second;
-
-        } while ((senv = senv->next.get()));
-
-        throw symenv_exception{ sym };
+        {
+            auto it = use_table.find(sym);
+            if (it != use_table.end()) {
+                return it->second;
+            }
+        }
+        {
+            auto it = public_table.find(sym);
+            if (it != public_table.end()) {
+                return it->second;
+            }
+        }
+        {
+            auto it = table.find(sym);
+            if (it != table.end()) {
+                return it->second;
+            }
+        }
+        return std::nullopt;
     }
     bool _set(const Sym& sym, const T& arg)
     {
