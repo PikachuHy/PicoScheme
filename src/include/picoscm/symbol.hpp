@@ -201,13 +201,10 @@ public:
         SymbolEnv *senv = this;
 
         do {
-            auto iter = senv->table.find(sym);
-
-            if (iter != senv->table.end()) {
-                iter->second = arg;
+            auto ret = senv->_set(sym, arg);
+            if (ret) {
                 return;
             }
-
         } while ((senv = senv->next.get()));
 
         throw symenv_exception{ sym };
@@ -281,6 +278,31 @@ public:
         } while ((senv = senv->next.get()));
 
         throw symenv_exception{ sym };
+    }
+    bool _set(const Sym& sym, const T& arg)
+    {
+        {
+            auto it = use_table.find(sym);
+            if (it != use_table.end()) {
+                it->second = arg;
+                return true;
+            }
+        }
+        {
+            auto it = public_table.find(sym);
+            if (it != public_table.end()) {
+                it->second = arg;
+                return true;
+            }
+        }
+        {
+            auto it = table.find(sym);
+            if (it != table.end()) {
+                it->second = arg;
+                return true;
+            }
+        }
+        return false;
     }
     bool _defined_sym(const Sym& sym) const
     {
