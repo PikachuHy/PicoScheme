@@ -425,7 +425,7 @@ Parser::Token Parser::get_token(istream_type& in)
         [[fallthrough]];
 
     default:
-        NumberParser numberParser(strtok, 2);
+        NumberParser numberParser(strtok);
         numberParser.parse();
         if (numberParser.parse_success()) {
             numtok = numberParser.parsed_number();
