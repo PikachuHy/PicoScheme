@@ -423,7 +423,11 @@ Cell Scheme::eval(SymenvPtr env, Cell expr)
         }
         args = cdr(expr);
         if (!is_intern(proc)) return proc;
-        switch (auto opcode = get<Intern>(proc)) {
+        auto opcode = get<Intern>(proc);
+        if (opcode == Intern::_quasiquote) {
+            return syntax_quasiquote(env, car(args));
+        }
+        switch (opcode) {
 
         case Intern::_quote:
             return car(args);
@@ -563,6 +567,58 @@ Cell Scheme::syntax_use_module(const SymenvPtr& senv, Cell args) {
         args = cdr(args);
     }
     return none;
+}
+
+Cell Scheme::syntax_quasiquote(const SymenvPtr& senv, Cell args) {
+    if (!is_pair(args)) return args;
+    DEBUG_OUTPUT("args:", args);
+
+    Cell expr = cons(none, nil);
+    Cell head = expr;
+    while (is_pair(args)) {
+        auto item = car(args);
+        DEBUG_OUTPUT("item", item);
+        if (is_symbol(item)) {
+            auto sym = get<Symbol>(item);
+            auto val = senv->get(sym);
+            if (is_intern(val)) {
+                auto opcode = get<Intern>(val);
+
+                switch (opcode) {
+                case Intern::_unquote:
+                    return eval(senv, cdr(args));
+                case Intern::_let:
+                    return syntax_let(senv, cdr(args));
+                case Intern::_setb:
+                    senv->set(get<Symbol>(eval(senv, cadr(args))), eval(senv, caddr(args)));
+                    return none;
+                case Intern::_begin: {
+                    auto expr = cdr(args);
+                    DEBUG_OUTPUT("expr", expr);
+                    do {
+                        DEBUG_OUTPUT("eval expr", car(expr));
+                        eval(senv, car(expr));
+                        expr = cdr(expr);
+                    } while (!is_nil(expr));
+                }
+                    return none;
+                default:
+                    DEBUG_OUTPUT("opcode", opcode);
+                    return args;
+                }
+            }
+        } else {
+            item = syntax_quasiquote(senv, item);
+        }
+        DEBUG_OUTPUT("-->:", item);
+        set_cdr(expr, cons(item, nil));
+        expr = cdr(expr);
+        DEBUG_OUTPUT("head:", head);
+        args = cdr(args);
+    }
+    auto ret = is_pair(cdr(head)) ? cdr(head) : none;
+    DEBUG_OUTPUT("ret:", ret);
+    return ret;
 }
 Cell Scheme::append_module_path(const std::vector<Cell>& vargs) {
     for(const auto& args: vargs) {

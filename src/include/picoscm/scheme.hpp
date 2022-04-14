@@ -278,6 +278,9 @@ protected:
     Cell syntax_inherit_module(const SymenvPtr& senv, Cell args);
 
     Cell syntax_use_module(const SymenvPtr& senv, Cell args);
+
+    Cell syntax_quasiquote(const SymenvPtr& senv, Cell args);
+
 private:
     friend class GCollector;
     static constexpr size_t dflt_bucket_count = 1024; //<! Initial default hash table bucket count.
