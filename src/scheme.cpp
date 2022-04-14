@@ -129,6 +129,7 @@ void Scheme::repl(const SymenvPtr& env)
 
 void Scheme::load(const String& filename, const SymenvPtr& env)
 {
+    cur_file = filename;
     module_stack.push(get_current_module());
     using file_port = FilePort<Char>;
     const SymenvPtr& senv = env ? env : get_current_module_env();

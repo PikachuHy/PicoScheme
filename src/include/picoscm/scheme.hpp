@@ -296,6 +296,7 @@ private:
     std::vector<String> module_paths;
     std::stack<Cell> module_stack;
     Cell current_module;
+    String cur_file;
 
     bool debug = false;
 };
