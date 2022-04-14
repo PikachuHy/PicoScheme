@@ -2140,7 +2140,7 @@ static Cell hash_table_ref(const varg& args) {
     auto hash_table = get<HashMapPtr>(args[0]);
     auto it = hash_table->find(args[1]);
     if (it == hash_table->end()) {
-        return nil;
+        return false;
     }
     return it->second;
 }
