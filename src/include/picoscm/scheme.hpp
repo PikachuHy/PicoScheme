@@ -41,7 +41,8 @@ public:
     //! Optional connect this scheme interpreter to the environment of another interpreter.
     Scheme(const SymenvPtr& env = nullptr);
     //! Return the current module name
-    const Cell& get_current_module() const { return module_stack.top(); }
+    const Cell& get_current_module() const { return current_module; }
+    Cell set_current_module(const Cell& module_name);
     //! Return a shared pointer to the current module environment of this interpreter.
     SymenvPtr& get_current_module_env() { return module_table[get_current_module()]; };
     const SymenvPtr& get_current_module_env() const { return module_table.at(get_current_module()); };
@@ -286,6 +287,7 @@ private:
     std::unordered_map<Cell, SymenvPtr, hash<Cell>, cell_equal<Cell>> module_table;
     std::vector<String> module_paths;
     std::stack<Cell> module_stack;
+    Cell current_module;
 
     bool debug = false;
 };

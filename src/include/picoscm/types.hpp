@@ -415,6 +415,7 @@ enum class Intern {
     op_defined,
 
     op_current_module,
+    op_set_current_module,
     _module,
     _inherit_module,
     _use_module,

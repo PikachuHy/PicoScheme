@@ -34,7 +34,7 @@ Scheme::Scheme(const SymenvPtr& env)
     auto std_env = add_environment_defaults(*this);
     auto cwd = fs::current_path().string();
     module_paths.push_back(string_convert<Char>(cwd));
-    Cell current_module = list(symbol("root"));
+    current_module = list(symbol("root"));
     module_table[current_module] = Symenv::create(std_env);
     module_stack.push(current_module);
 }
@@ -516,7 +516,6 @@ Cell Scheme::eval(SymenvPtr env, Cell expr)
         }
     }
 }
-
 Cell Scheme::syntax_module(const SymenvPtr& senv, const Cell& args) {
     auto module_name = car(args);
     auto it = module_table.find(module_name);
@@ -527,6 +526,7 @@ Cell Scheme::syntax_module(const SymenvPtr& senv, const Cell& args) {
     auto env = newenv(cur_env);
     module_table[module_name] = env;
     module_stack.push(module_name);
+    current_module = module_name;
     if (!is_nil(cdr(args))) {
         auto use = cadr(args);
         if (get<Symbol>(car(use)).value() == L":use") {
@@ -584,5 +584,14 @@ void Scheme::addenv(std::initializer_list<std::pair<Symbol, Cell>> args)
 SymenvPtr Scheme::newenv(const SymenvPtr& env)
 {
     return Symenv::create(env ? env : get_current_module_env());
+}
+Cell Scheme::set_current_module(const Cell& module_name)
+{
+    if (module_table.find(module_name) == module_table.end()) {
+        throw module_error("No module:", module_name);
+    }
+    auto ret = current_module;
+    current_module = module_name;
+    return ret;
 }
 } // namespace pscm
