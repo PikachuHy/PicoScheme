@@ -397,6 +397,12 @@ Cell Scheme::eval(SymenvPtr env, Cell expr)
     Cell args, proc;
 
     for (;;) {
+        if (is_nil(expr)) {
+            return expr;
+        }
+        if (is_list(expr) && list_length(expr) == 0) {
+            return expr;
+        }
         if (is_symbol(expr))
             return env->get(get<Symbol>(expr));
 
