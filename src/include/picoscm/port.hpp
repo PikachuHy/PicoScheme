@@ -20,6 +20,7 @@
 #include <memory>
 #include <sstream>
 #include <variant>
+#include <vector>
 
 #include "utils.hpp"
 
@@ -224,6 +225,21 @@ struct output_port_exception : public std::ios_base::failure {
 private:
     std::string reason;
 };
+
+template <typename CharT, typename Traits>
+std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const std::vector<Cell>& args)
+{
+    if (args.empty()) {
+        return os << "[]";
+    }
+    os << "[";
+    os << args[0];
+    for (int i = 1; i < args.size(); ++i) {
+        os << ", " << args[i];
+    }
+    os << "]";
+    return os;
+}
 
 template<typename T>
 void debug_output_helper(T t) {
