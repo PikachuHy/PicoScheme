@@ -16,7 +16,15 @@
 #include "gc.hpp"
 
 namespace pscm {
-
+class Guard {
+public:
+    Guard(std::function<void()> f): f(std::move(f)) {}
+    ~Guard() {
+        f();
+    }
+private:
+    std::function<void()> f;
+};
 class GCollector;
 class module_error: public std::runtime_error {
 public:
