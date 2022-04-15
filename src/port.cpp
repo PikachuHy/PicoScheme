@@ -10,7 +10,7 @@
 
 #include "picoscm/port.hpp"
 #include "picoscm/scheme.hpp"
-
+#include "magic_enum.hpp"
 namespace pscm {
 
 void enable_locale(const char* name)
@@ -159,7 +159,9 @@ std::wostream& operator<<(std::wostream& os, Intern opcode)
     case Intern::_unquotesplice:
         return os << "unquote-splicing";
     default:
-        return os << "#<primop>";
+        os << "#<primop>: ";
+        os << string_convert<Char>(std::string(magic_enum::enum_name(opcode)));
+        return os;
     }
 }
 
