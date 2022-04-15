@@ -2168,6 +2168,16 @@ static bool defined_sym(Scheme& scm, const varg& args) {
     auto cur_env = scm.get_current_module_env();
     return cur_env->defined_sym(sym);
 }
+
+static Cell call_with_output_string(Scheme& scm, const SymenvPtr& senv, const varg& args) {
+    auto port = std::make_shared<StringPort<Char>>(StringPort<Char>::out);
+    auto f = get<Procedure>(args.at(0));
+    auto [env, code] = f.apply(scm, senv, scm.cons(port, nil));
+    auto expr = scm.syntax_begin(env, code);
+    scm.eval(env, expr);
+    auto s = port->str();
+    return std::make_shared<String>(port->str());
+}
 } // namespace pscm::primop
 
 namespace pscm {
@@ -2689,6 +2699,8 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args)
         return scm.set_current_module(args.at(0));
     case Intern::op_append_module_path:
         return scm.append_module_path(args);
+    case Intern::op_call_with_output_string:
+        return primop::call_with_output_string(scm, senv, args);
     default:
         throw std::invalid_argument("invalid primary opcode");
     }
@@ -3020,6 +3032,8 @@ SymenvPtr add_environment_defaults(Scheme& scm)
           { scm.symbol("inherit-module"),     Intern::_inherit_module },
           { scm.symbol("use-module"),         Intern::_use_module },
           { scm.symbol("append-module-path"), Intern::op_append_module_path },
+
+          { scm.symbol("call-with-output-string"), Intern::op_call_with_output_string },
        });
     // clang-format on
     return std_env;
