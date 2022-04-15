@@ -144,6 +144,7 @@ inline bool is_symenv (const Cell& cell) { return is_type<SymenvPtr>(cell); }
 inline bool is_vector (const Cell& cell) { return is_type<VectorPtr>(cell); }
 inline bool is_func   (const Cell& cell) { return is_type<FunctionPtr>(cell); }
 inline bool is_proc   (const Cell& cell) { return is_type<Procedure>(cell); }
+inline bool is_syntax (const Cell& cell) { return is_type<SyntaxPtr>(cell); }
 inline bool is_macro  (const Cell& cell) { return is_proc(cell) && get<Procedure>(cell).is_macro(); }
 inline bool is_false  (const Cell& cell) { return is_type<Bool>(cell) && !get<Bool>(cell); }
 inline bool is_true   (const Cell& cell) { return !is_type<Bool>(cell) || get<Bool>(cell); }

@@ -26,6 +26,7 @@ class  Clock;
 class  Procedure;
 class  Function;
 class  CObj;
+class  Syntax;
 enum class Intern;
 template<typename Cell> struct less;
 template<typename Cell> struct hash;
@@ -47,6 +48,9 @@ using ClockPtr    = std::shared_ptr<Clock>;
 using RegexPtr    = std::shared_ptr<std::basic_regex<Char>>;
 using MapPtr      = std::shared_ptr<std::multimap<Cell,Cell,less<Cell>>>;
 using HashMapPtr  = std::shared_ptr<std::unordered_map<Cell,Cell,hash<Cell>, cell_equal<Cell>>>;
+template<typename T>
+using CellHashMap = std::unordered_map<Cell,T,hash<Cell>, cell_equal<Cell>>;
+using SyntaxPtr   = std::shared_ptr<Syntax>;
 using CObjPtr     = std::shared_ptr<CObj>;
 using VectorPtr   = std::shared_ptr<std::vector<Cell>>;
 using PortPtr     = std::shared_ptr<Port<Char>>;
@@ -68,7 +72,7 @@ using Variant = std::variant <
     Cons*, StringPtr, VectorPtr, PortPtr, FunctionPtr, SymenvPtr,
 
     /* Extensions: */
-    RegexPtr, ClockPtr, MapPtr, HashMapPtr, CObjPtr
+    RegexPtr, ClockPtr, MapPtr, HashMapPtr, CObjPtr, SyntaxPtr
 >;
 
 static const None none {}; //!< void return symbol
@@ -76,6 +80,7 @@ static const Nil  nil  {}; //!< empty list symbol
 // clang-format on
 
 enum class Intern {
+    _none_,
     /* Scheme syntax opcodes: */
     _or,
     _and,
@@ -91,6 +96,8 @@ enum class Intern {
     _unless,
     _define,
     _define_public,
+    _define_syntax,
+    _syntax_rules,
     _setb,
     _begin,
     _lambda,

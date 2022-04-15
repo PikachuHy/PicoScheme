@@ -15,6 +15,7 @@
 #include "picoscm/primop.hpp"
 #include "picoscm/scheme.hpp"
 #include "picoscm/port.hpp"
+#include "picoscm/syntax.h"
 
 
 namespace pscm {
@@ -421,6 +422,12 @@ Cell Scheme::eval(SymenvPtr env, Cell expr)
             }
             continue;
         }
+        if (is_syntax(proc)) {
+            auto syntaxPtr = get<SyntaxPtr>(proc);
+            const auto& m = syntaxPtr->match(cdr(expr));
+            expr = expand(m, expr);
+            continue;
+        }
         args = cdr(expr);
         if (!is_intern(proc)) return proc;
         auto opcode = get<Intern>(proc);
@@ -448,6 +455,9 @@ Cell Scheme::eval(SymenvPtr env, Cell expr)
             else
                 env->add(get<Symbol>(car(args)), eval(env, cadr(args)), true);
             return none;
+
+        case Intern::_define_syntax:
+            return syntax_define_syntax(env, args);
 
         case Intern::_lambda:
             return Procedure{ env, car(args), cdr(args) };
@@ -620,6 +630,38 @@ Cell Scheme::syntax_quasiquote(const SymenvPtr& senv, Cell args) {
     DEBUG_OUTPUT("ret:", ret);
     return ret;
 }
+Cell Scheme::syntax_define_syntax(const SymenvPtr& senv, Cell args)
+{
+    auto keyword = car(args);
+    auto transformer_spec = cdr(args);
+    auto syntax_rules = car(transformer_spec);
+    auto syntax = syntax_syntax_rules(senv, syntax_rules);
+    senv->add(get<Symbol>(keyword), syntax);
+    return none;
+}
+Cell Scheme::syntax_syntax_rules(const SymenvPtr& senv, Cell args)
+{
+    auto expr = args;
+    if (_get_intern(senv, car(expr)) != Intern::_syntax_rules) {
+        DEBUG_OUTPUT("syntax error:", args);
+        throw std::runtime_error("syntax error");
+    }
+    expr = cdr(expr);
+    auto literals = car(expr);
+    expr = cdr(expr);
+    auto syntax_rule = car(expr);
+    auto rules = cdr(expr);
+
+    SyntaxPtr syntaxPtr = std::make_shared<Syntax>();
+    while (!is_nil(rules)) {
+        auto rule = car(rules);
+        auto head = cdar(rule);
+        auto body = cadr(rule);
+        syntaxPtr->add(head, Procedure{ senv, head, body, true});
+        rules = cdr(rules);
+    }
+    return syntaxPtr;
+}
 Cell Scheme::append_module_path(const std::vector<Cell>& vargs) {
     for(const auto& args: vargs) {
         auto path = get<StringPtr>(args);
@@ -656,5 +698,16 @@ Cell Scheme::set_current_module(const Cell& module_name)
     auto ret = current_module;
     current_module = module_name;
     return ret;
+}
+Intern Scheme::_get_intern(const SymenvPtr& senv, const Cell& cell)
+{
+    if (!is_symbol(cell)) {
+        return Intern::_none_;
+    }
+    auto val = senv->get(get<Symbol>(cell));
+    if (!is_intern(val)) {
+        return Intern::_none_;
+    }
+    return get<Intern>(val);
 }
 } // namespace pscm

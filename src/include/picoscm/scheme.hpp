@@ -281,6 +281,30 @@ protected:
 
     Cell syntax_quasiquote(const SymenvPtr& senv, Cell args);
 
+    /**
+     * Scheme syntax define-syntax.
+     *
+     * @verbatim
+     * (define-syntax <keyword> <transformer spec>)
+     *
+     * <transformer spec> := (syntax-rules <literals> <syntax rule> ...)
+     *
+     * <literals> := (<pattern> <template>)
+     *
+     * <pattern> := (<pattern> ...)
+     *           |  (<pattern> <pattern> ... . <pattern>)
+     *           |  (<pattern> ... <pattern> <ellipsis>)
+     *           |  #(<pattern> ...)
+     *           |  #(<pattern> ... <pattern> <ellipsis>)
+     *
+     * <template> := (<element> ...)
+     *            |  (<element> <element> ... . <template>)
+     *            |  (<element> ...)
+     */
+    Cell syntax_define_syntax(const SymenvPtr& senv, Cell args);
+    Cell syntax_syntax_rules(const SymenvPtr& senv, Cell args);
+
+    Intern _get_intern(const SymenvPtr& senv, const Cell& cell);
 private:
     friend class GCollector;
     static constexpr size_t dflt_bucket_count = 1024; //<! Initial default hash table bucket count.

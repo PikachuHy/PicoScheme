@@ -2732,6 +2732,8 @@ SymenvPtr add_environment_defaults(Scheme& scm)
           { scm.symbol("begin"),            Intern::_begin },
           { scm.symbol("define"),           Intern::_define },
           { scm.symbol("define-public"),    Intern::_define_public },
+          { scm.symbol("define-syntax"),    Intern::_define_syntax },
+          { scm.symbol("syntax-rules"),     Intern::_syntax_rules },
           { scm.symbol("set!"),             Intern::_setb },
           { scm.symbol("lambda"),           Intern::_lambda },
           { scm.symbol("define-macro"),     Intern::_macro },
