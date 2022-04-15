@@ -2701,6 +2701,9 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args)
         return scm.append_module_path(args);
     case Intern::op_call_with_output_string:
         return primop::call_with_output_string(scm, senv, args);
+    case Intern::op_flush_output:
+        scm.outPort().flush();
+        return none;
     default:
         throw std::invalid_argument("invalid primary opcode");
     }
@@ -3034,6 +3037,7 @@ SymenvPtr add_environment_defaults(Scheme& scm)
           { scm.symbol("append-module-path"), Intern::op_append_module_path },
 
           { scm.symbol("call-with-output-string"), Intern::op_call_with_output_string },
+          { scm.symbol("flush-output"),            Intern::op_flush_output },
        });
     // clang-format on
     return std_env;

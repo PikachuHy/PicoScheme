@@ -429,6 +429,7 @@ enum class Intern {
     op_append_module_path,
 
     op_call_with_output_string,
+    op_flush_output,
 };
 }
 #endif // TYPES_HPP
