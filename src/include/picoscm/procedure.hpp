@@ -72,6 +72,8 @@ public:
      */
     Cell expand(Scheme& scm, Cell& expr) const;
 
+    Cell expand_syntax(Scheme& scm, Cell& expr) const;
+
     struct Closure;
 
     struct hash : private std::hash<Closure*> {
@@ -83,6 +85,9 @@ public:
             return std::hash<Closure*>::operator()(proc.impl.get());
         }
     };
+
+private:
+    Cell partial_replace(Scheme& scm, const SymenvPtr& senv, const Cell& cell) const;
 
 private:
     std::shared_ptr<Closure> impl;

@@ -427,7 +427,8 @@ Cell Scheme::eval(SymenvPtr env, Cell expr)
         if (is_syntax(proc)) {
             auto syntaxPtr = get<SyntaxPtr>(proc);
             const auto& m = syntaxPtr->match(cdr(expr));
-            expr = expand(m, expr);
+            expr = m.expand_syntax(*this, expr);
+            ret = expr;
             continue;
         }
         args = cdr(expr);

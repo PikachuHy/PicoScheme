@@ -9,6 +9,7 @@
 #include <set>
 
 #include "picoscm/scheme.hpp"
+#include "picoscm/procedure.hpp"
 
 namespace pscm {
 
@@ -155,5 +156,44 @@ Cell Procedure::expand(Scheme& scm, Cell& expr) const
     set_cdr(cdr(expr), nil);
     return args;
 }
+Cell Procedure::expand_syntax(Scheme& scm, Cell& expr) const
+{
+    is_macro() || (void(throw std::invalid_argument("expand - not a macro")), 0);
 
+    Cell args = cdr(expr), iter = impl->args; // macro formal parameter symbol list
+
+    // Create a new environment
+    // only contains args
+    SymenvPtr newenv = Symenv::create(nullptr);
+
+    // Add unevaluated macro parameters to new environment:
+    for (/* */; is_pair(iter) && is_pair(args); iter = cdr(iter), args = cdr(args))
+        newenv->add(get<Symbol>(car(iter)), car(args));
+
+    if (iter != args)
+        newenv->add(get<Symbol>(iter), args);
+
+    return partial_replace(scm, newenv, impl->code);
+}
+Cell Procedure::partial_replace(Scheme& scm, const SymenvPtr& senv, const Cell& cell) const {
+    if (!is_pair(cell)) {
+        if (is_symbol(cell)) {
+            auto sym = get<Symbol>(cell);
+            if (senv->defined_sym(sym)) {
+                return senv->get(sym);
+            }
+        }
+        return cell;
+    }
+    Cell ret = scm.cons(none, nil);
+    Cell p = ret;
+    Cell it = cell;
+    while (is_pair(it)) {
+        auto item = car(it);
+        set_cdr(p, scm.cons(partial_replace(scm, senv, item), nil));
+        p = cdr(p);
+        it = cdr(it);
+    }
+    return cdr(ret);
+}
 } // namespace pscm
