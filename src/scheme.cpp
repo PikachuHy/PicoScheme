@@ -149,7 +149,9 @@ void Scheme::load(const String& filename, const SymenvPtr& env)
 
         while (!in.eof()) {
             expr = parser.read(in);
+            if (debugging()) DEBUG_OUTPUT(expr);
             expr = eval(senv, expr);
+            if (debugging()) DEBUG_OUTPUT("-->", expr);
             expr = none;
         }
     } catch (const std::exception& e) {
