@@ -251,7 +251,7 @@ void debug_output_helper(const U& u, const T&...t) {
     debug_output_helper(t...);
 }
 
-#define DEBUG_OUTPUT(...) std::wcout << __FILE__ << ":" << __LINE__ << " [" << __func__ << "] "; \
+#define DEBUG_OUTPUT(...) std::wcout << std::endl << __FILE__ << ":" << __LINE__ << " [" << __func__ << "] "; \
 debug_output_helper(__VA_ARGS__)
 
 } // namespace pscm
