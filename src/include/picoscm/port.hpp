@@ -242,11 +242,11 @@ std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>&
 }
 
 template<typename T>
-void debug_output_helper(T t) {
+void debug_output_helper(const T& t) {
     std::wcout << t << std::endl;
 }
 template<typename U, typename ...T>
-void debug_output_helper(U u, T...t) {
+void debug_output_helper(const U& u, const T&...t) {
     std::wcout << u << " ";
     debug_output_helper(t...);
 }
