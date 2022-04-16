@@ -305,6 +305,9 @@ protected:
     Cell syntax_syntax_rules(const SymenvPtr& senv, Cell args);
 
     Intern _get_intern(const SymenvPtr& senv, const Cell& cell);
+
+    Cell partial_eval(const SymenvPtr& senv, const Cell& cell);
+
 private:
     friend class GCollector;
     static constexpr size_t dflt_bucket_count = 1024; //<! Initial default hash table bucket count.

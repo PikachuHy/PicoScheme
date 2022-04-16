@@ -582,55 +582,7 @@ Cell Scheme::syntax_use_module(const SymenvPtr& senv, Cell args) {
 }
 
 Cell Scheme::syntax_quasiquote(const SymenvPtr& senv, Cell args) {
-    if (!is_pair(args)) return args;
-    DEBUG_OUTPUT("args:", args);
-
-    Cell expr = cons(none, nil);
-    Cell head = expr;
-    while (is_pair(args)) {
-        auto item = car(args);
-        DEBUG_OUTPUT("item", item);
-        if (is_symbol(item)) {
-            auto sym = get<Symbol>(item);
-            auto val = senv->get(sym);
-            if (is_intern(val)) {
-                auto opcode = get<Intern>(val);
-
-                switch (opcode) {
-                case Intern::_unquote:
-                    return eval(senv, cdr(args));
-                case Intern::_let:
-                    return syntax_let(senv, cdr(args));
-                case Intern::_setb:
-                    senv->set(get<Symbol>(eval(senv, cadr(args))), eval(senv, caddr(args)));
-                    return none;
-                case Intern::_begin: {
-                    auto expr = cdr(args);
-                    DEBUG_OUTPUT("expr", expr);
-                    do {
-                        DEBUG_OUTPUT("eval expr", car(expr));
-                        eval(senv, car(expr));
-                        expr = cdr(expr);
-                    } while (!is_nil(expr));
-                }
-                    return none;
-                default:
-                    DEBUG_OUTPUT("opcode", opcode);
-                    return args;
-                }
-            }
-        } else {
-            item = syntax_quasiquote(senv, item);
-        }
-        DEBUG_OUTPUT("-->:", item);
-        set_cdr(expr, cons(item, nil));
-        expr = cdr(expr);
-        DEBUG_OUTPUT("head:", head);
-        args = cdr(args);
-    }
-    auto ret = is_pair(cdr(head)) ? cdr(head) : none;
-    DEBUG_OUTPUT("ret:", ret);
-    return ret;
+    return partial_eval(senv, args);
 }
 Cell Scheme::syntax_define_syntax(const SymenvPtr& senv, Cell args)
 {
@@ -712,4 +664,32 @@ Intern Scheme::_get_intern(const SymenvPtr& senv, const Cell& cell)
     }
     return get<Intern>(val);
 }
+Cell Scheme::partial_eval(const SymenvPtr& senv, const Cell& cell) {
+    auto ret = cell;
+    auto it = ret;
+    while (is_pair(it)) {
+        auto item = car(it);
+        if (is_pair(item)) {
+            auto opcode = _get_intern(senv, car(item));
+            if (opcode == Intern::_unquote) {
+                set_car(it, eval(senv, cadr(item)));
+            } else if (opcode == Intern::_unquotesplice) {
+                auto next_it = cdr(it);
+                auto val = eval(senv, cadr(item));
+                set_car(it, car(val));
+                while (is_pair(cdr(val))) {
+                    set_cdr(it, cons(cadr(val), nil));
+                    it = cdr(it);
+                    val = cdr(val);
+                }
+                set_cdr(it, next_it);
+            } else {
+                set_car(it, partial_eval(senv, item));
+            }
+        }
+        it = cdr(it);
+    }
+    return ret;
+}
+
 } // namespace pscm
