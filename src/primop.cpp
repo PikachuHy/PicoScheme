@@ -2151,6 +2151,15 @@ static Cell hash_table_set(const varg& args) {
     return none;
 }
 
+static Cell hash_table_get_handle(Scheme& scm, const varg& args) {
+    auto hash_table = get<HashMapPtr>(args[0]);
+    auto it = hash_table->find(args[1]);
+    if (it == hash_table->end()) {
+        return false;
+    }
+    return scm.cons(it->first, it->second);
+}
+
 static Cell is_keyword(const varg& args) {
     if (!is_symbol(args[0])) {
         return false;
@@ -2689,6 +2698,8 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args)
         return primop::hash_table_ref(args);
     case Intern::op_hash_table_set:
         return primop::hash_table_set(args);
+    case Intern::op_hash_table_get_handle:
+        return primop::hash_table_get_handle(scm, args);
     case Intern::op_is_keyword:
         return primop::is_keyword(args);
     case Intern::op_defined:
@@ -3019,9 +3030,10 @@ SymenvPtr add_environment_defaults(Scheme& scm)
           { scm.symbol("dict->list"),   Intern::op_dict2list},
           { scm.symbol("list->dict"),   Intern::op_list2dict},
 
-          { scm.symbol("make-hash-table"),   Intern::op_make_hash_table},
-          { scm.symbol("hash-table-ref"),   Intern::op_hash_table_ref},
-          { scm.symbol("hash-table-set!"),   Intern::op_hash_table_set},
+          { scm.symbol("make-hash-table"),         Intern::op_make_hash_table},
+          { scm.symbol("hash-table-ref"),          Intern::op_hash_table_ref},
+          { scm.symbol("hash-table-set!"),         Intern::op_hash_table_set},
+          { scm.symbol("hash-table-get-handle"),   Intern::op_hash_table_get_handle},
 
           { scm.symbol("use-count"),    Intern::op_usecount },
           { scm.symbol("hash"),         Intern::op_hash },

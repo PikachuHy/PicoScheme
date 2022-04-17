@@ -414,6 +414,7 @@ enum class Intern {
     op_make_hash_table,
     op_hash_table_ref,
     op_hash_table_set,
+    op_hash_table_get_handle,
 
     op_usecount,
     op_hash,
