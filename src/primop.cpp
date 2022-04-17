@@ -419,6 +419,46 @@ static Cell listcopy(Scheme& scm, const varg& args)
     return head;
 }
 
+static Cell list_tail(Scheme& scm, const varg& args)
+{
+    Cell list = args.at(0);
+    auto num = get<Number>(args.at(1));
+    auto k = get<Int>(num);
+
+    if (is_nil(list))
+        return nil;
+    if (k == 0) {
+        return listcopy(scm, {list});
+    }
+    int i = 0;
+    list = cdr(list);
+    while (is_pair(list)) {
+        i++;
+        if (i >= k) {
+            break;
+        }
+        list = cdr(list);
+    }
+    return listcopy(scm, {list});
+}
+
+static Cell list_head(Scheme& scm, const varg& args)
+{
+    Cell list = args.at(0);
+    auto num = get<Number>(args.at(1));
+    auto k = get<Int>(num);
+
+    if (is_nil(list) || k == 0)
+        return nil;
+    Cell head = scm.cons(car(list), nil), tail = head;
+    for (int i = 1; i < k && is_pair(list); ++i) {
+        list = cdr(list);
+        set_cdr(tail, scm.cons(car(list), nil));
+        tail = cdr(tail);
+    }
+    return head;
+}
+
 static Cell is_proc(const varg& args)
 {
     const Cell& cell = args.at(0);
@@ -2378,6 +2418,10 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args)
         return primop::listsetb(args);
     case Intern::op_listcopy:
         return primop::listcopy(scm, args);
+    case Intern::op_list_tail:
+        return primop::list_tail(scm, args);
+    case Intern::op_list_head:
+        return primop::list_head(scm, args);
     case Intern::op_reverse:
         return primop::reverse(scm, args);
     case Intern::op_reverseb:
@@ -2866,6 +2910,8 @@ SymenvPtr add_environment_defaults(Scheme& scm)
           { scm.symbol("list-ref"),         Intern::op_listref },
           { scm.symbol("list-set!"),        Intern::op_listsetb },
           { scm.symbol("list-copy"),        Intern::op_listcopy },
+          { scm.symbol("list-tail"),        Intern::op_list_tail },
+          { scm.symbol("list-head"),        Intern::op_list_head },
           { scm.symbol("reverse"),          Intern::op_reverse },
           { scm.symbol("reverse!"),         Intern::op_reverseb },
           { scm.symbol("memq"),             Intern::op_memq },
