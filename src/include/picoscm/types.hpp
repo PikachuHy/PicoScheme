@@ -91,6 +91,7 @@ enum class Intern {
     _if,
     _cond,
     _else,
+    _case,
     _arrow,
     _when,
     _unless,

@@ -2796,6 +2796,7 @@ SymenvPtr add_environment_defaults(Scheme& scm)
           { scm.symbol("if"),               Intern::_if },
           { scm.symbol("cond"),             Intern::_cond },
           { scm.symbol("else"),             Intern::_else },
+          { scm.symbol("case"),             Intern::_case },
           { scm.symbol("=>"),               Intern::_arrow },
           { scm.symbol("when"),             Intern::_when },
           { scm.symbol("unless"),           Intern::_unless },
