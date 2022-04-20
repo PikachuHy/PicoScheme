@@ -2759,6 +2759,12 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args)
     case Intern::op_flush_output:
         scm.outPort().flush();
         return none;
+    case Intern::op_enable_debug:
+        scm.enable_debug();
+        return none;
+    case Intern::op_disable_debug:
+        scm.disable_debug();
+        return none;
     default:
         throw std::invalid_argument("invalid primary opcode");
     }
@@ -3098,6 +3104,9 @@ SymenvPtr add_environment_defaults(Scheme& scm)
 
           { scm.symbol("call-with-output-string"), Intern::op_call_with_output_string },
           { scm.symbol("flush-output"),            Intern::op_flush_output },
+
+          { scm.symbol("enable-debug"),            Intern::op_enable_debug },
+          { scm.symbol("op_disable_debug"),        Intern::op_disable_debug },
        });
     // clang-format on
     return std_env;

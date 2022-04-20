@@ -435,6 +435,9 @@ enum class Intern {
 
     op_call_with_output_string,
     op_flush_output,
+
+    op_enable_debug,
+    op_disable_debug,
 };
 }
 #endif // TYPES_HPP
