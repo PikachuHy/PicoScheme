@@ -319,11 +319,11 @@ Cell Scheme::syntax_unless(const SymenvPtr& env, Cell args)
 
 Cell Scheme::syntax_let(const SymenvPtr& env, Cell args, bool star)
 {
-    SymenvPtr cur_env = env;
+    SymenvPtr cur_env = newenv(env);
     Cell cur_args = args;
     if (is_pair(car(args))) {
         auto bindings = car(args);
-        auto sub_env = env->create(env);
+        auto sub_env = env->create(cur_env);
         for (; !is_nil(bindings) && is_pair(car(bindings)); bindings = cdr(bindings)) {
             auto binding = car(bindings);
             auto var = car(binding);
