@@ -335,6 +335,28 @@ Cell Scheme::syntax_let(const SymenvPtr& env, Cell args, bool star)
         }
         cur_args = cdr(args);
         cur_env = sub_env;
+    } else if (is_symbol(car(args))) {
+        // named let
+        // (let ⟨variable⟩ ⟨bindings⟩ ⟨body⟩)
+        auto variable = get<Symbol>(car(args));
+        auto bindings = cadr(args);
+        auto body = caddr(args);
+        auto new_env = newenv(env);
+        auto proc_args = cons(none, nil);
+        Cell proc_args_it = proc_args;
+        for (; !is_nil(bindings) && is_pair(car(bindings)); bindings = cdr(bindings)) {
+            auto binding = car(bindings);
+            auto var = car(binding);
+            auto val = cadr(binding);
+            auto sym = get<Symbol>(var);
+            auto v = eval(env, val);
+            new_env->add(sym, v);
+
+            set_cdr(proc_args_it, cons(sym, nil));
+            proc_args_it = cdr(proc_args_it);
+        }
+        new_env->add(variable, Procedure(new_env, cdr(proc_args), cons(body, nil)));
+        return eval(new_env, body);
     }
     Cell expr = none;
     while (!is_nil(cur_args)) {
@@ -580,7 +602,7 @@ Cell Scheme::eval(SymenvPtr env, Cell expr)
 
         case Intern::_let:
             expr = syntax_let(env, args);
-            break;
+            return expr;
 
         case Intern::_let_star:
             expr = syntax_let(env, args, true);
