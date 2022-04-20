@@ -17,7 +17,7 @@
 #include "picoscm/port.hpp"
 #include "picoscm/syntax.h"
 
-
+#define DEBUG(...) if (debugging()) DEBUG_OUTPUT(__VA_ARGS__)
 namespace pscm {
 namespace fs = std::filesystem;
 using namespace std::string_literals;
