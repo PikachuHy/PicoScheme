@@ -253,6 +253,48 @@ Cell Scheme::syntax_case(const SymenvPtr& env, Cell args) {
     return none;
 }
 
+
+Cell Scheme::syntax_do(const SymenvPtr& env, Cell args) {
+    auto var_list = car(args);
+    auto test_expr = cadr(args);
+    auto cmd_list = cddr(args);
+    auto new_env = newenv(env);
+    // init var
+    auto var_list_it = var_list;
+    while (!is_nil(var_list_it)) {
+        auto var = car(var_list_it);
+        is_pair(var) || (void(throw std::invalid_argument("invalid do syntax")), 0);
+        auto sym = get<Symbol>(car(var));
+        new_env->add(sym, eval(env, cadr(var)));
+        var_list_it = cdr(var_list_it);
+    }
+    while (!get<Bool>(eval(new_env, car(test_expr)))) {
+        eval_list(new_env, cmd_list);
+        // update var
+        var_list_it = var_list;
+        auto tmp_env = Symenv::create();
+        while (!is_nil(var_list_it)) {
+            auto var = car(var_list_it);
+            is_pair(var) || (void(throw std::invalid_argument("invalid do syntax")), 0);
+            auto sym = get<Symbol>(car(var));
+            auto step = cddr(var);
+            if (!is_nil(step)) {
+                tmp_env->add(sym, eval(new_env, step));
+            }
+            var_list_it = cdr(var_list_it);
+        }
+        for(const auto& [k, v]: tmp_env->cursor()) {
+            new_env->add(k, v);
+        }
+    }
+    if (is_nil(test_expr)) {
+        return none;
+    }
+    return eval_list(new_env, cdr(test_expr));
+
+}
+
+
 Cell Scheme::syntax_when(const SymenvPtr& env, Cell args)
 {
     if (is_true(eval(env, car(args))) && is_pair(args = cdr(args))) {
@@ -522,6 +564,10 @@ Cell Scheme::eval(SymenvPtr env, Cell expr)
 
         case Intern::_case:
             expr = syntax_case(env, args);
+            break;
+
+        case Intern::_do:
+            expr = syntax_do(env, args);
             break;
 
         case Intern::_when:

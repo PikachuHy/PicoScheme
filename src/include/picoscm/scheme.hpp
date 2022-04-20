@@ -271,6 +271,18 @@ protected:
      */
     Cell syntax_case(const SymenvPtr& env, Cell args);
 
+    /**
+     * Scheme syntax do.
+     *
+     * @verbatim
+     * (do ((<variable_1> <init_1> <step_1>)
+     *      ...)
+     *     (<test> <expression> ...)
+     *   <command> ...)
+     * @endverbatim
+     */
+    Cell syntax_do(const SymenvPtr& env, Cell args);
+
     Cell syntax_when(const SymenvPtr& env, Cell args);
 
     Cell syntax_unless(const SymenvPtr& env, Cell args);
