@@ -343,6 +343,8 @@ private:
             return "#<environment>";
         else if constexpr (std::is_same_v<T, Procedure>)
             return "#<procedure>";
+        else if constexpr (std::is_same_v<T, HashMapPtr>)
+            return "#<hash-table>";
         else if constexpr (std::is_same_v<T, Promise>)
             return "#<promise>";
         else

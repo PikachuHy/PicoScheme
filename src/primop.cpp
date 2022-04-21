@@ -2314,6 +2314,16 @@ static Cell hash_table_get_handle(Scheme& scm, const varg& args) {
     }
     return scm.cons(it->first, it->second);
 }
+// hash-fold proc init table
+static Cell hash_table_fold(Scheme& scm, const SymenvPtr& senv, const varg& args) {
+    auto proc = get<Procedure>(args[0]);
+    auto prior = args[1];
+    auto hash_table = get<HashMapPtr>(args[2]);
+    for(const auto& [k, v]: *hash_table) {
+        prior = scm.apply(senv, proc, list(scm, {k, v, prior}));
+    }
+    return prior;
+}
 
 static Cell is_keyword(const varg& args) {
     if (!is_symbol(args[0])) {
@@ -2883,6 +2893,8 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args)
         return primop::hash_table_remove(args);
     case Intern::op_hash_table_get_handle:
         return primop::hash_table_get_handle(scm, args);
+    case Intern::op_hash_table_fold:
+        return primop::hash_table_fold(scm, senv, args);
     case Intern::op_is_keyword:
         return primop::is_keyword(args);
     case Intern::op_defined:
@@ -3235,6 +3247,7 @@ SymenvPtr add_environment_defaults(Scheme& scm)
           { scm.symbol("hash-table-set!"),         Intern::op_hash_table_set},
           { scm.symbol("hash-table-remove!"),      Intern::op_hash_table_remove},
           { scm.symbol("hash-table-get-handle"),   Intern::op_hash_table_get_handle},
+          { scm.symbol("hash-table-fold"),         Intern::op_hash_table_fold},
 
           { scm.symbol("use-count"),    Intern::op_usecount },
           { scm.symbol("hash"),         Intern::op_hash },

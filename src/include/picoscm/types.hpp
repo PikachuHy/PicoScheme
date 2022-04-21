@@ -428,6 +428,7 @@ enum class Intern {
     op_hash_table_set,
     op_hash_table_remove,
     op_hash_table_get_handle,
+    op_hash_table_fold,
 
     op_usecount,
     op_hash,

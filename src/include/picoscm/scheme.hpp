@@ -232,6 +232,7 @@ public:
     Cell apply(const SymenvPtr& env, Intern opcode, const std::vector<Cell>& args);
     Cell apply(const SymenvPtr& env, const FunctionPtr& proc, const std::vector<Cell>& args);
     Cell apply(const SymenvPtr& env, const Cell& cell, const std::vector<Cell>& args);
+    Cell apply(const SymenvPtr& env, const Procedure& proc, const Cell& args);
     std::pair<SymenvPtr, Cell> apply(const SymenvPtr& senv, const Cell& proc, const Cell& args, bool is_list = true);
 
     Cell expand(const Cell& macro, Cell& args);

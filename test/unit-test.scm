@@ -61,6 +61,17 @@
 
 (test '(a `(b `(c ,@(+1 1 ,@(+ 2 2 (3 3)))))) `(a `(b `(c ,@(+1 1 ,@(+ 2 2 ,(list 3 3)))))))
 (test '(a `(b `(c ,@(+1 1 ,@(+ 2 2 3 3))))) `(a `(b `(c ,@(+1 1 ,@(+ 2 2 ,@(list 3 3)))))))
+
+(test 3 (let* ((table (make-hash-table))
+	       (1+ (lambda (x) (+ 1 x))))
+	  (begin
+	    (hash-table-set! table "a" 1)
+	    (hash-table-set! table "b" 2)
+	    (hash-table-set! table "c" 3)
+	    (hash-table-set! table 1 5)
+	    (hash-table-fold (lambda (key value prior)
+			       (if (string? key) (1+ prior) prior))
+			     0 table))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (test-end)
