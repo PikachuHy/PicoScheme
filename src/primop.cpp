@@ -1924,6 +1924,20 @@ static Cell gcd(const varg& args) {
     }
     return ret;
 }
+static Cell lcm(const varg& args) {
+    if (args.empty()) {
+        return 1;
+    }
+    if (args.size() == 1) {
+        return args[0];
+    }
+    auto ret = Int(get<Number>(args[0]));
+    for (int i = 1; i < args.size(); ++i) {
+        auto val = Int(get<Number>(args[i]));
+        ret = std::lcm(ret, val);
+    }
+    return ret;
+}
 
 static Cell gcollect(Scheme& scm, const SymenvPtr& senv, const varg& args)
 {
@@ -2705,6 +2719,8 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args)
 
     case Intern::op_gcd:
         return primop::gcd(args);
+    case Intern::op_lcm:
+        return primop::lcm(args);
 
     /* Section extensions - Regular expressions */
     case Intern::op_regex:
@@ -3079,6 +3095,7 @@ SymenvPtr add_environment_defaults(Scheme& scm)
           { scm.symbol("load"), Intern::op_load },
 
           { scm.symbol("gcd"), Intern::op_gcd },
+          { scm.symbol("lcm"), Intern::op_lcm },
 
           /* Extension: regular expressions */
           { scm.symbol("regex"),        Intern::op_regex },

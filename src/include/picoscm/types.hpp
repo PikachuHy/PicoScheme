@@ -390,6 +390,7 @@ enum class Intern {
     op_features,
 
     op_gcd,
+    op_lcm,
 
     /* Section extensions: regular expressions */
     op_regex,
