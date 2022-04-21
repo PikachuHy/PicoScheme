@@ -714,6 +714,12 @@ Cell Scheme::syntax_syntax_rules(const SymenvPtr& senv, Cell args)
     }
     return syntaxPtr;
 }
+
+
+Cell Scheme::syntax_delay(const SymenvPtr& senv, const Cell& args) {
+    return Promise(Procedure(senv, nil, args));
+}
+
 Cell Scheme::append_module_path(const std::vector<Cell>& vargs) {
     for(const auto& args: vargs) {
         auto path = get<StringPtr>(args);

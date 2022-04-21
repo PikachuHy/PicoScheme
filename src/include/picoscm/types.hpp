@@ -27,6 +27,7 @@ class  Procedure;
 class  Function;
 class  CObj;
 class  Syntax;
+class  Promise;
 enum class Intern;
 template<typename Cell> struct less;
 template<typename Cell> struct hash;
@@ -72,7 +73,7 @@ using Variant = std::variant <
     Cons*, StringPtr, VectorPtr, PortPtr, FunctionPtr, SymenvPtr,
 
     /* Extensions: */
-    RegexPtr, ClockPtr, MapPtr, HashMapPtr, CObjPtr, SyntaxPtr
+    RegexPtr, ClockPtr, MapPtr, HashMapPtr, CObjPtr, SyntaxPtr, Promise
 >;
 
 static const None none {}; //!< void return symbol
@@ -110,6 +111,8 @@ enum class Intern {
     _quasiquote,
     _unquote,
     _unquotesplice,
+    _delay,
+    op_force,
 
     /* Section 6.1: Equivalence predicates */
     op_eq,

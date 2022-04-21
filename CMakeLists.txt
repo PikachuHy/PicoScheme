@@ -15,6 +15,7 @@ target_sources(pscm PUBLIC
         src/scheme.cpp
         src/port.cpp
         src/syntax.cpp
+        src/promise.cpp
         )
 target_include_directories(pscm PUBLIC src/include)
 
