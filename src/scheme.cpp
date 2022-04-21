@@ -762,7 +762,7 @@ Intern Scheme::_get_intern(const SymenvPtr& senv, const Cell& cell)
     }
     return get<Intern>(val);
 }
-Cell Scheme::partial_eval(const SymenvPtr& senv, const Cell& cell) {
+Cell Scheme::partial_eval(const SymenvPtr& senv, const Cell& cell, int nesting) {
     auto ret = cell;
     auto it = ret;
     while (is_pair(it)) {
@@ -770,18 +770,33 @@ Cell Scheme::partial_eval(const SymenvPtr& senv, const Cell& cell) {
         if (is_pair(item)) {
             auto opcode = _get_intern(senv, car(item));
             if (opcode == Intern::_unquote) {
-                set_car(it, eval(senv, cadr(item)));
+                if (nesting == 0) {
+                    set_car(it, eval(senv, cadr(item)));
+                } else {
+                    auto tmp = partial_eval(senv, cadr(item), nesting-1);
+                    set_cdr(item, cons(tmp, nil));
+                }
             } else if (opcode == Intern::_unquotesplice) {
                 auto next_it = cdr(it);
-                auto val = eval(senv, cadr(item));
-                set_car(it, car(val));
-                while (is_pair(cdr(val))) {
-                    set_cdr(it, cons(cadr(val), nil));
-                    it = cdr(it);
-                    val = cdr(val);
+                if (nesting == 0) {
+                    auto val = eval(senv, cadr(item));
+                    set_car(it, car(val));
+                    while (is_pair(cdr(val))) {
+                        set_cdr(it, cons(cadr(val), nil));
+                        it = cdr(it);
+                        val = cdr(val);
+                    }
+                    set_cdr(it, next_it);
+                } else {
+                    auto tmp = partial_eval(senv, cadr(item), nesting-1);
+                    set_cdr(item, cons(tmp, nil));
                 }
-                set_cdr(it, next_it);
-            } else {
+            }
+            else if (opcode == Intern::_quasiquote) {
+                auto tmp = partial_eval(senv, cadr(item), nesting+1);
+                set_cdr(item, cons(tmp, nil));
+            }
+            else {
                 set_car(it, partial_eval(senv, item));
             }
         }

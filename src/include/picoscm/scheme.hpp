@@ -330,7 +330,7 @@ protected:
 
     Intern _get_intern(const SymenvPtr& senv, const Cell& cell);
 
-    Cell partial_eval(const SymenvPtr& senv, const Cell& cell);
+    Cell partial_eval(const SymenvPtr& senv, const Cell& cell, int nesting = 0);
 
 private:
     friend class GCollector;
