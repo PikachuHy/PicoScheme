@@ -262,6 +262,59 @@ static Cell inex2ex(const Cell& cell)
                                                    : Number{ static_cast<Int>(get<Float>(real(num))) };
 }
 
+static std::optional<Int> change_base(Int num, int base) {
+    auto s = std::to_string(num);
+    char *end;
+    errno = 0;
+    auto ret = std::strtol(s.c_str(), &end, base);
+    if (errno == ERANGE) {
+        DEBUG_OUTPUT("strtol: ERANGE");
+        return std::nullopt;
+    }
+    if (errno) {
+        DEBUG_OUTPUT("strtol failed");
+        return std::nullopt;
+    }
+    return ret;
+}
+
+static Cell strnum(const varg& args) {
+    auto ret = Parser::strnum(*get<StringPtr>(args.at(0)));
+    if (is_bool(ret)) {
+        return ret;
+    }
+    if (args.size() == 1) {
+        return ret;
+    }
+    auto num = get<Number>(ret);
+    auto base = Int(get<Number>(args[1]));
+    if (is_type<Float>(num)) {
+        return false;
+    }
+    if (is_type<Complex>(num)) {
+        auto c = get<Complex>(num);
+        auto real = Int(c.real());
+        auto imag = Int(c.imag());
+        if (real == c.real() && imag == c.imag()) {
+            auto new_real = change_base(real, base);
+            if (!new_real.has_value()) {
+                return false;
+            }
+            auto new_imag = change_base(imag, base);
+            if (!new_imag.has_value()) {
+                return false;
+            }
+            return Number(Float(new_real.value()), Float(new_imag.value()));
+        }
+        return false;
+    }
+    auto new_int = change_base(get<Int>(num), base);
+    if (new_int.has_value()) {
+        return new_int.value();
+    }
+    return false;
+}
+
 static Cell numstr(const varg& args)
 {
     std::basic_ostringstream<Char> buf;
@@ -2395,7 +2448,7 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args)
     case Intern::op_hypot:
         return primop::hypot(args);
     case Intern::op_strnum:
-        return Parser::strnum(*get<StringPtr>(args.at(0)));
+        return primop::strnum(args);
     case Intern::op_numstr:
         return primop::numstr(args);
 
