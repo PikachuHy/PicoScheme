@@ -389,6 +389,8 @@ enum class Intern {
     op_jiffspsec,
     op_features,
 
+    op_gcd,
+
     /* Section extensions: regular expressions */
     op_regex,
     op_regex_match,

@@ -13,6 +13,7 @@
 #include <cctype>
 #include <iostream>
 #include <memory>
+#include <numeric>
 
 #include "picoscm/gc.hpp"
 #include "picoscm/parser.hpp"
@@ -1909,6 +1910,21 @@ static Cell read_str(Scheme& scm, const varg& args)
     return std::make_shared<String>(std::move(str));
 }
 
+static Cell gcd(const varg& args) {
+    if (args.empty()) {
+        return 0;
+    }
+    if (args.size() == 1) {
+        return args[0];
+    }
+    auto ret = Int(get<Number>(args[0]));
+    for (int i = 1; i < args.size(); ++i) {
+        auto val = Int(get<Number>(args[i]));
+        ret = std::gcd(ret, val);
+    }
+    return ret;
+}
+
 static Cell gcollect(Scheme& scm, const SymenvPtr& senv, const varg& args)
 {
     GCollector gc;
@@ -2687,6 +2703,9 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args)
         }
         return none;
 
+    case Intern::op_gcd:
+        return primop::gcd(args);
+
     /* Section extensions - Regular expressions */
     case Intern::op_regex:
         return primop::regex(scm, args);
@@ -3058,6 +3077,8 @@ SymenvPtr add_environment_defaults(Scheme& scm)
 
           /* Section 6.14: System interface */
           { scm.symbol("load"), Intern::op_load },
+
+          { scm.symbol("gcd"), Intern::op_gcd },
 
           /* Extension: regular expressions */
           { scm.symbol("regex"),        Intern::op_regex },
