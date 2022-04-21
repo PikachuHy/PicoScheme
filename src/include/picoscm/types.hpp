@@ -369,6 +369,8 @@ enum class Intern {
     op_read_bytevecb,
     op_write,
     op_display,
+    op_display_red,
+    op_display_green,
     op_write_shared,
     op_write_simple,
     op_newline,

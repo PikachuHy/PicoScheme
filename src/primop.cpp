@@ -2700,6 +2700,18 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args)
         return primop::write(scm, args);
     case Intern::op_display:
         return primop::display(scm, args);
+    case Intern::op_display_red: {
+        scm.outPort().stream() << "\033[0m\033[1;31m";
+        auto ret = primop::display(scm, args);
+        scm.outPort().stream() << "\033[0m";
+        return ret;
+    }
+    case Intern::op_display_green: {
+        scm.outPort().stream() << "\033[0m\033[1;32m";
+        auto ret = primop::display(scm, args);
+        scm.outPort().stream() << "\033[0m";
+        return ret;
+    }
     case Intern::op_newline:
         return primop::newline(scm, args);
     case Intern::op_write_char:
@@ -3087,6 +3099,8 @@ SymenvPtr add_environment_defaults(Scheme& scm)
           { scm.symbol("write"),                 Intern::op_write },
           { scm.symbol("read"),                  Intern::op_read },
           { scm.symbol("display"),               Intern::op_display },
+          { scm.symbol("display-red"),           Intern::op_display_red },
+          { scm.symbol("display-green"),         Intern::op_display_green },
           { scm.symbol("newline"),               Intern::op_newline },
           { scm.symbol("write-char"),            Intern::op_write_char },
           { scm.symbol("write-string"),          Intern::op_write_str },

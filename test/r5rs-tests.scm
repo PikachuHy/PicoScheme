@@ -22,9 +22,9 @@
          (cond
           ((equal? res expect)
            (set! *tests-passed* (+ *tests-passed* 1))
-           (display " [PASS]\n"))
+           (display-green " [PASS]\n"))
           (else
-           (display " [FAIL]\n")
+           (display-red " [FAIL]\n")
            (display "    expected ") (write expect)
            (display " but got ") (write res) (newline))))))))
 
