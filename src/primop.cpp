@@ -317,9 +317,35 @@ static Cell strnum(const varg& args) {
 
 static Cell numstr(const varg& args)
 {
-    std::basic_ostringstream<Char> buf;
-    buf << get<Number>(args.at(0));
-    return std::make_shared<StringPtr::element_type>(buf.str());
+    auto num = get<Number>(args[0]);
+    if (args.size() == 1) {
+        std::basic_ostringstream<Char> buf;
+        buf << num;
+        return std::make_shared<StringPtr::element_type>(buf.str());
+    }
+    auto base = Int(get<Number>(args[1]));
+    if (base < 2 || base > 36) {
+        DEBUG_OUTPUT("base:", base);
+        throw std::invalid_argument("value out of range 2 to 36: ");
+    }
+    static char s[] = "0123456789abcdefghijklmnoprstuvwxyz";
+    if (is_type<Int>(num)) {
+        auto n = get<Int>(num);
+        if (n == 0) {
+            return std::make_shared<StringPtr::element_type>(L"0");
+        }
+        std::string ret;
+        while (n != 0) {
+            auto tmp = n % base;
+            ret += s[tmp];
+            n /= base;
+        }
+        std::reverse(ret.begin(), ret.end());
+        return std::make_shared<StringPtr::element_type>(string_convert<Char>(ret));
+    }
+    DEBUG_OUTPUT("num:", num);
+    DEBUG_OUTPUT("base:", base);
+    throw std::runtime_error("unsupported convert");
 }
 
 /**
