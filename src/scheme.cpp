@@ -753,7 +753,7 @@ Cell Scheme::set_current_module(const Cell& module_name)
 }
 Intern Scheme::_get_intern(const SymenvPtr& senv, const Cell& cell)
 {
-    if (!is_symbol(cell)) {
+    if (!is_symbol(cell) || !senv->defined_sym(get<Symbol>(cell))) {
         return Intern::_none_;
     }
     auto val = senv->get(get<Symbol>(cell));
@@ -773,8 +773,8 @@ Cell Scheme::partial_eval(const SymenvPtr& senv, const Cell& cell, int nesting) 
                 if (nesting == 0) {
                     set_car(it, eval(senv, cadr(item)));
                 } else {
-                    auto tmp = partial_eval(senv, cadr(item), nesting-1);
-                    set_cdr(item, cons(tmp, nil));
+                    auto tmp = partial_eval(senv, cdr(item), nesting-1);
+                    set_cdr(item, tmp);
                 }
             } else if (opcode == Intern::_unquotesplice) {
                 auto next_it = cdr(it);
@@ -799,6 +799,8 @@ Cell Scheme::partial_eval(const SymenvPtr& senv, const Cell& cell, int nesting) 
             else {
                 set_car(it, partial_eval(senv, item));
             }
+        } else {
+
         }
         it = cdr(it);
     }
