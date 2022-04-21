@@ -541,12 +541,22 @@ Cell Scheme::eval(SymenvPtr env, Cell expr)
             env->set(get<Symbol>(car(args)), eval(env, cadr(args)));
             return none;
 
-        case Intern::_define:
-            if (is_pair(car(args)))
-                env->add(get<Symbol>(caar(args)), Procedure{ env, cdar(args), cdr(args) });
+        case Intern::_define: {
+            if (is_pair(car(args))) {
+                auto name = caar(args);
+                if (is_pair(name)) {
+                    auto f2 = Procedure{ env, cdar(args), cdr(args)};
+                    auto f1 = Procedure{ env, cdr(name), cons(f2, nil)};
+                    env->add(get<Symbol>(car(name)), f1);
+                } else {
+                    env->add(get<Symbol>(caar(args)), Procedure{ env, cdar(args), cdr(args) });
+                }
+            }
             else
                 env->add(get<Symbol>(car(args)), eval(env, cadr(args)));
-            return none;
+            ret = none;
+            return ret;
+        }
         case Intern::_define_public:
             if (is_pair(car(args)))
                 env->add(get<Symbol>(caar(args)), Procedure{ env, cdar(args), cdr(args) }, true);
