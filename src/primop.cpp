@@ -2300,6 +2300,12 @@ static Cell hash_table_set(const varg& args) {
     return none;
 }
 
+static Cell hash_table_remove(const varg& args) {
+    auto hash_table = get<HashMapPtr>(args[0]);
+    hash_table->erase(args[1]);
+    return none;
+}
+
 static Cell hash_table_get_handle(Scheme& scm, const varg& args) {
     auto hash_table = get<HashMapPtr>(args[0]);
     auto it = hash_table->find(args[1]);
@@ -2873,6 +2879,8 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args)
         return primop::hash_table_ref(args);
     case Intern::op_hash_table_set:
         return primop::hash_table_set(args);
+    case Intern::op_hash_table_remove:
+        return primop::hash_table_remove(args);
     case Intern::op_hash_table_get_handle:
         return primop::hash_table_get_handle(scm, args);
     case Intern::op_is_keyword:
@@ -3225,6 +3233,7 @@ SymenvPtr add_environment_defaults(Scheme& scm)
           { scm.symbol("make-hash-table"),         Intern::op_make_hash_table},
           { scm.symbol("hash-table-ref"),          Intern::op_hash_table_ref},
           { scm.symbol("hash-table-set!"),         Intern::op_hash_table_set},
+          { scm.symbol("hash-table-remove!"),      Intern::op_hash_table_remove},
           { scm.symbol("hash-table-get-handle"),   Intern::op_hash_table_get_handle},
 
           { scm.symbol("use-count"),    Intern::op_usecount },
