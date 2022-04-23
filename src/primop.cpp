@@ -2337,10 +2337,9 @@ static Cell is_keyword(const varg& args) {
     return symstr.back() == ':' || symstr.front() == ':';
 }
 
-static bool defined_sym(Scheme& scm, const varg& args) {
+static bool defined_sym(Scheme& scm, const SymenvPtr& senv, const varg& args) {
     auto sym = get<Symbol>(args[0]);
-    auto cur_env = scm.get_current_module_env();
-    return cur_env->defined_sym(sym);
+    return senv->defined_sym(sym);
 }
 
 static Cell call_with_output_string(Scheme& scm, const SymenvPtr& senv, const varg& args) {
@@ -2895,7 +2894,7 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args)
     case Intern::op_is_keyword:
         return primop::is_keyword(args);
     case Intern::op_defined:
-        return primop::defined_sym(scm, args);
+        return primop::defined_sym(scm, senv, args);
     case Intern::op_current_module:
         return scm.get_current_module();
     case Intern::op_set_current_module:
