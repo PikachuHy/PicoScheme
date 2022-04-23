@@ -1,5 +1,6 @@
-ColumnLimit: 150
+ColumnLimit: 120
 ReferenceAlignment: Left
+AllowShortLambdasOnASingleLine: Empty
 IndentWidth: 4
 AccessModifierOffset: -4
 AlwaysBreakTemplateDeclarations: Yes

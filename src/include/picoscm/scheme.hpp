@@ -11,9 +11,11 @@
 
 #include <list>
 #include <stack>
+#include <vector>
 
 #include "cell.hpp"
 #include "gc.hpp"
+#include "frame.h"
 
 namespace pscm {
 class Guard {
@@ -57,6 +59,10 @@ public:
     SymenvPtr get_module_env(const Cell& module_name);
     SymenvPtr load_module(const Cell& module_name, const SymenvPtr& env);
     Cell append_module_path(const std::vector<Cell>& vargs);
+
+    const std::vector<Frame>& frames() const { return m_frames; }
+    void push_frame(const Cell& op, const SymenvPtr& env, const Cell& args);
+    void pop_frame();
     
     //! Insert a new symbol and value or reassign an already bound value of an existing symbol
     //! at the top environment of this scheme interpreter.
@@ -154,7 +160,7 @@ public:
     template <typename FunctionT>
     FunctionPtr function(const SymenvPtr& env, FunctionT&& fun)
     {
-        return function(env, String{ L"λ" }, std::forward<FunctionT>(fun));
+        return function(env, String{ L"lambda" }, std::forward<FunctionT>(fun));
     }
 
     Port<Char>& outPort() const { return *m_stdout; } //!< return a shared-pointer to the default input port
@@ -232,8 +238,8 @@ public:
     Cell apply(const SymenvPtr& env, Intern opcode, const std::vector<Cell>& args);
     Cell apply(const SymenvPtr& env, const FunctionPtr& proc, const std::vector<Cell>& args);
     Cell apply(const SymenvPtr& env, const Cell& cell, const std::vector<Cell>& args);
-    Cell apply(const SymenvPtr& env, const Procedure& proc, const Cell& args);
-    std::pair<SymenvPtr, Cell> apply(const SymenvPtr& senv, const Cell& proc, const Cell& args, bool is_list = true);
+    Cell apply(const SymenvPtr& env, const Procedure& proc, const Cell& args, bool is_list = true);
+    Cell apply(const SymenvPtr& env, const Cell& op, const Cell& args);
 
     Cell expand(const Cell& macro, Cell& args);
 
@@ -306,6 +312,7 @@ protected:
 
     Cell syntax_quasiquote(const SymenvPtr& senv, Cell args);
 
+    Cell syntax_define(const SymenvPtr& senv, Cell args, bool is_public = false);
     /**
      * Scheme syntax define-syntax.
      *
@@ -343,6 +350,9 @@ protected:
 
     Cell partial_eval(const SymenvPtr& senv, const Cell& cell, int nesting = 0);
 
+    Cell callcc(const SymenvPtr& senv, const Cell& cell);
+
+    void init_op_table();
 private:
     friend class GCollector;
     static constexpr size_t dflt_bucket_count = 1024; //<! Initial default hash table bucket count.
@@ -364,6 +374,9 @@ private:
     String cur_file;
 
     bool debug = false;
+
+    std::vector<Frame> m_frames;
+    std::unordered_map<Intern, std::function<Cell(const SymenvPtr&, const Cell&)>> m_op_table;
 };
 
 } // namespace pscm

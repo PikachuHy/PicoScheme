@@ -1,4 +1,5 @@
-/*********************************************************************************/ /**
+/*********************************************************************************/
+/**
  * @file scheme.cpp
  *
  * @version   0.1
@@ -6,18 +7,19 @@
  * @author    Paul Pudewills
  * @copyright MIT License
  *************************************************************************************/
+#include <filesystem>
 #include <functional>
 #include <iomanip>
-#include <filesystem>
 
 #include "picoscm/gc.hpp"
 #include "picoscm/parser.hpp"
+#include "picoscm/port.hpp"
 #include "picoscm/primop.hpp"
 #include "picoscm/scheme.hpp"
-#include "picoscm/port.hpp"
 #include "picoscm/syntax.h"
-
+// clang-format off
 #define DEBUG(...) if (debugging()) DEBUG_OUTPUT(__VA_ARGS__)
+// clang-format on
 namespace pscm {
 namespace fs = std::filesystem;
 using namespace std::string_literals;
@@ -38,8 +40,10 @@ Scheme::Scheme(const SymenvPtr& env)
     current_module = list(symbol("root"));
     module_table[current_module] = Symenv::create(std_env);
     module_stack.push(current_module);
+    init_op_table();
 }
-SymenvPtr Scheme::get_module_env(const Cell& module_name) {
+SymenvPtr Scheme::get_module_env(const Cell& module_name)
+{
     auto it = module_table.find(module_name);
     if (it != module_table.end()) {
         return it->second;
@@ -47,7 +51,8 @@ SymenvPtr Scheme::get_module_env(const Cell& module_name) {
     // load module
     return load_module(module_name, get_current_module_env());
 }
-SymenvPtr Scheme::load_module(const Cell& module_name, const SymenvPtr& env) {
+SymenvPtr Scheme::load_module(const Cell& module_name, const SymenvPtr& env)
+{
     String module_file;
     Cell name = module_name;
     while (is_pair(name)) {
@@ -55,8 +60,8 @@ SymenvPtr Scheme::load_module(const Cell& module_name, const SymenvPtr& env) {
         module_file += get<Symbol>(car(name)).value();
         name = cdr(name);
     }
-    for(const auto& path: module_paths) {
-        String module_path = path + module_file  + L".scm";
+    for (const auto& path : module_paths) {
+        String module_path = path + module_file + L".scm";
         if (!fs::exists(module_path)) {
             continue;
         }
@@ -69,6 +74,14 @@ SymenvPtr Scheme::load_module(const Cell& module_name, const SymenvPtr& env) {
     }
     throw module_error("no module: ", module_name);
 }
+void Scheme::push_frame(const Cell& op, const SymenvPtr& env, const Cell& args)
+{
+    m_frames.emplace_back(op, env, args);
+}
+void Scheme::pop_frame()
+{
+    m_frames.pop_back();
+}
 Cell Scheme::apply(const SymenvPtr& env, Intern opcode, const std::vector<Cell>& args)
 {
     return pscm::call(*this, env, opcode, args);
@@ -79,10 +92,11 @@ Cell Scheme::apply(const SymenvPtr& env, const FunctionPtr& proc, const std::vec
     return (*proc)(*this, env, args);
 }
 
-Cell Scheme::apply(const SymenvPtr& env, const Procedure& proc, const Cell& args)
+Cell Scheme::apply(const SymenvPtr& env, const Procedure& proc, const Cell& args, bool is_list)
 {
-    auto [new_env, code] = proc.apply(*this, env, args);
-    return eval(new_env, code);
+    auto [new_env, code] = proc.apply(*this, env, args, is_list);
+    DEBUG("code:", code);
+    return syntax_begin(new_env, code);
 }
 
 Cell Scheme::apply(const SymenvPtr& env, const Cell& cell, const std::vector<Cell>& args)
@@ -93,9 +107,17 @@ Cell Scheme::apply(const SymenvPtr& env, const Cell& cell, const std::vector<Cel
         return apply(env, get<FunctionPtr>(cell), args);
 }
 
-std::pair<SymenvPtr, Cell> Scheme::apply(const SymenvPtr& env, const Cell& proc, const Cell& args, bool is_list)
+Cell Scheme::apply(const SymenvPtr& env, const Cell& op, const Cell& args)
 {
-    return get<Procedure>(proc).apply(*this, env, args, is_list);
+    if (is_proc(op)) {
+        return apply(env, get<Procedure>(op), args);
+    } else if (is_func(op)) {
+        return apply(env, get<FunctionPtr>(op), eval_args(env, args));
+    } else if (is_intern(op)) {
+        return apply(env, get<Intern>(op), eval_args(env, args));
+    }
+    DEBUG("op:", op);
+    throw std::runtime_error("bad op");
 }
 
 Cell Scheme::expand(const Cell& macro, Cell& args)
@@ -150,14 +172,13 @@ void Scheme::load(const String& filename, const SymenvPtr& env)
         file_port in{ filename, file_port::in };
 
         if (!in.is_open())
-            throw std::ios_base::failure("couldn't open input file: '"s
-                + string_convert<char>(filename) + "'"s);
+            throw std::ios_base::failure("couldn't open input file: '"s + string_convert<char>(filename) + "'"s);
 
         while (!in.eof()) {
             expr = parser.read(in);
-            if (debugging()) DEBUG_OUTPUT(expr);
+            DEBUG(expr);
             expr = eval(senv, expr);
-            if (debugging()) DEBUG_OUTPUT("-->", expr);
+            DEBUG("-->", expr);
             expr = none;
         }
     } catch (const std::exception& e) {
@@ -171,22 +192,29 @@ void Scheme::load(const String& filename, const SymenvPtr& env)
 
 Cell Scheme::syntax_begin(const SymenvPtr& env, Cell args)
 {
-    if (is_pair(args)) {
-        for (/* */; is_pair(cdr(args)); args = cdr(args))
-            eval(env, car(args));
-
-        return car(args);
+    if (is_nil(args)) {
+        return none;
     }
-    return none;
+    if (!is_pair(args)) {
+        DEBUG("args:", args);
+        throw std::invalid_argument("invalid begin syntax");
+    }
+    Cell ret;
+    while (is_pair(args)) {
+        DEBUG("eval", car(args));
+        ret = eval(env, car(args));
+        args = cdr(args);
+    }
+    return ret;
 }
 
 Cell Scheme::syntax_if(const SymenvPtr& env, const Cell& args)
 {
     if (is_true(eval(env, car(args))))
-        return cadr(args);
+        return eval(env, cadr(args));
 
     else if (const Cell& last = cddr(args); !is_nil(last))
-        return car(last);
+        return eval(env, car(last));
 
     else
         return none;
@@ -195,7 +223,7 @@ Cell Scheme::syntax_if(const SymenvPtr& env, const Cell& args)
 Cell Scheme::syntax_cond(const SymenvPtr& env, Cell args)
 {
     Cell test = false, expr = nil;
-
+    DEBUG("args:", args);
     // For each clause evaluate <test> condition
     for (/* */; is_pair(args); args = cdr(args)) {
         is_pair(car(args)) || (void(throw std::invalid_argument("invalid cond syntax")), 0);
@@ -203,8 +231,10 @@ Cell Scheme::syntax_cond(const SymenvPtr& env, Cell args)
         if (is_false(test)) {
             test = eval(env, caar(args));
 
-            if (is_true(test))
+            if (is_true(test)) {
                 expr = cdar(args);
+                break;
+            }
         }
     }
     if (is_true(test)) {
@@ -212,14 +242,12 @@ Cell Scheme::syntax_cond(const SymenvPtr& env, Cell args)
             return test;
 
         const Cell& first = car(expr);
-
         // clause: (<test> => <expr> ...)  -> (apply <expr> <test> nil) ...
         if (is_arrow(first) || (is_symbol(first) && is_arrow(eval(env, first)))) {
             !is_else(test) || (void(throw std::invalid_argument("invalid cond syntax")), 0);
 
             Cons cons[4], argv[2];
-            Cell apply_expr = pscm::list(cons, Intern::_apply, none,
-                pscm::list(argv, Intern::_quote, test), nil);
+            Cell apply_expr = pscm::list(cons, Intern::_apply, none, pscm::list(argv, Intern::_quote, test), nil);
 
             // For each expression, first replace none in apply_expr and then call eval:
             for (expr = cdr(expr); is_pair(cdr(expr)); expr = cdr(expr)) {
@@ -234,7 +262,8 @@ Cell Scheme::syntax_cond(const SymenvPtr& env, Cell args)
     return none;
 }
 
-Cell Scheme::syntax_case(const SymenvPtr& env, Cell args) {
+Cell Scheme::syntax_case(const SymenvPtr& env, Cell args)
+{
     auto key = eval(env, car(args));
     auto clauses = cdr(args);
     while (is_pair(clauses)) {
@@ -259,8 +288,8 @@ Cell Scheme::syntax_case(const SymenvPtr& env, Cell args) {
     return none;
 }
 
-
-Cell Scheme::syntax_do(const SymenvPtr& env, Cell args) {
+Cell Scheme::syntax_do(const SymenvPtr& env, Cell args)
+{
     auto var_list = car(args);
     auto test_expr = cadr(args);
     auto cmd_list = cddr(args);
@@ -275,7 +304,8 @@ Cell Scheme::syntax_do(const SymenvPtr& env, Cell args) {
         var_list_it = cdr(var_list_it);
     }
     while (!get<Bool>(eval(new_env, car(test_expr)))) {
-        eval_list(new_env, cmd_list);
+        DEBUG("cmd_list:", cmd_list);
+        syntax_begin(new_env, cmd_list);
         // update var
         var_list_it = var_list;
         auto tmp_env = Symenv::create();
@@ -289,17 +319,15 @@ Cell Scheme::syntax_do(const SymenvPtr& env, Cell args) {
             }
             var_list_it = cdr(var_list_it);
         }
-        for(const auto& [k, v]: tmp_env->cursor()) {
+        for (const auto& [k, v] : tmp_env->cursor()) {
             new_env->add(k, v);
         }
     }
     if (is_nil(test_expr)) {
         return none;
     }
-    return eval_list(new_env, cdr(test_expr));
-
+    return syntax_begin(new_env, cdr(test_expr));
 }
-
 
 Cell Scheme::syntax_when(const SymenvPtr& env, Cell args)
 {
@@ -372,7 +400,8 @@ Cell Scheme::syntax_let(const SymenvPtr& env, Cell args, bool star)
     return expr;
 }
 
-Cell Scheme::syntax_with_let(const SymenvPtr& env, Cell args) {
+Cell Scheme::syntax_with_let(const SymenvPtr& env, Cell args)
+{
     auto cur_env = get<SymenvPtr>(eval(env, car(args)));
     auto cur_args = cdr(args);
     Cell expr = none;
@@ -383,7 +412,8 @@ Cell Scheme::syntax_with_let(const SymenvPtr& env, Cell args) {
     return expr;
 }
 
-Cell Scheme::syntax_with_module(const SymenvPtr& env, Cell args) {
+Cell Scheme::syntax_with_module(const SymenvPtr& env, Cell args)
+{
     auto cur_m = eval(env, car(args));
     if (module_table.find(cur_m) == module_table.end()) {
         throw module_error("No modules:", car(args));
@@ -408,7 +438,7 @@ Cell Scheme::syntax_and(const SymenvPtr& env, Cell args)
                 return res;
 
         is_nil(cdr(args)) || (void(throw std::invalid_argument("not a proper list")), 0);
-        return car(args);
+        return eval(env, car(args));
     }
     return res;
 }
@@ -420,10 +450,10 @@ Cell Scheme::syntax_or(const SymenvPtr& env, Cell args)
     if (is_pair(args)) {
         for (/* */; is_pair(cdr(args)); args = cdr(args))
             if (is_true(res = eval(env, car(args))))
-                return list(Intern::_quote, res);
+                return res;
 
         is_nil(cdr(args)) || (void(throw std::invalid_argument("not a proper list")), 0);
-        return car(args);
+        return eval(env, car(args));
     }
     return res;
 }
@@ -455,8 +485,7 @@ Cell Scheme::eval_list(const SymenvPtr& env, Cell list, bool is_list)
         else
             set_cdr(tail, eval(env, car(list)));
 
-    is_nil(tail) || is_pair(tail)
-        || (void(throw std::invalid_argument("invalid apply argument list")), 0);
+    is_nil(tail) || is_pair(tail) || (void(throw std::invalid_argument("invalid apply argument list")), 0);
     return head;
 }
 
@@ -492,168 +521,73 @@ std::vector<Cell> Scheme::eval_args(const SymenvPtr& env, Cell args, bool is_lis
 
 Cell Scheme::eval(SymenvPtr env, Cell expr)
 {
-    Cell args, proc;
-
-    for (;;) {
-        if (is_nil(expr)) {
-            return expr;
-        }
-        if (is_list(expr) && list_length(expr) == 0) {
-            return expr;
-        }
-        if (is_symbol(expr))
-            return env->get(get<Symbol>(expr));
-
-        if (!is_pair(expr))
-            return expr;
-
-        if (is_func(proc = eval(env, car(expr))))
-            return apply(env, proc, eval_args(env, cdr(expr)));
-
-        if (is_proc(proc)) {
-            if (is_macro(proc))
-                expr = expand(proc, expr);
-            else {
-                tie(env, args) = apply(env, proc, cdr(expr));
-                expr = syntax_begin(env, args);
-            }
-            continue;
-        }
-        if (is_syntax(proc)) {
-            auto syntaxPtr = get<SyntaxPtr>(proc);
-            const auto& m = syntaxPtr->match(cdr(expr));
-            expr = m.expand_syntax(*this, expr);
-            ret = expr;
-            continue;
-        }
-        args = cdr(expr);
-        if (!is_intern(proc)) return proc;
-        auto opcode = get<Intern>(proc);
-        if (opcode == Intern::_quasiquote) {
-            return syntax_quasiquote(env, car(args));
-        }
-        switch (opcode) {
-
-        case Intern::_quote:
-            return car(args);
-
-        case Intern::_setb:
-            env->set(get<Symbol>(car(args)), eval(env, cadr(args)));
-            return none;
-
-        case Intern::_define: {
-            if (is_pair(car(args))) {
-                auto name = caar(args);
-                if (is_pair(name)) {
-                    auto f2 = Procedure{ env, cdar(args), cdr(args)};
-                    auto f1 = Procedure{ env, cdr(name), cons(f2, nil)};
-                    env->add(get<Symbol>(car(name)), f1);
-                } else {
-                    env->add(get<Symbol>(caar(args)), Procedure{ env, cdar(args), cdr(args) });
-                }
-            }
-            else
-                env->add(get<Symbol>(car(args)), eval(env, cadr(args)));
-            ret = none;
-            return ret;
-        }
-        case Intern::_define_public:
-            if (is_pair(car(args)))
-                env->add(get<Symbol>(caar(args)), Procedure{ env, cdar(args), cdr(args) }, true);
-            else
-                env->add(get<Symbol>(car(args)), eval(env, cadr(args)), true);
-            return none;
-
-        case Intern::_define_syntax:
-            return syntax_define_syntax(env, args);
-
-        case Intern::_lambda:
-            return Procedure{ env, car(args), cdr(args) };
-
-        case Intern::_macro:
-            env->add(get<Symbol>(caar(args)), Procedure{ env, cdar(args), cdr(args), true });
-            return none;
-        case Intern::_macro_public:
-            env->add(get<Symbol>(caar(args)), Procedure{ env, cdar(args), cdr(args), true }, true);
-            return none;
-        case Intern::_apply:
-            if (is_proc(proc = eval(env, car(args)))) {
-                if (is_macro(proc))
-                    expr = expand(proc, args);
-                else {
-                    tie(env, args) = apply(env, proc, cdr(args), false);
-                    expr = syntax_begin(env, args);
-                }
-                break;
-            } else // proc is either an opcode or function pointer:
-                return apply(env, proc, eval_args(env, cdr(args), false));
-
-        case Intern::_begin:
-            expr = syntax_begin(env, args);
-            break;
-
-        case Intern::_if:
-            expr = syntax_if(env, args);
-            break;
-
-        case Intern::_cond:
-            expr = syntax_cond(env, args);
-            break;
-
-        case Intern::_case:
-            expr = syntax_case(env, args);
-            break;
-
-        case Intern::_do:
-            expr = syntax_do(env, args);
-            break;
-
-        case Intern::_when:
-            expr = syntax_when(env, args);
-            break;
-
-        case Intern::_unless:
-            expr = syntax_unless(env, args);
-            break;
-
-        case Intern::_let:
-            expr = syntax_let(env, args);
-            return expr;
-
-        case Intern::_let_star:
-            expr = syntax_let(env, args, true);
-            break;
-
-        case Intern::_with_let:
-            expr = syntax_with_let(env, args);
-            break;
-
-        case Intern::_with_module:
-            expr = syntax_with_module(env, args);
-            break;
-
-        case Intern::_and:
-            expr = syntax_and(env, args);
-            break;
-
-        case Intern::_or:
-            expr = syntax_or(env, args);
-            break;
-        case Intern::_module:
-            expr = syntax_module(env, args);
-            break;
-        case Intern::_inherit_module:
-            expr = syntax_inherit_module(env, args);
-            break;
-        case Intern::_use_module:
-            expr = syntax_use_module(env, args);
-            break;
-        default:
-            return apply(env, opcode, eval_args(env, args));
-        }
+    DEBUG("eval:", expr);
+    if (is_nil(expr)) {
+        return nil;
     }
+    if (is_symbol(expr)) {
+        auto sym = get<Symbol>(expr);
+        return env->get(sym);
+    }
+    if (!is_pair(expr)) {
+        return expr;
+    }
+    push_frame(car(expr), env, cdr(expr));
+    auto op = eval(env, car(expr));
+    Cell ret;
+    if (is_func(op)) {
+        ret = apply(env, op, eval_args(env, cdr(expr)));
+    } else if (is_proc(op)) {
+        if (is_macro(op)) {
+            auto expand_code = expand(op, expr);
+            ret = eval(env, expand_code);
+        } else {
+            ret = apply(env, get<Procedure>(op), cdr(expr));
+        }
+    } else if (is_syntax(op)) {
+        const auto& matched = get<SyntaxPtr>(op)->match(cdr(expr));
+        auto expand_code = matched.expand_syntax(*this, expr);
+        DEBUG("expand code:", expand_code);
+        ret = eval(env, expand_code);
+    } else if (is_intern(op)) {
+        auto opcode = get<Intern>(op);
+        DEBUG("opcode:", opcode);
+        if (opcode == Intern::op_callcc) {
+            ret = callcc(env, expr);
+        } else if (opcode == Intern::_apply) {
+            Cell args = cdr(expr);
+            Cell proc = eval(env, car(args));
+            if (is_proc(proc)) {
+                if (is_macro(proc)) {
+                    auto expand_code = expand(proc, args);
+                    ret = eval(env, expand_code);
+                } else {
+                    ret = apply(env, get<Procedure>(proc), cdr(args), false);
+                }
+            } else {
+                // proc is either an opcode or function pointer:
+                ret = apply(env, proc, eval_args(env, cdr(args), false));
+            }
+        } else {
+            auto it = m_op_table.find(opcode);
+            if (it == m_op_table.end()) {
+                DEBUG("op:", op);
+                ret = apply(env, opcode, eval_args(env, cdr(expr)));
+                // throw std::runtime_error("unsupported op");
+            } else {
+                ret = it->second(env, cdr(expr));
+            }
+        }
+    } else {
+        ret = op;
+    }
+    pop_frame();
+    DEBUG("eval:", expr);
+    DEBUG(" --> ", ret);
+    return ret;
 }
-Cell Scheme::syntax_module(const SymenvPtr& senv, const Cell& args) {
+Cell Scheme::syntax_module(const SymenvPtr& senv, const Cell& args)
+{
     auto module_name = car(args);
     auto it = module_table.find(module_name);
     if (it != module_table.end()) {
@@ -670,12 +604,12 @@ Cell Scheme::syntax_module(const SymenvPtr& senv, const Cell& args) {
             return syntax_use_module(senv, cdr(use));
         }
         throw module_error("module syntax error: ", module_name);
-
     }
     return none;
 }
 
-Cell Scheme::syntax_inherit_module(const SymenvPtr& senv, Cell args) {
+Cell Scheme::syntax_inherit_module(const SymenvPtr& senv, Cell args)
+{
     auto cur_env = get_current_module_env();
     while (is_pair(args)) {
         auto env = get_module_env(car(args));
@@ -685,7 +619,8 @@ Cell Scheme::syntax_inherit_module(const SymenvPtr& senv, Cell args) {
     return none;
 }
 
-Cell Scheme::syntax_use_module(const SymenvPtr& senv, Cell args) {
+Cell Scheme::syntax_use_module(const SymenvPtr& senv, Cell args)
+{
     auto cur_env = get_current_module_env();
     while (is_pair(args)) {
         auto env = get_module_env(car(args));
@@ -695,9 +630,29 @@ Cell Scheme::syntax_use_module(const SymenvPtr& senv, Cell args) {
     return none;
 }
 
-Cell Scheme::syntax_quasiquote(const SymenvPtr& senv, Cell args) {
+Cell Scheme::syntax_quasiquote(const SymenvPtr& senv, Cell args)
+{
     return partial_eval(senv, args);
 }
+
+Cell Scheme::syntax_define(const SymenvPtr& senv, Cell args, bool is_public)
+{
+    if (is_pair(car(args))) {
+        auto name = caar(args);
+        if (is_pair(name)) {
+            auto f2 = Procedure{ senv, cdar(args), cdr(args) };
+            auto f1 = Procedure{ senv, cdr(name), cons(f2, nil) };
+            senv->add(get<Symbol>(car(name)), f1, is_public);
+        } else {
+            auto proc = Procedure{ senv, cdar(args), cdr(args) };
+            senv->add(get<Symbol>(name), proc, is_public);
+        }
+    } else {
+        senv->add(get<Symbol>(car(args)), eval(senv, cadr(args)));
+    }
+    return none;
+}
+
 Cell Scheme::syntax_define_syntax(const SymenvPtr& senv, Cell args)
 {
     auto keyword = car(args);
@@ -724,26 +679,33 @@ Cell Scheme::syntax_syntax_rules(const SymenvPtr& senv, Cell args)
     while (!is_nil(rules)) {
         auto rule = car(rules);
         auto head = cdar(rule);
-        auto body = cadr(rule);
-        syntaxPtr->add(head, Procedure{ senv, head, body, true});
+        auto body = cdr(rule);
+        if (is_pair(body)) {
+            if (_get_intern(senv, car(body)) == Intern::_begin) {
+                body = cdr(body);
+            }
+        }
+        syntaxPtr->add(head, Procedure{ senv, head, body, true });
         rules = cdr(rules);
     }
     return syntaxPtr;
 }
 
-
-Cell Scheme::syntax_delay(const SymenvPtr& senv, const Cell& args) {
+Cell Scheme::syntax_delay(const SymenvPtr& senv, const Cell& args)
+{
     return Promise(Procedure(senv, nil, args));
 }
 
-Cell Scheme::append_module_path(const std::vector<Cell>& vargs) {
-    for(const auto& args: vargs) {
+Cell Scheme::append_module_path(const std::vector<Cell>& vargs)
+{
+    for (const auto& args : vargs) {
         auto path = get<StringPtr>(args);
         module_paths.push_back(*path);
     }
     return none;
 }
-Cell Scheme::eval_string(SymenvPtr env, const String& code) {
+Cell Scheme::eval_string(SymenvPtr env, const String& code)
+{
     Parser parser{ *this };
     Cell expr = none;
     std::wstringstream ss;
@@ -784,7 +746,8 @@ Intern Scheme::_get_intern(const SymenvPtr& senv, const Cell& cell)
     }
     return get<Intern>(val);
 }
-Cell Scheme::partial_eval(const SymenvPtr& senv, const Cell& cell, int nesting) {
+Cell Scheme::partial_eval(const SymenvPtr& senv, const Cell& cell, int nesting)
+{
     auto ret = cell;
     auto it = ret;
     while (is_pair(it)) {
@@ -795,7 +758,7 @@ Cell Scheme::partial_eval(const SymenvPtr& senv, const Cell& cell, int nesting) 
                 if (nesting == 0) {
                     set_car(it, eval(senv, cadr(item)));
                 } else {
-                    auto tmp = partial_eval(senv, cdr(item), nesting-1);
+                    auto tmp = partial_eval(senv, cdr(item), nesting - 1);
                     set_cdr(item, tmp);
                 }
             } else if (opcode == Intern::_unquotesplice) {
@@ -810,23 +773,158 @@ Cell Scheme::partial_eval(const SymenvPtr& senv, const Cell& cell, int nesting) 
                     }
                     set_cdr(it, next_it);
                 } else {
-                    auto tmp = partial_eval(senv, cadr(item), nesting-1);
+                    auto tmp = partial_eval(senv, cadr(item), nesting - 1);
                     set_cdr(item, cons(tmp, nil));
                 }
-            }
-            else if (opcode == Intern::_quasiquote) {
-                auto tmp = partial_eval(senv, cadr(item), nesting+1);
+            } else if (opcode == Intern::_quasiquote) {
+                auto tmp = partial_eval(senv, cadr(item), nesting + 1);
                 set_cdr(item, cons(tmp, nil));
-            }
-            else {
+            } else {
                 set_car(it, partial_eval(senv, item));
             }
         } else {
-
         }
         it = cdr(it);
     }
     return ret;
 }
 
+std::optional<Cell> change_code(Cell code, Symbol sym, const Cell& cc)
+{
+    if (!is_pair(code)) {
+        return std::nullopt;
+    }
+    while (is_pair(code)) {
+        if (car(code) == cc) {
+            return code;
+        }
+        auto tmp = car(code);
+        auto val = change_code(tmp, sym, cc);
+        if (val.has_value()) {
+            return val;
+        }
+        code = cdr(code);
+    }
+    return std::nullopt;
+}
+
+Cell Scheme::callcc(const SymenvPtr& senv, const Cell& cell)
+{
+    return none;
+}
+void Scheme::init_op_table()
+{
+    m_op_table[Intern::_quasiquote] = [this](const SymenvPtr& senv, const Cell& cell) {
+        return this->syntax_quasiquote(senv, car(cell));
+    };
+
+    m_op_table[Intern::_quote] = [this](const SymenvPtr& senv, const Cell& cell) {
+        return car(cell);
+    };
+
+    m_op_table[Intern::_setb] = [this](const SymenvPtr& senv, const Cell& cell) {
+        auto sym = get<Symbol>(car(cell));
+        auto val = eval(senv, cadr(cell));
+        senv->set(sym, val);
+        return none;
+    };
+
+    m_op_table[Intern::_define] = [this](const SymenvPtr& senv, const Cell& cell) {
+        return this->syntax_define(senv, cell);
+    };
+
+    m_op_table[Intern::_define_public] = [this](const SymenvPtr& senv, const Cell& cell) {
+        return this->syntax_define(senv, cell, true);
+    };
+
+    m_op_table[Intern::_lambda] = [this](const SymenvPtr& senv, const Cell& cell) {
+        return Procedure{ senv, car(cell), cdr(cell) };
+    };
+
+    m_op_table[Intern::_macro] = [this](const SymenvPtr& senv, const Cell& cell) {
+        auto sym = get<Symbol>(caar(cell));
+        auto m = Procedure{ senv, cdar(cell), cdr(cell), true };
+        senv->add(sym, m);
+        return none;
+    };
+
+    m_op_table[Intern::_macro_public] = [this](const SymenvPtr& senv, const Cell& cell) {
+        auto sym = get<Symbol>(caar(cell));
+        auto m = Procedure{ senv, cdar(cell), cdr(cell), true };
+        senv->add(sym, m, true);
+        return none;
+    };
+
+    m_op_table[Intern::_define_syntax] = [this](const SymenvPtr& senv, const Cell& cell) {
+        return this->syntax_define_syntax(senv, cell);
+    };
+
+    m_op_table[Intern::_delay] = [this](const SymenvPtr& senv, const Cell& cell) {
+        return this->syntax_delay(senv, cell);
+    };
+
+    m_op_table[Intern::_begin] = [this](const SymenvPtr& senv, const Cell& cell) {
+        return this->syntax_begin(senv, cell);
+    };
+
+    m_op_table[Intern::_if] = [this](const SymenvPtr& senv, const Cell& cell) {
+        return this->syntax_if(senv, cell);
+    };
+
+    m_op_table[Intern::_cond] = [this](const SymenvPtr& senv, const Cell& cell) {
+        return this->syntax_cond(senv, cell);
+    };
+
+    m_op_table[Intern::_case] = [this](const SymenvPtr& senv, const Cell& cell) {
+        return this->syntax_case(senv, cell);
+    };
+
+    m_op_table[Intern::_do] = [this](const SymenvPtr& senv, const Cell& cell) {
+        return this->syntax_do(senv, cell);
+    };
+
+    m_op_table[Intern::_when] = [this](const SymenvPtr& senv, const Cell& cell) {
+        return this->syntax_when(senv, cell);
+    };
+
+    m_op_table[Intern::_unless] = [this](const SymenvPtr& senv, const Cell& cell) {
+        return this->syntax_unless(senv, cell);
+    };
+
+    m_op_table[Intern::_let] = [this](const SymenvPtr& senv, const Cell& cell) {
+        return this->syntax_let(senv, cell);
+    };
+
+    m_op_table[Intern::_let_star] = [this](const SymenvPtr& senv, const Cell& cell) {
+        return this->syntax_let(senv, cell, true);
+    };
+
+    m_op_table[Intern::_with_let] = [this](const SymenvPtr& senv, const Cell& cell) {
+        return this->syntax_with_let(senv, cell);
+    };
+
+    m_op_table[Intern::_with_module] = [this](const SymenvPtr& senv, const Cell& cell) {
+        return this->syntax_with_module(senv, cell);
+    };
+
+    m_op_table[Intern::_and] = [this](const SymenvPtr& senv, const Cell& cell) {
+        return this->syntax_and(senv, cell);
+    };
+
+    m_op_table[Intern::_or] = [this](const SymenvPtr& senv, const Cell& cell) {
+        return this->syntax_or(senv, cell);
+    };
+
+    m_op_table[Intern::_module] = [this](const SymenvPtr& senv, const Cell& cell) {
+        return this->syntax_module(senv, cell);
+    };
+
+    m_op_table[Intern::_inherit_module] = [this](const SymenvPtr& senv, const Cell& cell) {
+        return this->syntax_inherit_module(senv, cell);
+    };
+
+    m_op_table[Intern::_use_module] = [this](const SymenvPtr& senv, const Cell& cell) {
+        return this->syntax_use_module(senv, cell);
+    };
+}
 } // namespace pscm

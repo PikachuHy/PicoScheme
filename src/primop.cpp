@@ -2346,10 +2346,7 @@ static bool defined_sym(Scheme& scm, const varg& args) {
 static Cell call_with_output_string(Scheme& scm, const SymenvPtr& senv, const varg& args) {
     auto port = std::make_shared<StringPort<Char>>(StringPort<Char>::out);
     auto f = get<Procedure>(args.at(0));
-    auto [env, code] = f.apply(scm, senv, scm.cons(port, nil));
-    auto expr = scm.syntax_begin(env, code);
-    scm.eval(env, expr);
-    auto s = port->str();
+    scm.apply(senv, f, scm.cons(port, nil));
     return std::make_shared<String>(port->str());
 }
 } // namespace pscm::primop
@@ -2917,6 +2914,7 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args)
         scm.disable_debug();
         return none;
     default:
+        DEBUG_OUTPUT("opcode:", primop);
         throw std::invalid_argument("invalid primary opcode");
     }
 }
