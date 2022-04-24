@@ -9,6 +9,7 @@
  *************************************************************************************/
 #ifndef PICOSCHEME_FRAME_H
 #define PICOSCHEME_FRAME_H
+#include <stack>
 #include <utility>
 
 #include "cell.hpp"
@@ -17,25 +18,36 @@
 namespace pscm {
 class Frame {
 public:
-    Frame(Cell op, const SymenvPtr& env, const Cell& args)
-        : m_op(std::move(op)),
-          m_env(env),
-          m_args(args)
-    {
+    Frame(SymenvPtr env, Cell cell)
+        : m_env(env),
+          m_expr(cell) {
     }
-    const Cell& args() const
-    {
-        return m_args;
+    const SymenvPtr& env() const {
+        return m_env;
     }
-    Cell op() const
-    {
-        return m_op;
+    const Cell& expr() const {
+        return m_expr;
+    }
+    const Cell& args() const {
+        return cdr(m_expr);
+    }
+    const Cell& op() const {
+        return car(m_expr);
+    }
+    void push_arg(Cell cell) {
+        m_args_stack.push_back(cell);
+    }
+    [[nodiscard]] int arg_count() const {
+        return m_args_stack.size();
+    }
+    [[nodiscard]] const std::vector<Cell>& varg() const {
+        return m_args_stack;
     }
 
 private:
-    Cell m_op;
-    const SymenvPtr& m_env;
-    const Cell& m_args;
+    SymenvPtr m_env;
+    Cell m_expr;
+    std::vector<Cell> m_args_stack;
 };
 } // namespace pscm
 #endif // PICOSCHEME_FRAME_H

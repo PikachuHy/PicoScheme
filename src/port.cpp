@@ -186,7 +186,8 @@ std::wostream& operator<<(std::wostream& os, const Cell& cell)
         [&os](const RegexPtr&)        -> std::wostream& { return os << "#<regex>"; },
         [&os](const MapPtr&)          -> std::wostream& { return os << "#<dict>"; },
         [&os](const SymenvPtr& arg)   -> std::wostream& { return os << "#<symenv " << arg.get() << '>'; },
-        [&os](const FunctionPtr& arg) -> std::wostream& { return os << "#<function " << arg->name() << '>'; },
+        [&os](const FunctionPtr& arg) -> std::wostream& { return os << "#<function " << arg->name() << " @ " << arg << '>'; },
+        [&os](const ContPtr& arg)     -> std::wostream& { return os << "#<continuation @ " << arg << '>'; },
         [&os](const PortPtr&)         -> std::wostream& { return os << "#<port>"; },
         [&os](const ClockPtr& arg)    -> std::wostream& { return os << "#<clock " << *arg << ">"; },
         [&os](auto& arg)              -> std::wostream& { return os << arg; }

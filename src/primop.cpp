@@ -542,7 +542,7 @@ static Cell list_head(Scheme& scm, const varg& args)
 static Cell is_proc(const varg& args)
 {
     const Cell& cell = args.at(0);
-    return pscm::is_proc(cell) || pscm::is_func(cell)
+    return pscm::is_proc(cell) || pscm::is_func(cell) || pscm::is_cont(cell)
         || (is_intern(cell) && get<Intern>(cell) >= Intern::_apply);
 }
 
@@ -631,16 +631,7 @@ static Cell vec2list(Scheme& scm, const varg& args);
  */
 static Cell callcc(Scheme& scm, const SymenvPtr& senv, const varg& args)
 {
-    struct continuation_exception {
-        continuation_exception(Scheme& scm, const varg& args)
-        {
-            if (args.empty())
-                return;
-
-            continuation = args.size() != 1 ? primop::list(scm, args) : args[0];
-        }
-        Cell continuation = none;
-    };
+    /*
     auto lambda = [](Scheme& scm, const SymenvPtr&, const varg& args) -> Cell {
         throw continuation_exception{ scm, args };
         return none;
@@ -651,6 +642,8 @@ static Cell callcc(Scheme& scm, const SymenvPtr& senv, const varg& args)
     } catch (const continuation_exception& e) {
         return e.continuation;
     }
+    */
+    return none;
 }
 
 static Cell callwval(Scheme& scm, const SymenvPtr& senv, const varg& args)
@@ -3263,7 +3256,7 @@ SymenvPtr add_environment_defaults(Scheme& scm)
           { scm.symbol("flush-output"),            Intern::op_flush_output },
 
           { scm.symbol("enable-debug"),            Intern::op_enable_debug },
-          { scm.symbol("op_disable_debug"),        Intern::op_disable_debug },
+          { scm.symbol("disable-debug"),        Intern::op_disable_debug },
        });
     // clang-format on
     return std_env;

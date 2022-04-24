@@ -144,6 +144,7 @@ inline bool is_number (const Cell& cell) { return is_type<Number>(cell); }
 inline bool is_symbol (const Cell& cell) { return is_type<Symbol>(cell); }
 inline bool is_symenv (const Cell& cell) { return is_type<SymenvPtr>(cell); }
 inline bool is_vector (const Cell& cell) { return is_type<VectorPtr>(cell); }
+inline bool is_cont   (const Cell& cell) { return is_type<ContPtr>(cell); }
 inline bool is_func   (const Cell& cell) { return is_type<FunctionPtr>(cell); }
 inline bool is_proc   (const Cell& cell) { return is_type<Procedure>(cell); }
 inline bool is_syntax (const Cell& cell) { return is_type<SyntaxPtr>(cell); }
@@ -347,6 +348,8 @@ private:
             return "#<hash-table>";
         else if constexpr (std::is_same_v<T, Promise>)
             return "#<promise>";
+        else if constexpr (std::is_same_v<T, ContPtr>)
+            return "#<continuation>";
         else
             return "#<unknown>";
     }

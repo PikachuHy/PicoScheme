@@ -28,6 +28,8 @@ class  Function;
 class  CObj;
 class  Syntax;
 class  Promise;
+class  Continuation;
+class  Frame;
 enum class Intern;
 template<typename Cell> struct less;
 template<typename Cell> struct hash;
@@ -53,6 +55,7 @@ template<typename T>
 using CellHashMap = std::unordered_map<Cell,T,hash<Cell>, cell_equal<Cell>>;
 using SyntaxPtr   = std::shared_ptr<Syntax>;
 using CObjPtr     = std::shared_ptr<CObj>;
+using ContPtr     = std::shared_ptr<Continuation>;
 using VectorPtr   = std::shared_ptr<std::vector<Cell>>;
 using PortPtr     = std::shared_ptr<Port<Char>>;
 using FunctionPtr = std::shared_ptr<Function>;
@@ -60,7 +63,7 @@ using Symtab      = SymbolTable<String>;
 using Symbol      = Symtab::Symbol;
 using Symenv      = SymbolEnv<Symbol, Cell, Symbol::hash>;
 using SymenvPtr   = std::shared_ptr<Symenv>;
-
+using FrameStack  = std::vector<Frame>;
 using Variant = std::variant <
 
     /* Atom types: */
@@ -73,7 +76,7 @@ using Variant = std::variant <
     Cons*, StringPtr, VectorPtr, PortPtr, FunctionPtr, SymenvPtr,
 
     /* Extensions: */
-    RegexPtr, ClockPtr, MapPtr, HashMapPtr, CObjPtr, SyntaxPtr, Promise
+    RegexPtr, ClockPtr, MapPtr, HashMapPtr, CObjPtr, SyntaxPtr, Promise, ContPtr
 >;
 
 static const None none {}; //!< void return symbol

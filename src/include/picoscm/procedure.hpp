@@ -64,7 +64,7 @@ public:
      *         expression list.
      */
     std::pair<SymenvPtr, Cell> apply(Scheme& scm, const SymenvPtr& env, Cell args, bool is_list = true) const;
-
+    Cell call(Scheme& scm, const SymenvPtr& env, const std::vector<Cell>& args) const;
     /**
      * Replace expression with the expanded closure macro.
      * @param expr (closure-macro arg0 ... arg_n)

@@ -1,15 +1,15 @@
 /********************************************************************************/ /**
- * @file procedure.hpp
- *
- * @version   0.1
- * @date      2018-
- * @author    Paul Pudewills
- * @copyright MIT License
- *************************************************************************************/
+                                                                                    * @file procedure.hpp
+                                                                                    *
+                                                                                    * @version   0.1
+                                                                                    * @date      2018-
+                                                                                    * @author    Paul Pudewills
+                                                                                    * @copyright MIT License
+                                                                                    *************************************************************************************/
 #include <set>
 
-#include "picoscm/scheme.hpp"
 #include "picoscm/procedure.hpp"
+#include "picoscm/scheme.hpp"
 
 namespace pscm {
 
@@ -45,24 +45,21 @@ static bool is_unique_symbol_list(Cell args)
 struct Procedure::Closure {
 
     Closure(const SymenvPtr& senv, const Cell& args, const Cell& code, bool is_macro)
-        : senv{ senv }
-        , args{ args }
-        , code{ code }
-        , is_macro{ is_macro }
+        : senv{ senv },
+          args{ args },
+          code{ code },
+          is_macro{ is_macro }
     {
         if (!is_unique_symbol_list(args) || !is_pair(code))
             throw std::invalid_argument("invalid procedure definition");
     }
     bool operator!=(const Closure& impl) const noexcept
     {
-        return senv != impl.senv
-            || args != impl.args
-            || code != impl.code
-            || is_macro != impl.is_macro;
+        return senv != impl.senv || args != impl.args || code != impl.code || is_macro != impl.is_macro;
     }
     SymenvPtr senv; //!< Symbol environment pointer.
-    Cell args; //!< Formal parameter symbol list or single symbol.
-    Cell code; //!< Lambda body expression list.
+    Cell args;      //!< Formal parameter symbol list or single symbol.
+    Cell code;      //!< Lambda body expression list.
     bool is_macro;
 };
 
@@ -71,10 +68,22 @@ Procedure::Procedure(const SymenvPtr& senv, const Cell& args, const Cell& code, 
 {
 }
 
-Cell Procedure::senv() const noexcept { return impl->senv; }
-Cell Procedure::args() const noexcept { return impl->args; }
-Cell Procedure::code() const noexcept { return impl->code; }
-bool Procedure::is_macro() const noexcept { return impl->is_macro; }
+Cell Procedure::senv() const noexcept
+{
+    return impl->senv;
+}
+Cell Procedure::args() const noexcept
+{
+    return impl->args;
+}
+Cell Procedure::code() const noexcept
+{
+    return impl->code;
+}
+bool Procedure::is_macro() const noexcept
+{
+    return impl->is_macro;
+}
 
 bool Procedure::operator!=(const Procedure& proc) const noexcept
 {
@@ -130,6 +139,31 @@ std::pair<SymenvPtr, Cell> Procedure::apply(Scheme& scm, const SymenvPtr& env, C
     }
     return { newenv, impl->code };
 }
+Cell Procedure::call(Scheme& scm, const SymenvPtr& env, const std::vector<Cell>& args) const
+{
+    auto new_env = scm.newenv(impl->senv);
+    auto iter = impl->args;
+    int i = 0;
+
+    while (is_pair(iter)) {
+        auto sym = get<Symbol>(car(iter));
+        new_env->add(sym, args[i]);
+        i++;
+        iter = cdr(iter);
+    }
+    if (i != args.size()) {
+        auto sym = get<Symbol>(iter);
+        Cell head = scm.cons(none, nil);
+        Cell tail = head;
+        while (i < args.size()) {
+            set_cdr(tail, scm.cons(args[i], nil));
+            tail = cdr(tail);
+            i++;
+        }
+        new_env->add(sym, cdr(head));
+    }
+    return scm.syntax_begin(new_env, impl->code);
+}
 
 /**
  * @brief Expand a macro
@@ -175,7 +209,8 @@ Cell Procedure::expand_syntax(Scheme& scm, Cell& expr) const
 
     return partial_replace(scm, newenv, impl->code);
 }
-Cell Procedure::partial_replace(Scheme& scm, const SymenvPtr& senv, const Cell& cell) const {
+Cell Procedure::partial_replace(Scheme& scm, const SymenvPtr& senv, const Cell& cell) const
+{
     if (!is_pair(cell)) {
         if (is_symbol(cell)) {
             auto sym = get<Symbol>(cell);

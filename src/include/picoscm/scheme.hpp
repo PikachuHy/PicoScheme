@@ -60,10 +60,11 @@ public:
     SymenvPtr load_module(const Cell& module_name, const SymenvPtr& env);
     Cell append_module_path(const std::vector<Cell>& vargs);
 
-    const std::vector<Frame>& frames() const { return m_frames; }
-    void push_frame(const Cell& op, const SymenvPtr& env, const Cell& args);
+    void push_frame(SymenvPtr& env, const Cell& expr);
     void pop_frame();
-    
+
+    Cell restore_from_continuation(ContPtr& cont, const Cell& args);
+    Cell eval_frame_based_on_stack();
     //! Insert a new symbol and value or reassign an already bound value of an existing symbol
     //! at the top environment of this scheme interpreter.
     void addenv(const Symbol& sym, const Cell& val);
@@ -179,7 +180,7 @@ public:
     {
         load(string_convert<Char>(filename), env);
     }
-
+    Cell eval_with_continuation(SymenvPtr env, Cell expr);
     /**
      * Evaluate a scheme expression at the argument symbol environment.
      *
@@ -237,6 +238,7 @@ public:
      */
     Cell apply(const SymenvPtr& env, Intern opcode, const std::vector<Cell>& args);
     Cell apply(const SymenvPtr& env, const FunctionPtr& proc, const std::vector<Cell>& args);
+    Cell apply(const SymenvPtr& env, const Procedure& proc, const std::vector<Cell>& args);
     Cell apply(const SymenvPtr& env, const Cell& cell, const std::vector<Cell>& args);
     Cell apply(const SymenvPtr& env, const Procedure& proc, const Cell& args, bool is_list = true);
     Cell apply(const SymenvPtr& env, const Cell& op, const Cell& args);
@@ -375,7 +377,7 @@ private:
 
     bool debug = false;
 
-    std::vector<Frame> m_frames;
+    FrameStack m_frames;
     std::unordered_map<Intern, std::function<Cell(const SymenvPtr&, const Cell&)>> m_op_table;
 };
 

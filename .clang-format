@@ -11,5 +11,7 @@ AlignArrayOfStructures: Right
 BreakBeforeBraces: Custom
 Cpp11BracedListStyle: false
 BraceWrapping:
-  AfterFunction: true
+  AfterFunction: false
   SplitEmptyFunction: true
+  BeforeElse: true
+  BeforeCatch: true

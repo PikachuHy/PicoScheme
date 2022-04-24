@@ -1,4 +1,5 @@
-/********************************************************************************/ /**
+/********************************************************************************/
+/**
  * @file symbol.hpp
  *
  * @version   0.1
@@ -46,12 +47,24 @@ struct SymbolTable {
         Symbol& operator=(Symbol&& s) = default;
 
         //! Return a constant refererence to the symbol value T.
-        const T& value() const noexcept { return *ptr; }
+        const T& value() const noexcept
+        {
+            return *ptr;
+        }
 
         //! Equality predicates.
-        bool operator==(const Symbol& sym) const noexcept { return ptr == sym.ptr; }
-        bool operator!=(const Symbol& sym) const noexcept { return ptr != sym.ptr; }
-        bool operator<(const Symbol& sym) const noexcept { return ptr < sym.ptr; }
+        bool operator==(const Symbol& sym) const noexcept
+        {
+            return ptr == sym.ptr;
+        }
+        bool operator!=(const Symbol& sym) const noexcept
+        {
+            return ptr != sym.ptr;
+        }
+        bool operator<(const Symbol& sym) const noexcept
+        {
+            return ptr < sym.ptr;
+        }
 
         struct hash : private std::hash<const T *> {
             using argument_type = Symbol;
@@ -59,7 +72,7 @@ struct SymbolTable {
 
             result_type operator()(const Symbol& sym) const noexcept
             {
-                return std::hash<const T*>::operator()(sym.ptr);
+                return std::hash<const T *>::operator()(sym.ptr);
             }
         };
 
@@ -69,7 +82,7 @@ struct SymbolTable {
         {
         }
         friend struct SymbolTable; //! needs access to private constructor
-        const T* ptr;
+        const T *ptr;
     };
     /**
      * Construct a symbol table
@@ -86,9 +99,15 @@ struct SymbolTable {
      * @return Symbol of type Symtab<T>::Symbol.
      */
     template <typename Val>
-    Symbol operator[](Val&& val) { return *table.emplace(std::forward<Val>(val)).first; }
+    Symbol operator[](Val&& val)
+    {
+        return *table.emplace(std::forward<Val>(val)).first;
+    }
 
-    size_t size() { return table.size(); }
+    size_t size()
+    {
+        return table.size();
+    }
 
 private:
     std::unordered_set<T, Hash, Equal> table;
@@ -102,7 +121,10 @@ struct symenv_exception : public std::exception {
     {
         reason.append(string_convert<char>(sym.value()));
     }
-    const char* what() const noexcept override { return reason.c_str(); }
+    const char *what() const noexcept override
+    {
+        return reason.c_str();
+    }
 
 private:
     std::string reason{ "unknown symbol " };
@@ -167,10 +189,11 @@ public:
     }
 
     //! Create a new symbol environment and initialize it with (symbol,value)-pairs
-    static shared_type create(std::initializer_list<std::pair<Sym, T>> args,
-        const shared_type& parent = nullptr)
+    static shared_type create(std::initializer_list<std::pair<Sym, T>> args, const shared_type& parent = nullptr)
     {
-        return shared_type{ new SymbolEnv{ args, parent } };
+        return shared_type{
+            new SymbolEnv{args, parent}
+        };
     }
 
     //! Insert a new symbol and value or reassigns a bound value of an existing symbol
@@ -241,17 +264,25 @@ public:
      * of this environment and to move to the next parent environment.
      */
     struct Cursor {
-        auto begin() const { return env.lock()->table.begin(); }
-        auto end() const { return env.lock()->table.end(); }
-        auto symenv() const { return shared_type{ env }; }
+        auto begin() const
+        {
+            return env.lock()->table.begin();
+        }
+        auto end() const
+        {
+            return env.lock()->table.end();
+        }
+        auto symenv() const
+        {
+            return shared_type{ env };
+        }
 
         //! Move cursor to next parent environment or return std::nullopt
         //! for a top-environment.
         std::optional<Cursor> next() const
         {
             shared_type e{ env };
-            return e->next ? std::optional<Cursor>{ Cursor{ e->next } }
-                           : std::nullopt;
+            return e->next ? std::optional<Cursor>{ Cursor{ e->next } } : std::nullopt;
         }
 
     private:
@@ -319,8 +350,14 @@ public:
         return false;
     }
     //! Return a cursor
-    Cursor cursor() { return Cursor{ weak_from_this() }; }
-    Cursor cursor() const { return Cursor{ weak_from_this() }; }
+    Cursor cursor()
+    {
+        return Cursor{ weak_from_this() };
+    }
+    Cursor cursor() const
+    {
+        return Cursor{ weak_from_this() };
+    }
 
 private:
     /**
@@ -336,8 +373,8 @@ private:
     //! Construct a new top or child environment and initialize it with {symbol,value} pairs
     //! from initializer list.
     SymbolEnv(std::initializer_list<std::pair<Sym, T>> args, const shared_type& parent = nullptr)
-        : next{ parent }
-        , table{ args.size() }
+        : next{ parent },
+          table{ args.size() }
     {
         for (auto& [sym, val] : args)
             add(sym, val);
