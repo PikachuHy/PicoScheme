@@ -78,6 +78,11 @@ SymenvPtr Scheme::load_module(const Cell& module_name, const SymenvPtr& env) {
 
 void Scheme::push_frame(SymenvPtr& env, const Cell& expr) {
     m_frames.emplace_back(env, expr);
+    auto op = _get_intern(env, m_frames.back().op());
+    if (op == Intern::_dynamic_wind) {
+        auto f = eval(env, cadr(expr));
+        apply(env, f, nil);
+    }
 }
 
 void Scheme::pop_frame() {
@@ -85,6 +90,13 @@ void Scheme::pop_frame() {
         DEBUG_OUTPUT("frames is emtpy");
     }
     else {
+        auto env = m_frames.back().env();
+        auto expr = m_frames.back().args();
+        auto op = _get_intern(env, m_frames.back().op());
+        if (op == Intern::_dynamic_wind) {
+            auto f = eval(env, caddr(expr));
+            apply(env, f, nil);
+        }
         m_frames.pop_back();
     }
 }
@@ -600,7 +612,7 @@ Cell Scheme::eval(SymenvPtr env, Cell expr) {
         auto cont = get<ContPtr>(op);
         auto cont_args = eval(env, cdr(expr));
         DEBUG("cont args:", cont_args);
-        throw Cell(cons(cont, cont_args));
+        throw Cell(cons(cont, cons(Intern::_quote, cons(cont_args, nil))));
     }
     else if (is_func(op)) {
         ret = eval_frame_based_on_stack();
@@ -877,6 +889,11 @@ Cell Scheme::callcc(const SymenvPtr& senv, const Cell& cell) {
 void Scheme::init_op_table() {
     m_op_table[Intern::_quasiquote] = [this](const SymenvPtr& senv, const Cell& cell) {
         return this->syntax_quasiquote(senv, car(cell));
+    };
+
+    m_op_table[Intern::_dynamic_wind] = [this](const SymenvPtr& senv, const Cell& cell) {
+        auto f = this->eval(senv, cadr(cell));
+        return apply(senv, f, nil);
     };
 
     m_op_table[Intern::_quote] = [this](const SymenvPtr& senv, const Cell& cell) {

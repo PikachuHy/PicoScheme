@@ -2988,6 +2988,7 @@ SymenvPtr add_environment_defaults(Scheme& scm) {
           { scm.symbol("unquote"),          Intern::_unquote },
           { scm.symbol("unquote-splicing"), Intern::_unquotesplice },
           { scm.symbol("apply"),            Intern::_apply },
+          { scm.symbol("dynamic-wind"),     Intern::_dynamic_wind },
           { scm.symbol("delay"),            Intern::_delay },
           { scm.symbol("force"),            Intern::op_force },
 

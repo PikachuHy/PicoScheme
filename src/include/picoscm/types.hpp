@@ -115,6 +115,7 @@ enum class Intern {
     _quasiquote,
     _unquote,
     _unquotesplice,
+    _dynamic_wind,
     _delay,
     op_force,
 
