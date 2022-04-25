@@ -1,4 +1,5 @@
-/*********************************************************************************/ /**
+/*********************************************************************************/
+/**
  * @file stream.cpp
  *
  * @version   0.1
@@ -7,14 +8,15 @@
  * @copyright MIT License
  *************************************************************************************/
 #include <cstring>
+#include <iostream>
 
+#include "magic_enum.hpp"
 #include "picoscm/port.hpp"
 #include "picoscm/scheme.hpp"
-#include "magic_enum.hpp"
+
 namespace pscm {
 
-void enable_locale(const char* name)
-{
+void enable_locale(const char *name) {
     using namespace std::string_literals;
 
     std::ios_base::sync_with_stdio(false);
@@ -41,8 +43,7 @@ void enable_locale(const char* name)
 /**
  * Output stream operator for Cons cell lists.
  */
-static std::wostream& operator<<(std::wostream& os, Cons* cons)
-{
+static std::wostream& operator<<(std::wostream& os, Cons *cons) {
     Cell iter{ cons };
 
     os << '(' << car(iter);
@@ -68,8 +69,7 @@ static std::wostream& operator<<(std::wostream& os, Cons* cons)
 }
 
 //! Output stream operator for Symbols.
-static std::wostream& operator<<(std::wostream& os, const Symbol& sym)
-{
+static std::wostream& operator<<(std::wostream& os, const Symbol& sym) {
     const String& name = sym.value();
 
     if (name.find_first_of(' ') != String::npos)
@@ -78,8 +78,7 @@ static std::wostream& operator<<(std::wostream& os, const Symbol& sym)
         return os << name;
 }
 
-static std::wostream& operator<<(std::wostream& os, const DisplayManip<StringPtr>& manip)
-{
+static std::wostream& operator<<(std::wostream& os, const DisplayManip<StringPtr>& manip) {
     const StringPtr::element_type& str = *manip.value;
 
     for (auto cp = str.begin(), end = str.end(); cp != end; ++cp)
@@ -108,19 +107,19 @@ static std::wostream& operator<<(std::wostream& os, const DisplayManip<StringPtr
     return os;
 }
 
-static std::wostream& operator<<(std::wostream& os, const VectorPtr& vptr)
-{
+static std::wostream& operator<<(std::wostream& os, const VectorPtr& vptr) {
     if (vptr->size()) {
         os << "#(" << vptr->front();
         for (auto ip = vptr->begin() + 1, ie = vptr->end(); ip != ie; ++ip)
             os << ' ' << *ip;
         return os << ')';
-    } else
+    }
+    else {
         return os << "#()";
+    }
 }
 
-std::wostream& operator<<(std::wostream& os, Intern opcode)
-{
+std::wostream& operator<<(std::wostream& os, Intern opcode) {
     switch (opcode) {
     case Intern::_or:
         return os << "or";
@@ -165,16 +164,14 @@ std::wostream& operator<<(std::wostream& os, Intern opcode)
     }
 }
 
-static std::wostream& operator<<(std::wostream& os, const Procedure& proc)
-{
+static std::wostream& operator<<(std::wostream& os, const Procedure& proc) {
     return proc.is_macro() ? os << "#<macro>" : os << "#<clojure>";
 }
 
 /**
  * Output stream operator for Cell type arguments.
  */
-std::wostream& operator<<(std::wostream& os, const Cell& cell)
-{
+std::wostream& operator<<(std::wostream& os, const Cell& cell) {
     // clang-format off
     overloads stream{
         [&os](None)                   -> std::wostream& { return os << "#<none>"; },
@@ -200,8 +197,7 @@ std::wostream& operator<<(std::wostream& os, const Cell& cell)
  * Overloaded output stream operator for Cell types as scheme (display <expr>) function
  * representation.
  */
-std::wostream& operator<<(std::wostream& os, DisplayManip<Cell> manip)
-{
+std::wostream& operator<<(std::wostream& os, DisplayManip<Cell> manip) {
     // clang-format off
     overloads stream{
         [](None)                    { },

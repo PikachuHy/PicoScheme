@@ -9,9 +9,8 @@
 
 namespace pscm {
 
-void GCollector::collect(Scheme& scm, const SymenvPtr& env)
-{
-    // Mark phase: mark all reacheable cons-cells
+void GCollector::collect(Scheme& scm, const SymenvPtr& env) {
+    // Mark phase: mark all reachable cons-cells
     end = scm.get_current_module_env();
     mark(env ? env : end);
     mset.clear();
@@ -27,32 +26,32 @@ void GCollector::collect(Scheme& scm, const SymenvPtr& env)
     // Optional log number of released cells
     if (logon) {
         size_t dlta = size - scm.store.size();
-        std::cerr << "msg> garbage collector released " << dlta
-                  << " cons-cells from " << size << " in total\n";
+        std::cerr << "msg> garbage collector released " << dlta << " cons-cells from " << size << " in total\n";
     }
 }
 
-void GCollector::logging(bool ok) { logon = ok; }
+void GCollector::logging(bool ok) {
+    logon = ok;
+}
 
-void GCollector::dump(const Scheme& scm, const Port<Char>& port)
-{
+void GCollector::dump(const Scheme& scm, const Port<Char>& port) {
     auto& os = port.stream();
 
     os << "Store size: " << scm.store.size() << '\n';
     size_t ic = 0;
     for (auto& cons : scm.store) {
-        os << ic++ << " | mark: " << mrk(cons) << " | "
-           << std::left << std::setw(25)
-           << car(cons) << " : " << cdr(cons) << '\n';
+        os << ic++ << " | mark: " << mrk(cons) << " | " << std::left << std::setw(25) << car(cons) << " : " << cdr(cons)
+           << '\n';
     }
 }
 
 //! Return true if a Cons-cell is marked.
-bool GCollector::is_marked(const Cons& cons) const noexcept { return mrk(cons); }
+bool GCollector::is_marked(const Cons& cons) const noexcept {
+    return mrk(cons);
+}
 
 //! Visit a scheme cell and mark.
-void GCollector::mark(const Cell& cell)
-{
+void GCollector::mark(const Cell& cell) {
     // clang-format off
     std::visit(overloads{
         [this](Cons* cons)            { mark(*cons); },
@@ -65,8 +64,7 @@ void GCollector::mark(const Cell& cell)
 }
 
 //! Mark cells reacheable from the argument symbol environment.
-void GCollector::mark(SymenvPtr env)
-{
+void GCollector::mark(SymenvPtr env) {
     using Cursor = SymenvPtr::element_type::Cursor;
     std::optional<Cursor> next = env->cursor();
 
@@ -86,9 +84,8 @@ void GCollector::mark(SymenvPtr env)
 }
 
 //! Mark code and argument list and closure environment of a scheme procedure.
-void GCollector::mark(const Procedure& proc)
-{
-    const Cons& code = *get<Cons*>(proc.code());
+void GCollector::mark(const Procedure& proc) {
+    const Cons& code = *get<Cons *>(proc.code());
 
     if (is_marked(code))
         return;
@@ -100,8 +97,7 @@ void GCollector::mark(const Procedure& proc)
 }
 
 //! Mark all cons-cells if any, contained in a scheme vector.
-void GCollector::mark(const VectorPtr& vec)
-{
+void GCollector::mark(const VectorPtr& vec) {
     auto [pos, ok] = mset.insert(reinterpret_cast<size_t>(vec.get()));
     if (!ok)
         return; // vector already visited
@@ -111,11 +107,10 @@ void GCollector::mark(const VectorPtr& vec)
 }
 
 //! Mark all Cons-cells in a list.
-void GCollector::mark(Cons& cons)
-{
+void GCollector::mark(Cons& cons) {
     Cell cell{ &cons };
     do {
-        Cons& next = *get<Cons*>(cell);
+        Cons& next = *get<Cons *>(cell);
 
         if (is_marked(next))
             return;
@@ -129,4 +124,4 @@ void GCollector::mark(Cons& cons)
     if (!is_nil(cell))
         mark(cell);
 }
-}
+} // namespace pscm

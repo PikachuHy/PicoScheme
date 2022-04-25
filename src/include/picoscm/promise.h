@@ -13,24 +13,24 @@
 #include <utility>
 
 #include "procedure.hpp"
+
 namespace pscm {
 class Cell;
 class Scheme;
+
 class Promise {
 public:
     Promise(Procedure proc)
-        : proc(std::move(proc))
-    {
+        : proc(std::move(proc)) {
     }
 
     Cell force(Scheme& scm, const SymenvPtr& env);
 
-    bool operator==(const Promise& rhs) const
-    {
+    bool operator==(const Promise& rhs) const {
         return proc == rhs.proc;
     }
-    bool operator!=(const Promise& rhs) const
-    {
+
+    bool operator!=(const Promise& rhs) const {
         return !(rhs == *this);
     }
 
@@ -38,14 +38,13 @@ public:
         using argument_type = pscm::Promise;
         using result_type = std::size_t;
 
-        result_type operator()(const Promise& p) const
-        {
+        result_type operator()(const Promise& p) const {
             return Procedure::hash{}(p.proc);
         }
     };
+
     template <typename OStream>
-    friend OStream& operator<<(OStream& os, const Promise& p)
-    {
+    friend OStream& operator<<(OStream& os, const Promise& p) {
         return os << "promise: " << p.proc;
     }
 

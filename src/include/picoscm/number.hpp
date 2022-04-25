@@ -1,4 +1,5 @@
-/*********************************************************************************/ /**
+/*********************************************************************************/
+/**
  * @file number.hpp
  *
  * @version   0.1
@@ -11,11 +12,11 @@
 
 #include <complex>
 #include <iostream>
-#include <variant>
 #include <optional>
+#include <variant>
 
-#include "utils.hpp"
 #include "types.hpp"
+#include "utils.hpp"
 
 namespace pscm {
 
@@ -52,10 +53,10 @@ constexpr T mu_0 = pi<T> * 4 * 1e-7;
 
 template <typename T> // Vacuum permittivity [(N m^2)/C^2]
 constexpr T epsilon_0 = 1 / (mu_0<T> * c<T> * c<T>);
-
+// clang-format off
 template <typename T> // Stefan-Boltzmann constant [W/(m^2 K^4)]
 constexpr T sigma = 2 * pi<T>* R<T>* R<T>* R<T>* R<T> / (15 * h<T> * h<T> * h<T> * c<T> * c<T> * N_A<T> * N_A<T> * N_A<T> * N_A<T>);
-
+// clang-format on
 template <typename T>
 struct Type;
 
@@ -72,8 +73,7 @@ struct Number : std::variant<Int, Float, Complex> {
     using base_type::operator=;
 
     constexpr Number()
-        : base_type{ Int{ 0 } }
-    {
+        : base_type{ Int{ 0 } } {
     }
 
     Number(const Number&) = default;
@@ -82,20 +82,19 @@ struct Number : std::variant<Int, Float, Complex> {
 
     template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>>
     constexpr Number(T x)
-        : base_type{ static_cast<Int>(x) }
-    {
+        : base_type{ static_cast<Int>(x) } {
     }
 
     constexpr Number(Float x)
-        : base_type{ x }
-    {
+        : base_type{ x } {
     }
 
     template <typename RE, typename IM>
-    constexpr Number(RE x, IM y)
-    {
+    constexpr Number(RE x, IM y) {
         if (y > IM{ 0 } || y < IM{ 0 })
-            *this = base_type{ Complex{ static_cast<Float>(x), static_cast<Float>(y) } };
+            *this = base_type{
+                Complex{static_cast<Float>(x), static_cast<Float>(y)}
+            };
         else
             *this = Number{ x };
     }
@@ -104,44 +103,51 @@ struct Number : std::variant<Int, Float, Complex> {
      * Converting constructor for complex type arguments.
      */
     constexpr Number(const Complex& z)
-        : Number{ z.real(), z.imag() }
-    {
+        : Number{ z.real(), z.imag() } {
     }
 
     /**
      * Conversion operator to convert a Number type to the requested arithmetic or complex type.
      */
     template <typename T, typename = std::enable_if_t<std::is_arithmetic_v<T> || std::is_same_v<T, Complex>>>
-    explicit constexpr operator T() const noexcept
-    {
+    explicit constexpr operator T() const noexcept {
         auto fun = [](auto& num) -> T {
             using TT = std::decay_t<decltype(num)>;
 
             if constexpr (std::is_same_v<TT, Int>) {
-                if constexpr (std::is_integral_v<T>)
+                if constexpr (std::is_integral_v<T>) {
                     return static_cast<T>(num);
+                }
 
-                else if constexpr (std::is_floating_point_v<T>)
+                else if constexpr (std::is_floating_point_v<T>) {
                     return static_cast<T>(num);
+                }
 
-                else // T is Complex:
+                else { // T is Complex:
                     return static_cast<T>(static_cast<typename T::value_type>(num));
-
-            } else if constexpr (std::is_same_v<TT, Float>) {
-                if constexpr (std::is_arithmetic_v<T>)
+                }
+            }
+            else if constexpr (std::is_same_v<TT, Float>) {
+                if constexpr (std::is_arithmetic_v<T>) {
                     return static_cast<T>(num);
+                }
 
-                else // T is Complex
+                else { // T is Complex
                     return static_cast<T>(static_cast<typename T::value_type>(num));
-
-            } else if constexpr (std::is_same_v<TT, Complex>) {
-                if constexpr (std::is_arithmetic_v<T>)
+                }
+            }
+            else if constexpr (std::is_same_v<TT, Complex>) {
+                if constexpr (std::is_arithmetic_v<T>) {
                     return static_cast<T>(std::abs(num));
+                }
 
-                else
+                else {
                     return static_cast<T>(num);
-            } else
+                }
+            }
+            else {
                 static_assert(always_false<TT>::value, "invalid variant");
+            }
         };
 
         return std::visit(std::move(fun), static_cast<const base_type&>(*this));
@@ -151,8 +157,7 @@ struct Number : std::variant<Int, Float, Complex> {
         using argument_type = pscm::Number;
         using result_type = std::size_t;
 
-        result_type operator()(const Number& num) const
-        {
+        result_type operator()(const Number& num) const {
             static overloads hash{
                 [](const Complex& z) -> result_type {
                     auto a = std::hash<Complex::value_type>{}(z.real());
@@ -162,7 +167,9 @@ struct Number : std::variant<Int, Float, Complex> {
                     c ^= b + 0x9e3779b9 + (c << 6) + (c >> 2);
                     return c;
                 },
-                [](auto arg) -> result_type { return std::hash<decltype(arg)>{}(arg); },
+                [](auto arg) -> result_type {
+                    return std::hash<decltype(arg)>{}(arg);
+                },
             };
             return visit(hash, static_cast<const Number::base_type&>(num));
         }
@@ -170,21 +177,32 @@ struct Number : std::variant<Int, Float, Complex> {
 };
 
 template <typename T>
-Number num(const T& x) { return { x }; }
+Number num(const T& x) {
+    return { x };
+}
 
 template <typename RE, typename IM>
-Number num(const RE& x, const IM& y) { return { x, y }; }
+Number num(const RE& x, const IM& y) {
+    return { x, y };
+}
 
-inline bool is_int(const Number& num) { return is_type<Int>(num); }
-inline bool is_float(const Number& num) { return is_type<Float>(num); }
-inline bool is_complex(const Number& num) { return is_type<Complex>(num); }
+inline bool is_int(const Number& num) {
+    return is_type<Int>(num);
+}
+
+inline bool is_float(const Number& num) {
+    return is_type<Float>(num);
+}
+
+inline bool is_complex(const Number& num) {
+    return is_type<Complex>(num);
+}
 
 bool is_integer(const Number& num);
 bool is_odd(const Number& num);
 
 template <typename CharT, typename Traits>
-std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const Complex& z)
-{
+std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const Complex& z) {
     if (auto im = z.imag(); im > 0 || im < 0) {
         if (im < 0) {
             os << z.real();
@@ -192,36 +210,32 @@ std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>&
                 return os << '-' << im << 'i';
             else
                 return os << "-i";
-
-        } else if (im > 1 || im < 1)
+        }
+        else if (im > 1 || im < 1) {
             return os << z.real() << '+' << im << 'i';
-        else
+        }
+        else {
             return os << z.real() << "+i";
-    } else
+        }
+    }
+    else {
         return os << z.real();
+    }
 }
 
 /**
  * @brief Out stream operator for a ::Number argument value.
  */
 template <typename CharT, typename Traits>
-std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const Number& num)
-{
-/*
-    return std::visit([&os](auto x) -> decltype(os) {
-        if constexpr (std::is_same_v<Int, decltype(x)>)
-            return os << x;
-        else
-            return os << std::scientific << x;
-    },
+std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const Number& num) {
+    return std::visit(
+        [&os](auto x) -> std::basic_ostream<CharT, Traits>& {
+            if constexpr (std::is_same_v<Int, decltype(x)>)
+                return os << x;
+            else
+                return os << std::scientific << x;
+        },
         static_cast<Number::base_type>(num));
-*/
-  overloads stream{
-    [&os](const Int& val) -> std::basic_ostream<CharT, Traits>& { return os << val; },
-    [&os](const Float& val) -> std::basic_ostream<CharT, Traits>& { return os << std::scientific << val; },
-    [&os](auto& val) -> std::basic_ostream<CharT, Traits>& { return os << std::scientific << val; }
-  };
-  return std::visit(std::move(stream), static_cast<const Number::base_type&>(num));
 }
 
 bool operator!=(const Number& lhs, const Number& rhs);
@@ -234,9 +248,17 @@ bool operator<=(const Number& lhs, const Number& rhs);
 Number min(const Number& lhs, const Number& rhs);
 Number max(const Number& lhs, const Number& rhs);
 
-inline bool is_zero(const Number& x) { return !(x != Number{ 0 }); }
-inline bool is_negative(const Number& x) { return x < Number{ 0 }; }
-inline bool is_positive(const Number& x) { return x > Number{ 0 }; }
+inline bool is_zero(const Number& x) {
+    return !(x != Number{ 0 });
+}
+
+inline bool is_negative(const Number& x) {
+    return x < Number{ 0 };
+}
+
+inline bool is_positive(const Number& x) {
+    return x > Number{ 0 };
+}
 
 Number inv(const Number& x);
 
@@ -291,15 +313,24 @@ Number hypot(const Number& x, const Number& y, const Number& z);
 
 class NumberParser {
 public:
-    NumberParser(const String& s): s(s), max_len(s.size()) {
-
+    NumberParser(const String& s)
+        : s(s)
+        , max_len(s.size()) {
     }
-    NumberParser(const String& s, size_t n): s(s), max_len(std::min(s.size(), n)) {
 
+    NumberParser(const String& s, size_t n)
+        : s(s)
+        , max_len(std::min(s.size(), n)) {
     }
+
     void parse();
-    bool parse_success() const { return success; }
-    Number parsed_number() const;
+
+    [[nodiscard]] bool parse_success() const {
+        return success;
+    }
+
+    [[nodiscard]] Number parsed_number() const;
+
 private:
     std::optional<bool> parse_sign(bool optional = false);
     std::optional<Number> parse_complex();
@@ -309,12 +340,13 @@ private:
     bool is_digit();
     bool is_sign(size_t i);
     void mark_parse_fail();
-    bool parse_fail() const;
-    Char last_char() const;
-    bool exceed_max_len() const;
-    bool reach_last() const;
+    [[nodiscard]] bool parse_fail() const;
+    [[nodiscard]] Char last_char() const;
+    [[nodiscard]] bool exceed_max_len() const;
+    [[nodiscard]] bool reach_last() const;
     bool has_sign_after(size_t i);
     std::optional<Float> convert_str_to_float(const String& str);
+
 private:
     const String& s;
     std::size_t max_len;
@@ -325,7 +357,6 @@ private:
     Number num;
 };
 
-
-} // namspace pscm
+} // namespace pscm
 
 #endif // NUMBER_HPP

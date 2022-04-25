@@ -12,15 +12,12 @@
 
 namespace pscm {
 
-void Syntax::add(const Cell& cell, const Procedure& proc)
-{
+void Syntax::add(const Cell& cell, const Procedure& proc) {
     _macro.insert_or_assign(cell, proc);
 }
 
-
-const Procedure& Syntax::match(const Cell& cell)
-{
-    for(const auto& [k, v]: _macro) {
+const Procedure& Syntax::match(const Cell& cell) {
+    for (const auto& [k, v] : _macro) {
         if (can_match(cell, k)) {
             return v;
         }
@@ -29,8 +26,7 @@ const Procedure& Syntax::match(const Cell& cell)
     throw std::runtime_error("can't match");
 }
 
-bool Syntax::can_match(Cell cell, Cell pattern)
-{
+bool Syntax::can_match(Cell cell, Cell pattern) {
     while (is_pair(cell) && is_pair(pattern)) {
         cell = cdr(cell);
         pattern = cdr(pattern);
@@ -40,4 +36,4 @@ bool Syntax::can_match(Cell cell, Cell pattern)
     }
     return false;
 }
-}
+} // namespace pscm

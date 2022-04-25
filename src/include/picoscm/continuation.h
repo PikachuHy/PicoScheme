@@ -13,11 +13,13 @@
 #include "frame.h"
 #include <utility>
 #include <vector>
+
 namespace pscm {
 class Continuation {
 public:
     explicit Continuation(FrameStack frames)
         : m_frames(std::move(frames)){};
+
     [[nodiscard]] const FrameStack& frames() const {
         return m_frames;
     }

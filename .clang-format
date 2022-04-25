@@ -10,6 +10,9 @@ PackConstructorInitializers: Never
 AlignArrayOfStructures: Right
 BreakBeforeBraces: Custom
 Cpp11BracedListStyle: false
+RemoveBracesLLVM: false
+SeparateDefinitionBlocks: Always
+BreakConstructorInitializers: BeforeComma
 BraceWrapping:
   AfterFunction: false
   SplitEmptyFunction: true

@@ -12,12 +12,12 @@
 #include <functional>
 
 #include "clock.hpp"
+#include "cobj.h"
 #include "number.hpp"
 #include "port.hpp"
 #include "procedure.hpp"
-#include "types.hpp"
-#include "cobj.h"
 #include "promise.h"
+#include "types.hpp"
 
 namespace pscm {
 
@@ -29,16 +29,15 @@ struct Cell : Variant {
 
 template <typename Cell>
 struct less {
-  template <typename Scheme, typename Symenv>
-  less(Scheme& scm, const Symenv& env, const Cell& comp)
-  {
-    compare = [&scm, env, comp](const Cell& lhs, const Cell& rhs) -> bool {
-      return !is_false(apply(scm, env, comp, lhs, rhs));
-    };
-  }
-  less()
-  {
-    // clang-format off
+    template <typename Scheme, typename Symenv>
+    less(Scheme& scm, const Symenv& env, const Cell& comp) {
+        compare = [&scm, env, comp](const Cell& lhs, const Cell& rhs) -> bool {
+            return !is_false(apply(scm, env, comp, lhs, rhs));
+        };
+    }
+
+    less() {
+        // clang-format off
         static overloads comp{
             [](Bool lhs, Bool rhs)                         -> bool { return lhs < rhs; },
             [](Char lhs, Char rhs)                         -> bool { return lhs < rhs; },
@@ -47,19 +46,21 @@ struct less {
             [](const Symbol& lhs, const Symbol& rhs)       -> bool { return lhs.value() < rhs.value(); },
             [](const StringPtr& lhs, const StringPtr& rhs) -> bool { return *lhs < *rhs;},
             [](const ClockPtr& lhs, const ClockPtr& rhs)   -> bool { return lhs->toc() < rhs->toc();},
-            [](auto&, auto&)                               -> bool { throw std::invalid_argument("undefined < comparision operator"); },
+            [](auto&, auto&)                               -> bool { throw std::invalid_argument("undefined < comparison operator"); },
         }; // clang-format on
 
-    compare = [](const Cell& lhs, const Cell& rhs) -> bool {
-      return std::visit(comp,
-                        static_cast<const typename Cell::base_type&>(lhs),
-                        static_cast<const typename Cell::base_type&>(rhs));
-    };
-  }
-  bool operator()(const Cell& lhs, const Cell& rhs) const { return compare(lhs, rhs); }
+        compare = [](const Cell& lhs, const Cell& rhs) -> bool {
+            return std::visit(comp, static_cast<const typename Cell::base_type&>(lhs),
+                              static_cast<const typename Cell::base_type&>(rhs));
+        };
+    }
+
+    bool operator()(const Cell& lhs, const Cell& rhs) const {
+        return compare(lhs, rhs);
+    }
 
 private:
-  std::function<bool(const Cell&, const Cell&)> compare;
+    std::function<bool(const Cell&, const Cell&)> compare;
 };
 
 template <typename CellType>
@@ -67,47 +68,43 @@ struct bad_cell_access;
 
 //! Wrappers around std::get to access the Variant type and rethrow
 //! a more descriptive pscm::bad_cell_access exception in case of
-//! an invalid type access atempt.
+//! an invalid type access attempt.
 template <typename T>
-T& get(Cell& cell)
-{
+T& get(Cell& cell) {
     try {
         return std::get<T>(static_cast<Variant&>(cell));
-
-    } catch (std::bad_variant_access&) {
+    }
+    catch (std::bad_variant_access&) {
         throw bad_cell_access<T>(cell);
     }
 }
 
 template <typename T>
-T&& get(Cell&& cell)
-{
+T&& get(Cell&& cell) {
     try {
         return std::get<T>(static_cast<Variant&&>(std::move(cell)));
-
-    } catch (std::bad_variant_access&) {
+    }
+    catch (std::bad_variant_access&) {
         throw bad_cell_access<T>(cell);
     }
 }
 
 template <typename T>
-const T& get(const Cell& cell)
-{
+const T& get(const Cell& cell) {
     try {
         return std::get<T>(static_cast<Variant&>(const_cast<Cell&>(cell)));
-
-    } catch (std::bad_variant_access&) {
+    }
+    catch (std::bad_variant_access&) {
         throw bad_cell_access<T>(cell);
     }
 }
 
 template <typename T>
-const T&& get(const Cell&& cell)
-{
+const T&& get(const Cell&& cell) {
     try {
         return std::get<T>(static_cast<const Variant&&>(std::move(cell)));
-
-    } catch (std::bad_variant_access&) {
+    }
+    catch (std::bad_variant_access&) {
         throw bad_cell_access<T>(cell);
     }
 }
@@ -124,7 +121,7 @@ struct hash {
 Int use_count(const Cell&);
 
 /**
- * Conveniance predicates to test the Cell type.
+ * Convenience predicates to test the Cell type.
  */
 // clang-format off
 inline bool is_nil    (const Cell& cell) { return is_type<Nil>(cell); }
@@ -154,6 +151,7 @@ inline bool is_true   (const Cell& cell) { return !is_type<Bool>(cell) || get<Bo
 inline bool is_else   (const Cell& cell) { return is_intern(cell) && get<Intern>(cell) == Intern::_else; }
 inline bool is_arrow  (const Cell& cell) { return is_intern(cell) && get<Intern>(cell) == Intern::_arrow; }
 inline bool is_exit   (const Cell& cell) { return is_intern(cell) && get<Intern>(cell) == Intern::op_exit; }
+
 // clang-format on
 
 /**
@@ -166,23 +164,53 @@ inline bool is_exit   (const Cell& cell) { return is_intern(cell) && get<Intern>
 bool is_equal(const Cell& lhs, const Cell& rhs);
 
 //! Convenience functions to access a list of Cons cell-pairs.
-inline const Cell& car(const Cell& cons) { return get<0>(*get<Cons*>(cons)); }
-inline const Cell& cdr(const Cell& cons) { return get<1>(*get<Cons*>(cons)); }
-inline const Cell& caar(const Cell& cons) { return car(car(cons)); }
-inline const Cell& cdar(const Cell& cons) { return cdr(car(cons)); }
-inline const Cell& cddr(const Cell& cons) { return cdr(cdr(cons)); }
-inline const Cell& cadr(const Cell& cons) { return car(cdr(cons)); }
-inline const Cell& caddr(const Cell& cons) { return car(cddr(cons)); }
-inline const Cell& cdddr(const Cell& cons) { return cdr(cddr(cons)); }
-inline const Cell& cadddr(const Cell& cons) { return car(cdddr(cons)); }
+inline const Cell& car(const Cell& cons) {
+    return get<0>(*get<Cons *>(cons));
+}
+
+inline const Cell& cdr(const Cell& cons) {
+    return get<1>(*get<Cons *>(cons));
+}
+
+inline const Cell& caar(const Cell& cons) {
+    return car(car(cons));
+}
+
+inline const Cell& cdar(const Cell& cons) {
+    return cdr(car(cons));
+}
+
+inline const Cell& cddr(const Cell& cons) {
+    return cdr(cdr(cons));
+}
+
+inline const Cell& cadr(const Cell& cons) {
+    return car(cdr(cons));
+}
+
+inline const Cell& caddr(const Cell& cons) {
+    return car(cddr(cons));
+}
+
+inline const Cell& cdddr(const Cell& cons) {
+    return cdr(cddr(cons));
+}
+
+inline const Cell& cadddr(const Cell& cons) {
+    return car(cdddr(cons));
+}
 
 //! Set the first cell of a Cons cell-pair.
 template <typename T>
-void set_car(const Cell& cons, T&& t) { get<0>(*std::get<Cons*>(cons)) = std::forward<T>(t); }
+void set_car(const Cell& cons, T&& t) {
+    get<0>(*std::get<Cons *>(cons)) = std::forward<T>(t);
+}
 
 //! Set the second cell of a Cons cell-pair.
 template <typename T>
-void set_cdr(const Cell& cons, T&& t) { get<1>(*std::get<Cons*>(cons)) = std::forward<T>(t); }
+void set_cdr(const Cell& cons, T&& t) {
+    get<1>(*std::get<Cons *>(cons)) = std::forward<T>(t);
+}
 
 //! Predicate returns true if cell is a proper, nil terminated Cons-cell list or a circular list.
 bool is_list(Cell cell);
@@ -202,22 +230,22 @@ Cell list_ref(Cell list, Int k);
  * operations don't invalidate pointers to previously inserted elements.
  */
 template <typename StoreT, typename CAR, typename CDR>
-Cons* cons(StoreT& store, CAR&& car, CDR&& cdr)
-{
+Cons *cons(StoreT& store, CAR&& car, CDR&& cdr) {
     return &store.emplace_back(std::forward<CAR>(car), std::forward<CDR>(cdr), /*gc-flag*/ false);
 }
 
 //! Build an embedded cons-list of all arguments on the provided Cons-cell store
 //! container and return a pointer to the list head.
 template <typename Store, typename T, typename... Args>
-Cons* list(Store& store, T&& t, Args&&... args)
-{
+Cons *list(Store& store, T&& t, Args&&...args) {
     return cons(store, std::forward<T>(t), list(store, std::forward<Args>(args)...));
 }
 
 //! Recursion base case
 template <typename Store>
-Cell list(Store&) { return nil; }
+Cell list(Store&) {
+    return nil;
+}
 
 /**
  * Build an array embedded cons-list of all arguments directly in
@@ -225,56 +253,54 @@ Cell list(Store&) { return nil; }
  *
  * This array embedded cons-list is used for short temporary
  * argument lists, to circumvent filling the global cell store
- * unecessarly. The cons array size must be equal or greater then
+ * unnecessarily. The cons array size must be equal or greater then
  * the number of remaining arguments. An insufficient array size
  * is an compile time error.
  */
 template <size_t size, typename T, typename... Args>
-Cons* list(Cons (&cons)[size], T&& t, Args&&... args)
-{
+Cons *list(Cons (&cons)[size], T&& t, Args&&...args) {
     static_assert(size > sizeof...(args), "invalid cons array size");
 
     get<0>(cons[0]) = std::forward<T>(t);
 
     if constexpr (size > 1) {
-        get<1>(cons[0]) = list(reinterpret_cast<Cons(&)[size - 1]>(cons[1]),
-            std::forward<Args>(args)...);
-    } else
+        get<1>(cons[0]) = list(reinterpret_cast<Cons(&)[size - 1]>(cons[1]), std::forward<Args>(args)...);
+    }
+    else {
         get<1>(cons[0]) = nil;
+    }
 
     return &cons[0];
 }
 
 //! Recursion base case, if list is shorter then the array size.
 template <size_t size>
-Nil list(Cons (&)[size]) { return nil; }
+Nil list(Cons (&)[size]) {
+    return nil;
+}
 
 //! Create a new scheme string and initialize it with a copy of the argument string.
 template <typename StringT>
-StringPtr str(const StringT& str)
-{
+StringPtr str(const StringT& str) {
     return std::make_shared<String>(string_convert<Char>(str));
 }
 
 //! Create a new scheme vector of argument size and initial value.
 template <typename T>
-VectorPtr vec(size_t size, T&& val)
-{
+VectorPtr vec(size_t size, T&& val) {
     return std::make_shared<VectorPtr::element_type>(size, std::forward<T>(val));
 }
 
 //! Create a new scheme regular-expression object.
 template <typename StringT>
-RegexPtr regex(const StringT& str)
-{
+RegexPtr regex(const StringT& str) {
     using regex = RegexPtr::element_type;
     regex::flag_type flags = regex::ECMAScript | regex::icase;
     return std::make_shared<RegexPtr::element_type>(string_convert<Char>(str), flags);
 }
 
 template <typename Scheme, typename Symenv, typename T, typename... Args>
-Cell apply(Scheme& scm, const Symenv& env, T&& proc, Args&&... args)
-{
+Cell apply(Scheme& scm, const Symenv& env, T&& proc, Args&&...args) {
     Cons exp[3], lst[2], arg[sizeof...(args) + 1];
     Cell arg_list = pscm::list(lst, Intern::_quote, pscm::list(arg, std::forward<Args>(args)...));
     return scm.eval(env, pscm::list(exp, Intern::_apply, std::forward<T>(proc), arg_list));
@@ -285,30 +311,32 @@ Cell apply(Scheme& scm, const Symenv& env, T&& proc, Args&&... args)
 template <typename CellType>
 struct bad_cell_access : public std::bad_variant_access {
     bad_cell_access() noexcept
-        : _reason("invalid type ")
-    {
+        : _reason("invalid type ") {
         _reason.append(type_name());
     }
-    bad_cell_access(const Cell& cell)
-    {
+
+    explicit bad_cell_access(const Cell& cell) {
         using Port = StringPort<Char>;
 
         Port os{ Port::out };
         os << cell;
-
+        // clang-format off
         _reason = std::string{ "argument " }
                       .append(string_convert<char>(os.str()))
                       .append(" is not a ")
                       .append(type_name());
+        // clang-format on
     }
-    const char* what() const noexcept override { return _reason.c_str(); }
+
+    [[nodiscard]] const char *what() const noexcept override {
+        return _reason.c_str();
+    }
 
 private:
     std::string _reason;
 
     //! Return a textual representation of the template argument type.
-    constexpr const char* type_name()
-    {
+    constexpr const char *type_name() {
         using T = std::decay_t<CellType>;
         if constexpr (std::is_same_v<T, Nil>)
             return "()";
@@ -322,7 +350,7 @@ private:
             return "#<character>";
         else if constexpr (std::is_same_v<T, Number>)
             return "#<number>";
-        else if constexpr (std::is_same_v<T, Cons*>)
+        else if constexpr (std::is_same_v<T, Cons *>)
             return "#<cons>";
         else if constexpr (std::is_same_v<T, StringPtr>)
             return "#<string>";
@@ -356,8 +384,7 @@ private:
 };
 
 template <typename Cell>
-std::size_t hash<Cell>::operator()(const Cell& cell) const
-{
+std::size_t hash<Cell>::operator()(const Cell& cell) const {
     // clang-format off
     static overloads hash{
         [](None)                 -> result_type { return 0; },
@@ -379,11 +406,6 @@ std::size_t hash<Cell>::operator()(const Cell& cell) const
     return std::visit(hash, static_cast<const typename Cell::base_type&>(cell));
 }
 
-
 } // namespace pscm
-
-namespace std {
-
-} // namespace std
 
 #endif // CELL_HPP

@@ -1,19 +1,14 @@
-
-#include <iostream>
-
 #include "picoscm/clock.hpp"
 
 namespace pscm {
 
-void Clock::tic()
-{
+void Clock::tic() {
     accumTime = 0;
     isPaused = false;
     startTime = steady_clock::now();
 }
 
-double Clock::toc() const
-{
+double Clock::toc() const {
     using namespace std::chrono;
 
     if (!isPaused)
@@ -22,8 +17,7 @@ double Clock::toc() const
     return accumTime;
 }
 
-void Clock::pause()
-{
+void Clock::pause() {
     using namespace std::chrono;
 
     if (!isPaused) {
@@ -32,8 +26,7 @@ void Clock::pause()
     }
 }
 
-void Clock::resume()
-{
+void Clock::resume() {
     if (isPaused) {
         isPaused = false;
         startTime = steady_clock::now();

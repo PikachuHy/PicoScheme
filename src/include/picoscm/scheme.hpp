@@ -1,4 +1,5 @@
-/********************************************************************************/ /**
+/********************************************************************************/
+/**
  * @file scheme.hpp
  *
  * @version   0.1
@@ -14,27 +15,18 @@
 #include <vector>
 
 #include "cell.hpp"
-#include "gc.hpp"
 #include "frame.h"
+#include "gc.hpp"
 
 namespace pscm {
-class Guard {
-public:
-    Guard(std::function<void()> f): f(std::move(f)) {}
-    ~Guard() {
-        f();
-    }
-private:
-    std::function<void()> f;
-};
 class GCollector;
-class module_error: public std::runtime_error {
+
+class module_error : public std::runtime_error {
 public:
     module_error(const std::string& msg, const Cell& module_name)
-        : runtime_error("module error: " + msg + to_string(module_name))
-    {
-
+        : runtime_error("module error: " + msg + to_string(module_name)) {
     }
+
     static std::string to_string(const Cell& module_name) {
         using Port = StringPort<Char>;
         Port os{ Port::out };
@@ -50,12 +42,23 @@ class Scheme {
 public:
     //! Optional connect this scheme interpreter to the environment of another interpreter.
     Scheme(const SymenvPtr& env = nullptr);
+
     //! Return the current module name
-    const Cell& get_current_module() const { return current_module; }
+    [[nodiscard]] const Cell& get_current_module() const {
+        return current_module;
+    }
+
     Cell set_current_module(const Cell& module_name);
+
     //! Return a shared pointer to the current module environment of this interpreter.
-    SymenvPtr& get_current_module_env() { return module_table[get_current_module()]; };
-    const SymenvPtr& get_current_module_env() const { return module_table.at(get_current_module()); };
+    SymenvPtr& get_current_module_env() {
+        return module_table[get_current_module()];
+    };
+
+    [[nodiscard]] const SymenvPtr& get_current_module_env() const {
+        return module_table.at(get_current_module());
+    };
+
     SymenvPtr get_module_env(const Cell& module_name);
     SymenvPtr load_module(const Cell& module_name, const SymenvPtr& env);
     Cell append_module_path(const std::vector<Cell>& vargs);
@@ -77,9 +80,18 @@ public:
     //! or if null-pointer, connected to the top environment of this interpreter.
     SymenvPtr newenv(const SymenvPtr& env = nullptr);
 
-    void enable_debug() { debug = true; }
-    void disable_debug() { debug = false; }
-    bool debugging() { return debug; }
+    void enable_debug() {
+        debug = true;
+    }
+
+    void disable_debug() {
+        debug = false;
+    }
+
+    bool debugging() {
+        return debug;
+    }
+
     /**
      * Return a pointer to a new cons-cell from the internal cons-cell store.
      * The new cons-cell is initialized by argument car and cdr values. The pointer
@@ -90,11 +102,10 @@ public:
      * @return Pointer to a new initialized Cons-cell.
      */
     template <typename CAR, typename CDR>
-    Cons* cons(CAR&& car, CDR&& cdr)
-    {
+    Cons *cons(CAR&& car, CDR&& cdr) {
         if (store_size + dflt_gccycle_count < store.size()) {
             std::wcerr << "Garbage collector cycle" << std::endl;
-            //gc.collect(*this, topenv);
+            // gc.collect(*this, topenv);
             store_size = store.size();
         }
         return pscm::cons(store, std::forward<CAR>(car), std::forward<CDR>(cdr));
@@ -102,22 +113,19 @@ public:
 
     //! Build a cons list of all arguments.
     template <typename T, typename... Args>
-    Cons* list(T&& t, Args&&... args)
-    {
+    Cons *list(T&& t, Args&&...args) {
         return pscm::list(store, std::forward<T>(t), std::forward<Args>(args)...);
     }
 
     //! Create a new symbol or return an existing symbol, build from
     //! the argument string.
     template <typename StringT>
-    Symbol symbol(const StringT& str)
-    {
+    Symbol symbol(const StringT& str) {
         return symtab[string_convert<Char>(str)];
     }
 
     //! Create a new symbol, guarenteed not to exist before.
-    Symbol symbol()
-    {
+    Symbol symbol() {
         return symbol(std::string{ "symbol " }.append(std::to_string(symtab.size())));
     }
 
@@ -136,8 +144,7 @@ public:
      * @returns A shared pointer to the created ::Function object.
      */
     template <typename StringT, typename FunctionT>
-    FunctionPtr function(const SymenvPtr& env, const StringT& name, FunctionT&& fun)
-    {
+    FunctionPtr function(const SymenvPtr& env, const StringT& name, FunctionT&& fun) {
         auto sym = symbol(name);
         auto funptr = Function::create(sym, std::forward<FunctionT>(fun));
 
@@ -151,21 +158,26 @@ public:
 
     //! Create a new function and install it into the top-environment of this interpreter.
     template <typename StringT, typename FunctionT>
-    FunctionPtr function(const StringT& name, FunctionT&& fun)
-    {
+    FunctionPtr function(const StringT& name, FunctionT&& fun) {
         return function(nullptr, name, std::forward<FunctionT>(fun));
     }
 
     //! Create a new unnamed function object and install it into the argument environment
     //! of if null-pointer, into the top environment of this interpreter.
     template <typename FunctionT>
-    FunctionPtr function(const SymenvPtr& env, FunctionT&& fun)
-    {
+    FunctionPtr function(const SymenvPtr& env, FunctionT&& fun) {
         return function(env, String{ L"lambda" }, std::forward<FunctionT>(fun));
     }
 
-    Port<Char>& outPort() const { return *m_stdout; } //!< return a shared-pointer to the default input port
-    Port<Char>& inPort() const { return *m_stdin; } //!< return a shared-pointer to the default output port
+    //!< return a shared-pointer to the default input port
+    [[nodiscard]] Port<Char>& outPort() const {
+        return *m_stdout;
+    }
+
+    //!< return a shared-pointer to the default output port
+    [[nodiscard]] Port<Char>& inPort() const {
+        return *m_stdin;
+    }
 
     //! Start a new read-eval-print loop and use argument environment or if null-pointer
     //! use the top-environment of this interpreter as interaction environment.
@@ -176,10 +188,10 @@ public:
     void load(const String& filename, const SymenvPtr& env = nullptr);
 
     template <typename StringT>
-    void load(const StringT& filename, const SymenvPtr& env = nullptr)
-    {
+    void load(const StringT& filename, const SymenvPtr& env = nullptr) {
         load(string_convert<Char>(filename), env);
     }
+
     Cell eval_with_continuation(SymenvPtr env, Cell expr);
     /**
      * Evaluate a scheme expression at the argument symbol environment.
@@ -199,6 +211,7 @@ public:
      * @return Evaluation result or special symbol @em none for no result.
      */
     Cell eval_string(SymenvPtr env, const String& code);
+
     template <typename StringT>
     Cell eval_string(SymenvPtr env, StringT code) {
         return eval(env, string_convert<Char>(code));
@@ -296,7 +309,7 @@ protected:
 
     Cell syntax_unless(const SymenvPtr& env, Cell args);
 
-    Cell syntax_let(const SymenvPtr& env, Cell args, bool star=false);
+    Cell syntax_let(const SymenvPtr& env, Cell args, bool star = false);
 
     Cell syntax_with_let(const SymenvPtr& env, Cell args);
 
@@ -334,6 +347,8 @@ protected:
      * <template> := (<element> ...)
      *            |  (<element> <element> ... . <template>)
      *            |  (<element> ...)
+     *
+     * @endverbatim
      */
     Cell syntax_define_syntax(const SymenvPtr& senv, Cell args);
     Cell syntax_syntax_rules(const SymenvPtr& senv, Cell args);
@@ -355,10 +370,13 @@ protected:
     Cell callcc(const SymenvPtr& senv, const Cell& cell);
 
     void init_op_table();
+
 private:
     friend class GCollector;
-    static constexpr size_t dflt_bucket_count = 1024; //<! Initial default hash table bucket count.
-    static constexpr size_t dflt_gccycle_count = 10000; //<! GC cycle after dflt_gccycle_count cons-cell allocations.
+    //<! Initial default hash table bucket count.
+    static constexpr size_t dflt_bucket_count = 1024;
+    //<! GC cycle after dflt_gccycle_count cons-cell allocations.
+    static constexpr size_t dflt_gccycle_count = 10000;
 
     using standard_port = StandardPort<Char>;
     PortPtr m_stdin = std::make_shared<standard_port>(standard_port::in);

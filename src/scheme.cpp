@@ -20,6 +20,7 @@
 #include "picoscm/syntax.h"
 // clang-format off
 #define DEBUG(...) if (debugging()) DEBUG_OUTPUT(__VA_ARGS__)
+
 // clang-format on
 namespace pscm {
 namespace fs = std::filesystem;
@@ -42,6 +43,7 @@ Scheme::Scheme(const SymenvPtr& env) {
     module_stack.push(current_module);
     init_op_table();
 }
+
 SymenvPtr Scheme::get_module_env(const Cell& module_name) {
     auto it = module_table.find(module_name);
     if (it != module_table.end()) {
@@ -50,6 +52,7 @@ SymenvPtr Scheme::get_module_env(const Cell& module_name) {
     // load module
     return load_module(module_name, get_current_module_env());
 }
+
 SymenvPtr Scheme::load_module(const Cell& module_name, const SymenvPtr& env) {
     String module_file;
     Cell name = module_name;
@@ -72,9 +75,11 @@ SymenvPtr Scheme::load_module(const Cell& module_name, const SymenvPtr& env) {
     }
     throw module_error("no module: ", module_name);
 }
+
 void Scheme::push_frame(SymenvPtr& env, const Cell& expr) {
     m_frames.emplace_back(env, expr);
 }
+
 void Scheme::pop_frame() {
     if (m_frames.empty()) {
         DEBUG_OUTPUT("frames is emtpy");
@@ -83,6 +88,7 @@ void Scheme::pop_frame() {
         m_frames.pop_back();
     }
 }
+
 Cell Scheme::restore_from_continuation(ContPtr& cont, const Cell& args) {
     DEBUG("old frames");
     DEBUG("frame size:", m_frames.size());
@@ -96,6 +102,7 @@ Cell Scheme::restore_from_continuation(ContPtr& cont, const Cell& args) {
     }
     return return_arg;
 }
+
 Cell Scheme::eval_frame_based_on_stack() {
     auto& frame = m_frames.back();
     auto pc = frame.arg_count();
@@ -114,6 +121,7 @@ Cell Scheme::eval_frame_based_on_stack() {
     auto ret = apply(env, op, m_frames.back().varg());
     return ret;
 }
+
 Cell Scheme::apply(const SymenvPtr& env, Intern opcode, const std::vector<Cell>& args) {
     return pscm::call(*this, env, opcode, args);
 }
@@ -544,6 +552,7 @@ std::vector<Cell> Scheme::eval_args(const SymenvPtr& env, Cell args, bool is_lis
 
     return stack;
 }
+
 Cell Scheme::eval_with_continuation(SymenvPtr env, Cell expr) {
     ContPtr c;
     Cell c_args;
@@ -570,6 +579,7 @@ Cell Scheme::eval_with_continuation(SymenvPtr env, Cell expr) {
         }
     }
 }
+
 Cell Scheme::eval(SymenvPtr env, Cell expr) {
     DEBUG("eval:", expr);
     if (is_nil(expr)) {
@@ -653,6 +663,7 @@ Cell Scheme::eval(SymenvPtr env, Cell expr) {
     DEBUG(" --> ", ret);
     return ret;
 }
+
 Cell Scheme::syntax_module(const SymenvPtr& senv, const Cell& args) {
     auto module_name = car(args);
     auto it = module_table.find(module_name);
@@ -725,6 +736,7 @@ Cell Scheme::syntax_define_syntax(const SymenvPtr& senv, Cell args) {
     senv->add(get<Symbol>(keyword), syntax);
     return none;
 }
+
 Cell Scheme::syntax_syntax_rules(const SymenvPtr& senv, Cell args) {
     auto expr = args;
     if (_get_intern(senv, car(expr)) != Intern::_syntax_rules) {
@@ -764,6 +776,7 @@ Cell Scheme::append_module_path(const std::vector<Cell>& vargs) {
     }
     return none;
 }
+
 Cell Scheme::eval_string(SymenvPtr env, const String& code) {
     Parser parser{ *this };
     Cell expr = none;
@@ -773,15 +786,19 @@ Cell Scheme::eval_string(SymenvPtr env, const String& code) {
     expr = eval(env, expr);
     return expr;
 }
+
 void Scheme::addenv(const Symbol& sym, const Cell& val) {
     get_current_module_env()->add(sym, val);
 }
+
 void Scheme::addenv(std::initializer_list<std::pair<Symbol, Cell>> args) {
     get_current_module_env()->add(args);
 }
+
 SymenvPtr Scheme::newenv(const SymenvPtr& env) {
     return Symenv::create(env ? env : get_current_module_env());
 }
+
 Cell Scheme::set_current_module(const Cell& module_name) {
     if (module_table.find(module_name) == module_table.end()) {
         throw module_error("No module:", module_name);
@@ -790,6 +807,7 @@ Cell Scheme::set_current_module(const Cell& module_name) {
     current_module = module_name;
     return ret;
 }
+
 Intern Scheme::_get_intern(const SymenvPtr& senv, const Cell& cell) {
     if (!is_symbol(cell) || !senv->defined_sym(get<Symbol>(cell))) {
         return Intern::_none_;
@@ -800,6 +818,7 @@ Intern Scheme::_get_intern(const SymenvPtr& senv, const Cell& cell) {
     }
     return get<Intern>(val);
 }
+
 Cell Scheme::partial_eval(const SymenvPtr& senv, const Cell& cell, int nesting) {
     auto ret = cell;
     auto it = ret;
@@ -854,6 +873,7 @@ Cell Scheme::callcc(const SymenvPtr& senv, const Cell& cell) {
     Cell expr = list(f, cont);
     return eval(senv, expr);
 }
+
 void Scheme::init_op_table() {
     m_op_table[Intern::_quasiquote] = [this](const SymenvPtr& senv, const Cell& cell) {
         return this->syntax_quasiquote(senv, car(cell));

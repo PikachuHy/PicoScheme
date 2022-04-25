@@ -1,4 +1,5 @@
-/********************************************************************************/ /**
+/********************************************************************************/
+/**
  * @file procedure.hpp
  *
  * @version   0.1
@@ -76,13 +77,12 @@ public:
 
     struct Closure;
 
-    struct hash : private std::hash<Closure*> {
+    struct hash : private std::hash<Closure *> {
         using argument_type = Procedure;
         using result_type = std::size_t;
 
-        result_type operator()(const Procedure& proc) const noexcept
-        {
-            return std::hash<Closure*>::operator()(proc.impl.get());
+        result_type operator()(const Procedure& proc) const noexcept {
+            return std::hash<Closure *>::operator()(proc.impl.get());
         }
     };
 
@@ -105,14 +105,15 @@ class Function : public std::function<Cell(Scheme&, const SymenvPtr&, const std:
 
 public:
     template <typename FunctionT>
-    static FunctionPtr create(const Symbol& sym, FunctionT&& fun)
-    {
+    static FunctionPtr create(const Symbol& sym, FunctionT&& fun) {
         return std::shared_ptr<Function>{
-            new Function{ sym, function_type{ std::forward<FunctionT>(fun) } }
+            new Function{sym, function_type{ std::forward<FunctionT>(fun) }}
         };
     }
 
-    const String& name() const { return sym.value(); };
+    const String& name() const {
+        return sym.value();
+    };
 
 protected:
     /**
@@ -122,8 +123,7 @@ protected:
      */
     Function(const Symbol& sym, function_type&& fun)
         : function_type{ std::move(fun) }
-        , sym{ sym }
-    {
+        , sym{ sym } {
     }
 
 private:

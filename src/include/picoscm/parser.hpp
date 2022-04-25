@@ -1,4 +1,5 @@
-/*********************************************************************************/ /**
+/*********************************************************************************/
+/**
  * @file stream.hpp
  *
  * @version   0.1
@@ -11,6 +12,7 @@
 
 #include <istream>
 #include <ostream>
+#include <utility>
 
 #include "scheme.hpp"
 
@@ -21,9 +23,9 @@ class Parser {
 
 public:
     Parser(Scheme& scm)
-        : scm(scm)
-    {
+        : scm(scm) {
     }
+
     //! Read the next scheme expression from the argument input stream.
     Cell read(istream_type& in);
 
@@ -34,8 +36,8 @@ public:
 private:
     enum class Token {
         None,
-        OBrace, // (
-        CBrace, // )
+        OBrace,  // (
+        CBrace,  // )
         Comment, // \;[^\n\r]*
 
         Dot,
@@ -87,12 +89,11 @@ private:
 };
 
 struct parse_error : public std::exception {
-    parse_error(const std::string& str)
-        : reason{ str }
-    {
+    explicit parse_error(std::string str)
+        : reason{ std::move(str) } {
     }
-    const char* what() const noexcept override
-    {
+
+    [[nodiscard]] const char *what() const noexcept override {
         return reason.c_str();
     }
 

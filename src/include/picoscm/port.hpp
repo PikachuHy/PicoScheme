@@ -1,4 +1,5 @@
-/*********************************************************************************/ /**
+/*********************************************************************************/
+/**
  * @file port.hpp
  *
  * Implementation of the three Scheme IO-ports. The standard, file and string
@@ -31,7 +32,7 @@ enum class Intern;
 
 //! Enable locale globally and set all standard io-ports accordingly.
 //! @param name Name of the locale.
-void enable_locale(const char* name = "en_US.UTF-8");
+void enable_locale(const char *name = "en_US.UTF-8");
 
 //! Stream manipulator type, to change the default stream output for
 //! value to a scheme (display <expr>) output.
@@ -41,7 +42,9 @@ struct DisplayManip {
 };
 
 template <typename T>
-DisplayManip<T> display(const T& val) { return { val }; }
+DisplayManip<T> display(const T& val) {
+    return { val };
+}
 
 //! Output stream operator for scheme (display <expr>) output.
 std::wostream& operator<<(std::wostream& os, DisplayManip<Cell> cell);
@@ -63,20 +66,43 @@ public:
     using stream_type = std::basic_iostream<Char, std::char_traits<Char>>;
     using openmode = std::ios_base::openmode;
 
-    virtual bool isStandardPort() const { return false; }
-    virtual bool isFilePort() const { return false; }
-    virtual bool isStringPort() const { return false; }
+    [[nodiscard]] virtual bool isStandardPort() const {
+        return false;
+    }
 
-    void clear() { return m_stream.clear(); }
-    void flush() { m_stream.flush(); }
+    [[nodiscard]] virtual bool isFilePort() const {
+        return false;
+    }
 
-    bool eof() const { return m_stream.eof(); }
-    bool fail() const { return m_stream.fail(); }
-    bool good() const { return m_stream.good(); }
-    bool bad() const { return m_stream.bad(); }
+    [[nodiscard]] virtual bool isStringPort() const {
+        return false;
+    }
 
-    virtual void close()
-    {
+    void clear() {
+        return m_stream.clear();
+    }
+
+    void flush() {
+        m_stream.flush();
+    }
+
+    [[nodiscard]] bool eof() const {
+        return m_stream.eof();
+    }
+
+    [[nodiscard]] bool fail() const {
+        return m_stream.fail();
+    }
+
+    [[nodiscard]] bool good() const {
+        return m_stream.good();
+    }
+
+    [[nodiscard]] bool bad() const {
+        return m_stream.bad();
+    }
+
+    virtual void close() {
         m_stream.flush().clear();
         m_stream.setstate(stream_type::eofbit);
     }
@@ -84,20 +110,26 @@ public:
     operator stream_type&() { return m_stream; }
     stream_type& stream() const { return m_stream; }
 
-    bool isInput() const { return mode & stream_type::in; }
-    bool isOutput() const { return mode & stream_type::out; }
-    bool isBinary() const { return mode & stream_type::binary; }
+    [[nodiscard]] bool isInput() const {
+        return mode & stream_type::in;
+    }
+
+    [[nodiscard]] bool isOutput() const {
+        return mode & stream_type::out;
+    }
+
+    [[nodiscard]] bool isBinary() const {
+        return mode & stream_type::binary;
+    }
 
 protected:
     Port(stream_type& stream, openmode mode)
         : m_stream{ stream }
-        , mode{ mode }
-    {
+        , mode{ mode } {
         stream.exceptions(stream_type::badbit);
     }
 
-    virtual ~Port()
-    {
+    virtual ~Port() {
         std::ios_base::sync_with_stdio(true);
     }
 
@@ -107,8 +139,9 @@ private:
 };
 
 template <typename Char>
-class StandardPort : virtual public std::basic_iostream<Char, std::char_traits<Char>>,
-                     virtual public Port<Char> {
+class StandardPort
+    : virtual public std::basic_iostream<Char, std::char_traits<Char>>
+    , virtual public Port<Char> {
 public:
     using stream_type = std::basic_iostream<Char, std::char_traits<Char>>;
     using openmode = typename Port<Char>::openmode;
@@ -116,8 +149,7 @@ public:
 
     explicit StandardPort(openmode mode = stream_type::out)
         : stream_type{ std::wcin.rdbuf() }
-        , Port<Char>{ *this, mode }
-    {
+        , Port<Char>{ *this, mode } {
         pscm::enable_locale();
 
         if (mode & stream_type::out) {
@@ -131,12 +163,16 @@ public:
             stream_type::clear(std::wcin.rdstate());
         }
     }
-    bool isStandardPort() const final { return true; }
+
+    [[nodiscard]] bool isStandardPort() const final {
+        return true;
+    }
 };
 
 template <typename Char>
-class StringPort : virtual public std::basic_stringstream<Char, std::char_traits<Char>>,
-                   virtual public Port<Char> {
+class StringPort
+    : virtual public std::basic_stringstream<Char, std::char_traits<Char>>
+    , virtual public Port<Char> {
 public:
     using stream_type = std::basic_stringstream<Char, std::char_traits<Char>>;
     using string_type = std::basic_string<Char, std::char_traits<Char>>;
@@ -145,20 +181,23 @@ public:
 
     explicit StringPort(openmode mode)
         : stream_type{ mode }
-        , Port<Char>{ *this, mode }
-    {
+        , Port<Char>{ *this, mode } {
     }
+
     explicit StringPort(const string_type& str, openmode mode)
         : stream_type{ str, mode }
-        , Port<Char>{ mode }
-    {
+        , Port<Char>{ mode } {
     }
-    bool isStringPort() const final { return true; }
+
+    [[nodiscard]] bool isStringPort() const final {
+        return true;
+    }
 };
 
 template <typename Char>
-class FilePort : virtual public std::basic_fstream<Char, std::char_traits<Char>>,
-                 virtual public Port<Char> {
+class FilePort
+    : virtual public std::basic_fstream<Char, std::char_traits<Char>>
+    , virtual public Port<Char> {
 public:
     using stream_type = std::basic_fstream<Char, std::char_traits<Char>>;
     using openmode = typename Port<Char>::openmode;
@@ -166,25 +205,26 @@ public:
 
     explicit FilePort(const std::basic_string<Char>& filename, openmode mode)
         : stream_type{ string_convert<char>(filename), mode }
-        , Port<Char>{ *this, mode }
-    {
+        , Port<Char>{ *this, mode } {
     }
-    void close() final
-    {
+
+    void close() final {
         if (stream_type::is_open()) {
             stream_type::flush().clear();
             stream_type::close();
         }
     }
-    bool isFilePort() const final { return true; }
+
+    [[nodiscard]] bool isFilePort() const final {
+        return true;
+    }
 };
 
 struct input_port_exception : public std::ios_base::failure {
 
     template <typename PORT>
     input_port_exception(PORT&& port)
-        : std::ios_base::failure{ "input port exception" }
-    {
+        : std::ios_base::failure{ "input port exception" } {
         if (!port.isInput())
             reason = "not an input port";
         else if (port.fail())
@@ -197,7 +237,10 @@ struct input_port_exception : public std::ios_base::failure {
             reason = "unknown input port error";
         port.clear();
     }
-    const char* what() const noexcept override { return reason.c_str(); }
+
+    [[nodiscard]] const char *what() const noexcept override {
+        return reason.c_str();
+    }
 
 private:
     std::string reason;
@@ -206,8 +249,7 @@ private:
 struct output_port_exception : public std::ios_base::failure {
     template <typename PORT>
     output_port_exception(PORT&& port)
-        : std::ios_base::failure{ "output port exception" }
-    {
+        : std::ios_base::failure{ "output port exception" } {
         if (!port.isOutput())
             reason = "not an output port";
         else if (port.fail())
@@ -220,15 +262,17 @@ struct output_port_exception : public std::ios_base::failure {
             reason = "unknown output port error";
         port.clear();
     }
-    const char* what() const noexcept override { return reason.c_str(); }
+
+    [[nodiscard]] const char *what() const noexcept override {
+        return reason.c_str();
+    }
 
 private:
     std::string reason;
 };
 
 template <typename CharT, typename Traits>
-std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const std::vector<Cell>& args)
-{
+std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const std::vector<Cell>& args) {
     if (args.empty()) {
         return os << "[]";
     }
@@ -241,20 +285,22 @@ std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>&
     return os;
 }
 
-template<typename T>
+template <typename T>
 void debug_output_helper(const T& t) {
     std::wcout << t << std::endl;
 }
-template<typename U, typename ...T>
+
+template <typename U, typename... T>
 void debug_output_helper(const U& u, const T&...t) {
     std::wcout << u << " ";
     debug_output_helper(t...);
 }
 
-#define DEBUG_OUTPUT(...) do { \
-std::wcout << std::endl << __FILE__ << ":" << __LINE__ << " [" << __func__ << "] "; \
-debug_output_helper(__VA_ARGS__);                                                   \
-} while (0)
+#define DEBUG_OUTPUT(...)                                                                                              \
+    do {                                                                                                               \
+        std::wcout << std::endl << __FILE__ << ":" << __LINE__ << " [" << __func__ << "] ";                            \
+        debug_output_helper(__VA_ARGS__);                                                                              \
+    } while (0)
 
 } // namespace pscm
 #endif // PORT_HPP

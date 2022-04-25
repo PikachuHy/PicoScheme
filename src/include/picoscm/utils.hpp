@@ -1,11 +1,11 @@
 /********************************************************************************/ /**
- * @file utils.hpp
- *
- * @version   0.1
- * @date      2018-
- * @author    Paul Pudewills
- * @copyright MIT License
- *************************************************************************************/
+                                                                                    * @file utils.hpp
+                                                                                    *
+                                                                                    * @version   0.1
+                                                                                    * @date      2018-
+                                                                                    * @author    Paul Pudewills
+                                                                                    * @copyright MIT License
+                                                                                    *************************************************************************************/
 #ifndef UTILS_HPP
 #define UTILS_HPP
 
@@ -26,17 +26,18 @@ template <typename... Ts>
 struct overloads : Ts... {
     using Ts::operator()...;
 };
-template <typename... Ts>
-overloads(Ts...)->overloads<Ts...>; //!< construct overloads type
 
+//!< construct overloads type
+template <typename... Ts>
+overloads(Ts...) -> overloads<Ts...>;
+
+//!< return false for every type
 template <class T>
-struct always_false : std::false_type {
-}; //!< return false for every type
+struct always_false : std::false_type {};
 
 //! Shortcut for std::holds_alternative
 template <typename T, typename Variant>
-constexpr bool is_type(Variant&& v)
-{
+constexpr bool is_type(Variant&& v) {
     return std::holds_alternative<T>(std::forward<Variant>(v));
 }
 
@@ -44,22 +45,22 @@ constexpr bool is_type(Variant&& v)
 template <typename T, bool is_class = std::is_class_v<T>>
 struct char_traits;
 
-template <typename T> //! partial specialisation for string like classes
+//! partial specialisation for string like classes
+template <typename T>
 struct char_traits<T, true> {
     using char_type = typename std::char_traits<std::remove_const_t<typename T::value_type>>::char_type;
 };
 
-template <typename T> //! partial specialisation for null-terminated char[] buffers
+//! partial specialisation for null-terminated char[] buffers
+template <typename T>
 struct char_traits<T, false> {
     using char_type = typename std::char_traits<std::remove_const_t<std::remove_pointer_t<std::decay_t<T>>>>::char_type;
 };
 
 //! Convert byte encoded utf-8 string of type StringT into a
 //! wide character std::basic_string<CharT>.
-template <typename CharT, typename StringT,
-    typename = std::enable_if_t<std::is_integral_v<CharT>>>
-std::basic_string<CharT> s2ws(const StringT& str)
-{
+template <typename CharT, typename StringT, typename = std::enable_if_t<std::is_integral_v<CharT>>>
+std::basic_string<CharT> s2ws(const StringT& str) {
     using value_type = typename char_traits<StringT>::char_type;
     static_assert(std::is_same_v<char, value_type>, "not a single byte character type");
 
@@ -71,8 +72,7 @@ std::basic_string<CharT> s2ws(const StringT& str)
 //! Convert a string of type StringT into a byte encoded
 //! utf-8 std::basic_string<char>.
 template <typename StringT>
-std::basic_string<char> ws2s(const StringT& str)
-{
+std::basic_string<char> ws2s(const StringT& str) {
     using CharT = typename char_traits<StringT>::char_type;
     using convert_type = std::codecvt_utf8<CharT>;
     static std::wstring_convert<convert_type, CharT> converter;
@@ -81,18 +81,20 @@ std::basic_string<char> ws2s(const StringT& str)
 
 //! Convert a string of type StringT into a std::basic_string<CharT>
 template <typename CharT, typename StringT, typename = std::enable_if_t<std::is_integral_v<CharT>>>
-std::basic_string<CharT> string_convert(const StringT& str)
-{
+std::basic_string<CharT> string_convert(const StringT& str) {
     using value_type = typename char_traits<StringT>::char_type;
 
-    if constexpr (std::is_same_v<CharT, value_type>)
+    if constexpr (std::is_same_v<CharT, value_type>) {
         return str;
+    }
 
-    else if constexpr (std::is_same_v<char, value_type>)
+    else if constexpr (std::is_same_v<char, value_type>) {
         return s2ws<CharT>(str);
+    }
 
-    else if constexpr (std::is_same_v<char, CharT>)
+    else if constexpr (std::is_same_v<char, CharT>) {
         return ws2s(str);
+    }
 }
 } // namespace pscm
 #endif // UTILS_HPP

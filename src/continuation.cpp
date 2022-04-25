@@ -9,5 +9,5 @@
  *************************************************************************************/
 #include "picoscm/continuation.h"
 #include "picoscm/frame.h"
-namespace pscm {
-} // namespace pscm
+
+namespace pscm {} // namespace pscm
