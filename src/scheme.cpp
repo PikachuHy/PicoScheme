@@ -619,7 +619,8 @@ Cell Scheme::eval(SymenvPtr env, Cell expr) {
     }
     else if (is_proc(op)) {
         if (is_macro(op)) {
-            auto expand_code = expand(op, expr);
+            auto f = get<Procedure>(op);
+            auto expand_code = f.expand_only(*this, expr);
             DEBUG("expand code:", expand_code);
             ret = eval(env, expand_code);
         }

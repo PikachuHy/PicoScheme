@@ -195,7 +195,7 @@ Cell Procedure::expand(Scheme& scm, Cell& expr) const {
     return args;
 }
 
-Cell Procedure::expand_syntax(Scheme& scm, Cell& expr) const {
+Cell Procedure::expand_syntax(Scheme& scm, const Cell& expr) const {
     is_macro() || (void(throw std::invalid_argument("expand - not a macro")), 0);
 
     Cell args = cdr(expr), iter = impl->args; // macro formal parameter symbol list
@@ -214,6 +214,27 @@ Cell Procedure::expand_syntax(Scheme& scm, Cell& expr) const {
     }
 
     return partial_replace(scm, newenv, impl->code);
+}
+
+Cell Procedure::expand_only(Scheme& scm, const Cell& expr) const {
+    is_macro() || (void(throw std::invalid_argument("expand - not a macro")), 0);
+
+    Cell args = cdr(expr), iter = impl->args; // macro formal parameter symbol list
+
+    // Create a new environment
+    // only contains args
+    SymenvPtr newenv = Symenv::create(impl->senv);
+
+    // Add unevaluated macro parameters to new environment:
+    for (/* */; is_pair(iter) && is_pair(args); iter = cdr(iter), args = cdr(args)) {
+        newenv->add(get<Symbol>(car(iter)), car(args));
+    }
+
+    if (iter != args) {
+        newenv->add(get<Symbol>(iter), args);
+    }
+    args = scm.syntax_begin(newenv, impl->code);
+    return scm.list(Intern::_begin, args);
 }
 
 Cell Procedure::partial_replace(Scheme& scm, const SymenvPtr& senv, const Cell& cell) const {

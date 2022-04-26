@@ -118,6 +118,7 @@ enum class Intern {
     _dynamic_wind,
     _delay,
     op_force,
+    _expand,
 
     /* Section 6.1: Equivalence predicates */
     op_eq,

@@ -73,7 +73,9 @@ public:
      */
     Cell expand(Scheme& scm, Cell& expr) const;
 
-    Cell expand_syntax(Scheme& scm, Cell& expr) const;
+    Cell expand_syntax(Scheme& scm, const Cell& expr) const;
+
+    Cell expand_only(Scheme& scm, const Cell& expr) const;
 
     struct Closure;
 

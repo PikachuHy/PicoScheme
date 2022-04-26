@@ -2991,6 +2991,7 @@ SymenvPtr add_environment_defaults(Scheme& scm) {
           { scm.symbol("dynamic-wind"),     Intern::_dynamic_wind },
           { scm.symbol("delay"),            Intern::_delay },
           { scm.symbol("force"),            Intern::op_force },
+          { scm.symbol("expand"),           Intern::_expand },
 
           /* Section 6.1: Equivalence predicates */
           { scm.symbol("eq?"),              Intern::op_eq },
