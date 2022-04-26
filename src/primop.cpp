@@ -2932,6 +2932,8 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args) {
     case Intern::op_disable_debug:
         scm.disable_debug();
         return none;
+    case Intern::op_dynamic_wind:
+        return scm.apply(senv, args[1], nil);
     default:
         DEBUG_OUTPUT("opcode:", primop);
         throw std::invalid_argument("invalid primary opcode");
@@ -2988,7 +2990,7 @@ SymenvPtr add_environment_defaults(Scheme& scm) {
           { scm.symbol("unquote"),          Intern::_unquote },
           { scm.symbol("unquote-splicing"), Intern::_unquotesplice },
           { scm.symbol("apply"),            Intern::_apply },
-          { scm.symbol("dynamic-wind"),     Intern::_dynamic_wind },
+          { scm.symbol("dynamic-wind"),     Intern::op_dynamic_wind },
           { scm.symbol("delay"),            Intern::_delay },
           { scm.symbol("force"),            Intern::op_force },
           { scm.symbol("expand"),           Intern::_expand },

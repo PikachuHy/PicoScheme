@@ -79,7 +79,8 @@ SymenvPtr Scheme::load_module(const Cell& module_name, const SymenvPtr& env) {
 void Scheme::push_frame(SymenvPtr& env, const Cell& expr) {
     m_frames.emplace_back(env, expr);
     auto op = _get_intern(env, m_frames.back().op());
-    if (op == Intern::_dynamic_wind) {
+    if (op == Intern::op_dynamic_wind) {
+        DEBUG("before", cadr(expr));
         auto f = eval(env, cadr(expr));
         apply(env, f, nil);
     }
@@ -93,7 +94,8 @@ void Scheme::pop_frame() {
         auto env = m_frames.back().env();
         auto expr = m_frames.back().args();
         auto op = _get_intern(env, m_frames.back().op());
-        if (op == Intern::_dynamic_wind) {
+        if (op == Intern::op_dynamic_wind) {
+            DEBUG("after", caddr(expr));
             auto f = eval(env, caddr(expr));
             apply(env, f, nil);
         }
@@ -933,10 +935,6 @@ void Scheme::init_op_table() {
         return this->syntax_quasiquote(senv, car(cell));
     };
 
-    m_op_table[Intern::_dynamic_wind] = [this](const SymenvPtr& senv, const Cell& cell) {
-        auto f = this->eval(senv, cadr(cell));
-        return apply(senv, f, nil);
-    };
 
     m_op_table[Intern::_quote] = [this](const SymenvPtr& senv, const Cell& cell) {
         return car(cell);
