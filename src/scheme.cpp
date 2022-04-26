@@ -782,12 +782,8 @@ Cell Scheme::syntax_syntax_rules(const SymenvPtr& senv, Cell args) {
     while (!is_nil(rules)) {
         auto rule = car(rules);
         auto head = cdar(rule);
-        auto body = cdr(rule);
-        if (is_pair(body)) {
-            if (_get_intern(senv, car(body)) == Intern::_begin) {
-                body = cdr(body);
-            }
-        }
+        auto body = cadr(rule);
+        DEBUG("body:", body);
         syntaxPtr->add(head, Procedure{ senv, head, body, true });
         rules = cdr(rules);
     }
