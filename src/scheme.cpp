@@ -143,7 +143,7 @@ Cell Scheme::eval_frame_based_on_stack() {
         args = cdr(args);
     }
     op = eval(env, op);
-    if (_get_intern(env, op) == Intern::_begin) {
+    if (is_intern(op) && get<Intern>(op) == Intern::_begin) {
         return m_frames.back().varg().back();
     }
     auto ret = apply(env, op, m_frames.back().varg());
@@ -288,6 +288,7 @@ Cell Scheme::syntax_begin(const SymenvPtr& env, Cell args) {
     while (is_pair(args)) {
         DEBUG("eval", car(args));
         ret = eval(env, car(args));
+        m_frames.back().push_arg(ret);
         args = cdr(args);
     }
     return ret;
