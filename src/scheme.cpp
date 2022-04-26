@@ -830,53 +830,94 @@ Intern Scheme::_get_intern(const SymenvPtr& senv, const Cell& cell) {
     }
     return get<Intern>(val);
 }
-
+void Scheme::concat_list(Cell &cell, Cell l) {
+    Cell ret = cell;
+    if (is_nil(l)) {
+        return;
+    }
+    while (is_pair(l)) {
+        DEBUG("l:", l);
+        set_cdr(cell, cons(car(l), nil));
+        l = cdr(l);
+        cell = cdr(cell);
+    }
+    DEBUG("after concat:", ret);
+}
+void Scheme::partial_eval_sub(const SymenvPtr& senv,
+                              Intern opcode,
+                              const Cell& item,
+                              Cell& tail,
+                              int nesting) {
+    DEBUG("opcode:", opcode, item);
+    if (opcode == Intern::_unquote) {
+        Cell new_val;
+        if (nesting == 0) {
+            new_val = eval(senv, cadr(item));
+        }
+        else {
+            new_val = partial_eval(senv, cdr(item), nesting - 1);
+        }
+        set_cdr(tail, cons(new_val, nil));
+        tail = cdr(tail);
+    }
+    else if (opcode == Intern::_unquotesplice) {
+        if (nesting == 0) {
+            auto l = eval(senv, cadr(item));
+            concat_list(tail, l);
+        }
+        else {
+            auto tmp = partial_eval(senv, cadr(item), nesting - 1);
+            set_cdr(tail, cons(tmp, nil));
+        tail = cdr(tail);
+        }
+    }
+    else if (opcode == Intern::_quasiquote) {
+        auto tmp = partial_eval(senv, cadr(item), nesting + 1);
+        set_cdr(tail, cons(tmp, nil));
+        tail = cdr(tail);
+    }
+    else {
+        auto new_val = partial_eval(senv, item);
+        set_cdr(tail, cons(new_val, nil));
+        tail = cdr(tail);
+    }
+}
 Cell Scheme::partial_eval(const SymenvPtr& senv, const Cell& cell, int nesting) {
-    auto ret = cell;
-    auto it = ret;
+    DEBUG("cell:", cell, "nesting:", nesting);
+    if (!is_pair(cell)) {
+        return cell;
+    }
+    Cell ret = cons(none, nil);
+    auto tail = ret;
+    auto it = cell;
     while (is_pair(it)) {
         auto item = car(it);
         if (is_pair(item)) {
             auto opcode = _get_intern(senv, car(item));
-            if (opcode == Intern::_unquote) {
-                if (nesting == 0) {
-                    set_car(it, eval(senv, cadr(item)));
-                }
-                else {
-                    auto tmp = partial_eval(senv, cdr(item), nesting - 1);
-                    set_cdr(item, tmp);
-                }
-            }
-            else if (opcode == Intern::_unquotesplice) {
-                auto next_it = cdr(it);
-                if (nesting == 0) {
-                    auto val = eval(senv, cadr(item));
-                    set_car(it, car(val));
-                    while (is_pair(cdr(val))) {
-                        set_cdr(it, cons(cadr(val), nil));
-                        it = cdr(it);
-                        val = cdr(val);
-                    }
-                    set_cdr(it, next_it);
-                }
-                else {
-                    auto tmp = partial_eval(senv, cadr(item), nesting - 1);
-                    set_cdr(item, cons(tmp, nil));
-                }
-            }
-            else if (opcode == Intern::_quasiquote) {
-                auto tmp = partial_eval(senv, cadr(item), nesting + 1);
-                set_cdr(item, cons(tmp, nil));
-            }
-            else {
-                set_car(it, partial_eval(senv, item));
-            }
+            partial_eval_sub(senv, opcode, item, tail, nesting);
         }
         else {
+            // handle (... ,body) (... ,@(...))
+            auto opcode = _get_intern(senv, item);
+            if (opcode == Intern::_unquote) {
+                auto new_val = eval(senv, cdr(it));
+                set_cdr(tail, new_val);
+                it = cdr(it);
+            }
+            else if (opcode == Intern::_unquotesplice) {
+                auto l = eval(senv, cdr(it));
+                concat_list(tail, l);
+                it = cdr(it);
+            }
+            else {
+                set_cdr(tail, cons(item, nil));
+            }
+            tail = cdr(tail);
         }
         it = cdr(it);
+        DEBUG("-->:", cdr(ret));
     }
-    return ret;
+    return cdr(ret);
 }
 
 Cell Scheme::callcc(const SymenvPtr& senv, const Cell& cell) {
