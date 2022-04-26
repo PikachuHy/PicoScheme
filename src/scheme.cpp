@@ -85,6 +85,10 @@ void Scheme::push_frame(SymenvPtr& env, const Cell& expr) {
         apply(env, f, nil);
     }
 }
+void Scheme::replace_frame(SymenvPtr& env, const Cell& expr) {
+    pop_frame();
+    push_frame(env, expr);
+}
 
 void Scheme::pop_frame() {
     if (m_frames.empty()) {
@@ -105,12 +109,14 @@ void Scheme::pop_frame() {
 
 Cell Scheme::restore_from_continuation(ContPtr& cont, const Cell& args) {
     DEBUG("old frames");
-    DEBUG("frame size:", m_frames.size());
+    print_frames();
     m_frames = cont->frames();
+    DEBUG("new frames");
+    print_frames();
     auto env = m_frames.back().env();
-    m_frames.back().push_arg(eval(env, args));
-    Cell return_arg = none;
+    Cell return_arg = eval(env, args);
     while (!m_frames.empty()) {
+        m_frames.back().push_arg(return_arg);
         return_arg = eval_frame_based_on_stack();
         pop_frame();
     }
@@ -121,7 +127,9 @@ Cell Scheme::eval_frame_based_on_stack() {
     auto& frame = m_frames.back();
     auto pc = frame.arg_count();
     auto op = frame.op();
+    DEBUG("op:", op);
     auto args = frame.args();
+    DEBUG("arg:", args);
     auto env = frame.env();
     for (int i = 0; i < pc; ++i) {
         if (is_pair(args)) {
@@ -135,6 +143,9 @@ Cell Scheme::eval_frame_based_on_stack() {
         args = cdr(args);
     }
     op = eval(env, op);
+    if (_get_intern(env, op) == Intern::_begin) {
+        return m_frames.back().varg().back();
+    }
     auto ret = apply(env, op, m_frames.back().varg());
     return ret;
 }
@@ -609,6 +620,7 @@ Cell Scheme::eval_with_continuation(SymenvPtr env, Cell expr) {
 }
 
 Cell Scheme::eval(SymenvPtr env, Cell expr) {
+    bool need_pop_frame = true;
     DEBUG("eval:", expr);
     if (is_nil(expr)) {
         return nil;
@@ -638,6 +650,8 @@ Cell Scheme::eval(SymenvPtr env, Cell expr) {
             auto f = get<Procedure>(op);
             auto expand_code = f.expand_only(*this, expr);
             DEBUG("expand code:", expand_code);
+            pop_frame();
+            need_pop_frame = false;
             ret = eval(env, expand_code);
         }
         else {
@@ -648,6 +662,8 @@ Cell Scheme::eval(SymenvPtr env, Cell expr) {
         const auto& matched = get<SyntaxPtr>(op)->match(cdr(expr));
         auto expand_code = matched.expand_syntax(*this, expr);
         DEBUG("expand code:", expand_code);
+        pop_frame();
+        need_pop_frame = false;
         ret = eval(env, expand_code);
     }
     else if (is_intern(op)) {
@@ -687,7 +703,10 @@ Cell Scheme::eval(SymenvPtr env, Cell expr) {
     else {
         ret = op;
     }
-    pop_frame();
+    if (need_pop_frame) {
+        pop_frame();
+    }
+    
     DEBUG("eval:", expr);
     DEBUG(" --> ", ret);
     return ret;
@@ -1054,5 +1073,12 @@ void Scheme::init_op_table() {
     m_op_table[Intern::_use_module] = [this](const SymenvPtr& senv, const Cell& cell) {
         return this->syntax_use_module(senv, cell);
     };
+}
+void Scheme::print_frames() {
+    for (size_t i = 0; i < m_frames.size(); i++)
+    {
+        DEBUG(i, m_frames[i].expr());
+    }
+    
 }
 } // namespace pscm

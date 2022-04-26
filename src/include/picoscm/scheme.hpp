@@ -64,6 +64,7 @@ public:
     Cell append_module_path(const std::vector<Cell>& vargs);
 
     void push_frame(SymenvPtr& env, const Cell& expr);
+    void replace_frame(SymenvPtr& env, const Cell& expr);
     void pop_frame();
 
     Cell restore_from_continuation(ContPtr& cont, const Cell& args);
@@ -377,6 +378,7 @@ protected:
 
     void init_op_table();
 
+    void print_frames();
 private:
     friend class GCollector;
     //<! Initial default hash table bucket count.
