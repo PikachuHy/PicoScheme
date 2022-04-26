@@ -20,7 +20,9 @@ target_sources(pscm PUBLIC
         src/continuation.cpp
         )
 target_include_directories(pscm PUBLIC src/include)
-
+if (__vscode__)
+    target_compile_definitions(pscm PUBLIC __vscode__)
+endif (__vscode__)
 add_executable(pscm_test test/picoscm.cpp)
 target_link_libraries(pscm_test PRIVATE pscm)
 

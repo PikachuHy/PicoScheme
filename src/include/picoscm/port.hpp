@@ -295,10 +295,14 @@ void debug_output_helper(const U& u, const T&...t) {
     std::wcout << u << " ";
     debug_output_helper(t...);
 }
-
+#ifdef __vscode__
+#define __PRINT_FILE__ __FILE__
+#else
+#define __PRINT_FILE__ __FILE_NAME__
+#endif
 #define DEBUG_OUTPUT(...)                                                                                              \
     do {                                                                                                               \
-        std::wcout << std::endl << __FILE__ << ":" << __LINE__ << " [" << __func__ << "] ";                            \
+        std::wcout << std::endl << __PRINT_FILE__ << ":" << __LINE__ << " [" << __func__ << "] ";                      \
         debug_output_helper(__VA_ARGS__);                                                                              \
     } while (0)
 
