@@ -272,6 +272,8 @@ void Scheme::load(const String& filename, const SymenvPtr& env) {
             out << e.what() << '\n';
         else
             out << e.what() << ": " << expr << '\n';
+        out << "trace" << std::endl;
+        print_frames(true);
     }
     module_stack.pop();
 }
@@ -1076,9 +1078,11 @@ void Scheme::init_op_table() {
     };
 }
 
-void Scheme::print_frames() {
-    for (size_t i = 0; i < m_frames.size(); i++) {
-        DEBUG(i, m_frames[i].expr());
+void Scheme::print_frames(bool flag) {
+    if (debugging() || flag) {
+        for (size_t i = 0; i < m_frames.size(); i++) {
+            DEBUG_OUTPUT(i, m_frames[i].expr());
+        }
     }
 }
 } // namespace pscm

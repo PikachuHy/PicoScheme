@@ -374,7 +374,7 @@ protected:
 
     void init_op_table();
 
-    void print_frames();
+    void print_frames(bool flag = false);
 
 private:
     friend class GCollector;
