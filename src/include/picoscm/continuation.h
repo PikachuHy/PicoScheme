@@ -18,7 +18,9 @@ namespace pscm {
 class Continuation {
 public:
     explicit Continuation(FrameStack frames)
-        : m_frames(std::move(frames)){};
+        : m_frames(std::move(frames)) {
+        m_frames.pop_back();
+    };
 
     [[nodiscard]] const FrameStack& frames() const {
         return m_frames;
