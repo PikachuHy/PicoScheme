@@ -85,6 +85,7 @@ void Scheme::push_frame(SymenvPtr& env, const Cell& expr) {
         apply(env, f, nil);
     }
 }
+
 void Scheme::replace_frame(SymenvPtr& env, const Cell& expr) {
     pop_frame();
     push_frame(env, expr);
@@ -135,7 +136,6 @@ Cell Scheme::eval_frame_based_on_stack() {
         if (is_pair(args)) {
             args = cdr(args);
         }
-        
     }
     while (!is_nil(args)) {
         auto val = eval(env, car(args));
@@ -155,12 +155,13 @@ Cell Scheme::apply(const SymenvPtr& env, Intern opcode, const std::vector<Cell>&
     if (it != m_op_table.end()) {
         Cell head = cons(none, nil);
         Cell tail = head;
-        for(const auto& arg: args) {
+        for (const auto& arg : args) {
             set_cdr(tail, cons(arg, nil));
             tail = cdr(tail);
         }
         return it->second(env, cdr(head));
-    } else {
+    }
+    else {
         return pscm::call(*this, env, opcode, args);
     }
 }
@@ -706,7 +707,7 @@ Cell Scheme::eval(SymenvPtr env, Cell expr) {
     if (need_pop_frame) {
         pop_frame();
     }
-    
+
     DEBUG("eval:", expr);
     DEBUG(" --> ", ret);
     return ret;
@@ -862,7 +863,8 @@ Intern Scheme::_get_intern(const SymenvPtr& senv, const Cell& cell) {
     }
     return get<Intern>(val);
 }
-void Scheme::concat_list(Cell &cell, Cell l) {
+
+void Scheme::concat_list(Cell& cell, Cell l) {
     Cell ret = cell;
     if (is_nil(l)) {
         return;
@@ -875,11 +877,9 @@ void Scheme::concat_list(Cell &cell, Cell l) {
     }
     DEBUG("after concat:", ret);
 }
-void Scheme::partial_eval_sub(const SymenvPtr& senv,
-                              Intern opcode,
-                              const Cell& item,
-                              Cell& tail,
-                              int nesting) {
+
+void Scheme::partial_eval_sub(const SymenvPtr& senv, const Cell& item, Cell& tail, int nesting) {
+    auto opcode = _get_intern(senv, car(item));
     DEBUG("opcode:", opcode, item);
     if (opcode == Intern::_unquote) {
         Cell new_val;
@@ -888,6 +888,7 @@ void Scheme::partial_eval_sub(const SymenvPtr& senv,
         }
         else {
             new_val = partial_eval(senv, cdr(item), nesting - 1);
+            new_val = cons(car(item), new_val);
         }
         set_cdr(tail, cons(new_val, nil));
         tail = cdr(tail);
@@ -900,12 +901,12 @@ void Scheme::partial_eval_sub(const SymenvPtr& senv,
         else {
             auto tmp = partial_eval(senv, cadr(item), nesting - 1);
             set_cdr(tail, cons(tmp, nil));
-        tail = cdr(tail);
+            tail = cdr(tail);
         }
     }
     else if (opcode == Intern::_quasiquote) {
         auto tmp = partial_eval(senv, cadr(item), nesting + 1);
-        set_cdr(tail, cons(tmp, nil));
+        set_cdr(tail, cons(list(car(item), tmp), nil));
         tail = cdr(tail);
     }
     else {
@@ -914,6 +915,7 @@ void Scheme::partial_eval_sub(const SymenvPtr& senv,
         tail = cdr(tail);
     }
 }
+
 Cell Scheme::partial_eval(const SymenvPtr& senv, const Cell& cell, int nesting) {
     DEBUG("cell:", cell, "nesting:", nesting);
     if (!is_pair(cell)) {
@@ -925,8 +927,7 @@ Cell Scheme::partial_eval(const SymenvPtr& senv, const Cell& cell, int nesting) 
     while (is_pair(it)) {
         auto item = car(it);
         if (is_pair(item)) {
-            auto opcode = _get_intern(senv, car(item));
-            partial_eval_sub(senv, opcode, item, tail, nesting);
+            partial_eval_sub(senv, item, tail, nesting);
         }
         else {
             // handle (... ,body) (... ,@(...))
@@ -963,7 +964,6 @@ void Scheme::init_op_table() {
     m_op_table[Intern::_quasiquote] = [this](const SymenvPtr& senv, const Cell& cell) {
         return this->syntax_quasiquote(senv, car(cell));
     };
-
 
     m_op_table[Intern::_quote] = [this](const SymenvPtr& senv, const Cell& cell) {
         return car(cell);
@@ -1074,11 +1074,10 @@ void Scheme::init_op_table() {
         return this->syntax_use_module(senv, cell);
     };
 }
+
 void Scheme::print_frames() {
-    for (size_t i = 0; i < m_frames.size(); i++)
-    {
+    for (size_t i = 0; i < m_frames.size(); i++) {
         DEBUG(i, m_frames[i].expr());
     }
-    
 }
 } // namespace pscm

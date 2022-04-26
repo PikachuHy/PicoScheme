@@ -367,18 +367,15 @@ protected:
     Intern _get_intern(const SymenvPtr& senv, const Cell& cell);
 
     Cell partial_eval(const SymenvPtr& senv, const Cell& cell, int nesting = 0);
-    void partial_eval_sub(const SymenvPtr& senv,
-                          Intern opcode,
-                          const Cell& item,
-                          Cell& tail,
-                          int nesting);
-    void concat_list(Cell &cell, Cell l);
+    void partial_eval_sub(const SymenvPtr& senv, const Cell& item, Cell& tail, int nesting);
+    void concat_list(Cell& cell, Cell l);
 
     Cell callcc(const SymenvPtr& senv, const Cell& cell);
 
     void init_op_table();
 
     void print_frames();
+
 private:
     friend class GCollector;
     //<! Initial default hash table bucket count.
