@@ -140,7 +140,18 @@ Cell Scheme::eval_frame_based_on_stack() {
 }
 
 Cell Scheme::apply(const SymenvPtr& env, Intern opcode, const std::vector<Cell>& args) {
-    return pscm::call(*this, env, opcode, args);
+    auto it = m_op_table.find(opcode);
+    if (it != m_op_table.end()) {
+        Cell head = cons(none, nil);
+        Cell tail = head;
+        for(const auto& arg: args) {
+            set_cdr(tail, cons(arg, nil));
+            tail = cdr(tail);
+        }
+        return it->second(env, cdr(head));
+    } else {
+        return pscm::call(*this, env, opcode, args);
+    }
 }
 
 Cell Scheme::apply(const SymenvPtr& env, const FunctionPtr& proc, const std::vector<Cell>& args) {
