@@ -157,10 +157,24 @@ std::wostream& operator<<(std::wostream& os, Intern opcode) {
         return os << "unquote";
     case Intern::_unquotesplice:
         return os << "unquote-splicing";
-    default:
-        os << "#<primop>: ";
-        os << string_convert<Char>(std::string(magic_enum::enum_name(opcode)));
+    case Intern::op_map:
+        return os << "#<primop map>";
+    default: {
+        auto s = string_convert<Char>(std::string(magic_enum::enum_name(opcode)));
+        os << "#<primop ";
+        int start_index = 0;
+        if (s.size() > 3 && s[0] == 'o' && s[1] == 'p' && s[2] == '_') {
+            start_index = 3;
+        }
+        for (size_t i = start_index; i < s.size(); i++) {
+            os << s[i];
+        }
+        if (s.empty()) {
+            os << "???";
+        }
+        os << ">";
         return os;
+    }
     }
 }
 
