@@ -124,7 +124,10 @@ Cell Scheme::eval_frame_based_on_stack() {
     auto args = frame.args();
     auto env = frame.env();
     for (int i = 0; i < pc; ++i) {
-        args = cdr(args);
+        if (is_pair(args)) {
+            args = cdr(args);
+        }
+        
     }
     while (!is_nil(args)) {
         auto val = eval(env, car(args));
