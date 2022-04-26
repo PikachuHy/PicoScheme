@@ -107,8 +107,13 @@ public:
         m_stream.setstate(stream_type::eofbit);
     }
 
-    operator stream_type&() { return m_stream; }
-    stream_type& stream() const { return m_stream; }
+    operator stream_type &() {
+        return m_stream;
+    }
+
+    stream_type& stream() const {
+        return m_stream;
+    }
 
     [[nodiscard]] bool isInput() const {
         return mode & stream_type::in;
