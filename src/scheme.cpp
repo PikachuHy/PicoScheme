@@ -41,6 +41,16 @@ Scheme::Scheme(const SymenvPtr& env) {
     current_module = list(symbol("root"));
     module_table[current_module] = Symenv::create(std_env);
     module_stack.push(current_module);
+    const char *val = getenv("PSCM_PATH");
+    if (val) {
+        auto pscm_path = string_convert<Char>(std::string(val));
+        if (!pscm_path.empty()) {
+            module_paths.push_back(pscm_path);
+        }
+    }
+    else {
+        DEBUG_OUTPUT("PSCM_PATH is empty");
+    }
     init_op_table();
 }
 
@@ -883,7 +893,7 @@ void Scheme::concat_list(Cell& cell, Cell l) {
 
 void Scheme::partial_eval_sub(const SymenvPtr& senv, const Cell& item, Cell& tail, int nesting) {
     auto opcode = _get_intern(senv, car(item));
-    DEBUG("opcode:", opcode, item);
+    DEBUG_OUTPUT("opcode:", opcode, item);
     if (opcode == Intern::_unquote) {
         Cell new_val;
         if (nesting == 0) {
@@ -920,7 +930,7 @@ void Scheme::partial_eval_sub(const SymenvPtr& senv, const Cell& item, Cell& tai
 }
 
 Cell Scheme::partial_eval(const SymenvPtr& senv, const Cell& cell, int nesting) {
-    DEBUG("cell:", cell, "nesting:", nesting);
+    DEBUG_OUTPUT("cell:", cell, "nesting:", nesting);
     if (!is_pair(cell)) {
         return cell;
     }
@@ -929,6 +939,7 @@ Cell Scheme::partial_eval(const SymenvPtr& senv, const Cell& cell, int nesting) 
     auto it = cell;
     while (is_pair(it)) {
         auto item = car(it);
+        DEBUG_OUTPUT("item:", item);
         if (is_pair(item)) {
             partial_eval_sub(senv, item, tail, nesting);
         }
