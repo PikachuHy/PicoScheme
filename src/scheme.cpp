@@ -146,6 +146,9 @@ Cell Scheme::eval_frame_based_on_stack() {
         if (is_pair(args)) {
             args = cdr(args);
         }
+        else {
+            return frame.varg().back();
+        }
     }
     while (!is_nil(args)) {
         auto val = eval(env, car(args));
