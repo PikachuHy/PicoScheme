@@ -792,17 +792,18 @@ std::optional<Number> NumberParser::parse_num(bool optional)
 std::optional<Number> NumberParser::parse_complex()
 {
     Number ret;
-    auto sign1 = parse_sign(true).value_or(false);
+    auto sign1_opt = parse_sign(true);
     if (has_sign_after(index)) {
         auto num1_opt = parse_num();
         if (parse_fail()) {
             return std::nullopt;
         }
-        auto sign2_opt = parse_sign();
+        auto sign2_opt = parse_sign(false);
         if (parse_fail()) {
             return std::nullopt;
         }
         auto num1 = num1_opt.value();
+        auto sign1 = sign1_opt.value_or(false);
         if (sign1) {
             num1 = -num1;
         }
@@ -813,11 +814,16 @@ std::optional<Number> NumberParser::parse_complex()
         }
         ret = Number(num1, num2);
     } else {
+        if (!sign1_opt.has_value()) {
+            mark_parse_fail();
+            return std::nullopt;
+        }
         auto num_opt = parse_num(true);
         if (parse_fail()) {
             return std::nullopt;
         }
         auto num = num_opt.value_or(1);
+        auto sign1 = sign1_opt.value();
         if (sign1) {
             num = -num;
         }
