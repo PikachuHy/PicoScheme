@@ -893,7 +893,7 @@ void Scheme::concat_list(Cell& cell, Cell l) {
 
 void Scheme::partial_eval_sub(const SymenvPtr& senv, const Cell& item, Cell& tail, int nesting) {
     auto opcode = _get_intern(senv, car(item));
-    DEBUG_OUTPUT("opcode:", opcode, item);
+    DEBUG("opcode:", opcode, item);
     if (opcode == Intern::_unquote) {
         Cell new_val;
         if (nesting == 0) {
@@ -930,7 +930,29 @@ void Scheme::partial_eval_sub(const SymenvPtr& senv, const Cell& item, Cell& tai
 }
 
 Cell Scheme::partial_eval(const SymenvPtr& senv, const Cell& cell, int nesting) {
-    DEBUG_OUTPUT("cell:", cell, "nesting:", nesting);
+    DEBUG("cell:", cell, "nesting:", nesting);
+    if (is_vector(cell)) {
+        auto v = get<VectorPtr>(cell);
+        VectorPtr ret = std::make_shared<VectorPtr::element_type>();
+        ret->reserve(v->size());
+        for (size_t i = 0; i < v->size(); i++) {
+            auto item = v->at(i);
+            if (is_pair(item) && nesting == 0) {
+                auto opcode = _get_intern(senv, car(item));
+                if (opcode == Intern::_unquotesplice) {
+                    auto l = eval(senv, cadr(item));
+                    while (!is_nil(l)) {
+                        ret->push_back(car(l));
+                        l = cdr(l);
+                    }
+                    continue;
+                }
+            }
+            auto new_val = partial_eval(senv, item, nesting);
+            ret->push_back(new_val);
+        }
+        return ret;
+    }
     if (!is_pair(cell)) {
         return cell;
     }
@@ -939,7 +961,7 @@ Cell Scheme::partial_eval(const SymenvPtr& senv, const Cell& cell, int nesting) 
     auto it = cell;
     while (is_pair(it)) {
         auto item = car(it);
-        DEBUG_OUTPUT("item:", item);
+        DEBUG("item:", item);
         if (is_pair(item)) {
             partial_eval_sub(senv, item, tail, nesting);
         }
