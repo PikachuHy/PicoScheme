@@ -355,7 +355,7 @@ Cell Scheme::syntax_cond(const SymenvPtr& env, Cell args) {
                 eval(env, apply_expr);
             }
             // Return last expression to evaluated at the call site to maintain unbound tail-recursion:
-            return list(Intern::_apply, car(expr), list(Intern::_quote, test), nil);
+            return eval(env, list(Intern::_apply, car(expr), list(Intern::_quote, test), nil));
         }
         else
             return syntax_begin(env, expr);
