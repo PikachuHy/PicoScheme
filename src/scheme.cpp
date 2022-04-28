@@ -779,7 +779,9 @@ Cell Scheme::syntax_define(const SymenvPtr& senv, Cell args, bool is_public) {
     if (is_pair(car(args))) {
         auto name = caar(args);
         if (is_pair(name)) {
-            auto f2 = Procedure{ senv, cdar(args), cdr(args) };
+            Cell f2 = list(Intern::_lambda, cdar(args));
+            Cell it = cdr(f2);
+            concat_list(it, cdr(args));
             auto f1 = Procedure{ senv, cdr(name), cons(f2, nil) };
             senv->add(get<Symbol>(car(name)), f1, is_public);
         }

@@ -168,6 +168,10 @@ inline const Cell& car(const Cell& cons) {
     return get<0>(*get<Cons *>(cons));
 }
 
+inline Cell& cdr(Cell& cons) {
+    return get<1>(*get<Cons *>(cons));
+}
+
 inline const Cell& cdr(const Cell& cons) {
     return get<1>(*get<Cons *>(cons));
 }
