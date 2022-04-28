@@ -179,7 +179,14 @@ std::wostream& operator<<(std::wostream& os, Intern opcode) {
 }
 
 static std::wostream& operator<<(std::wostream& os, const Procedure& proc) {
-    return proc.is_macro() ? os << "#<macro>" : os << "#<clojure>";
+    if (proc.is_macro()) {
+        os << "#<macro ";
+    }
+    else {
+        os << "#<clojure ";
+    }
+    os << proc.args() << ">";
+    return os;
 }
 
 static std::wostream& print_char(std::wostream& os, const Char& ch) {
