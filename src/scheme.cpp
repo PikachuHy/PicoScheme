@@ -164,6 +164,7 @@ Cell Scheme::eval_frame_based_on_stack() {
 }
 
 Cell Scheme::apply(const SymenvPtr& env, Intern opcode, const std::vector<Cell>& args) {
+    DEBUG("opcode:", opcode);
     auto it = m_op_table.find(opcode);
     if (it != m_op_table.end()) {
         Cell head = cons(none, nil);
@@ -1025,6 +1026,37 @@ void Scheme::init_op_table() {
 
     m_op_table[Intern::_lambda] = [this](const SymenvPtr& senv, const Cell& cell) {
         return Procedure{ senv, car(cell), cdr(cell) };
+    };
+
+    m_op_table[Intern::_expand] = [this](const SymenvPtr& senv, const Cell& cell) {
+        DEBUG("cell:", cell);
+        auto expr = cell;
+        while (true) {
+            if (!is_pair(expr)) {
+                return expr;
+            }
+            if (!is_pair(car(expr))) {
+                return expr;
+            }
+            expr = car(expr);
+            auto op = eval(senv, car(expr));
+            if (is_proc(op)) {
+                auto proc = get<Procedure>(op);
+                if (!proc.is_macro()) {
+                    return expr;
+                }
+                auto expand_code = proc.expand_only(*this, expr);
+                DEBUG("expand code:", expand_code);
+                return expand_code;
+            }
+            if (is_syntax(op)) {
+                const auto& matched = get<SyntaxPtr>(op)->match(cdr(expr));
+                auto expand_code = matched.expand_syntax(*this, expr);
+                DEBUG("expand code:", expand_code);
+                return expand_code;
+            }
+            expr = eval(senv, expr);
+        }
     };
 
     m_op_table[Intern::_macro] = [this](const SymenvPtr& senv, const Cell& cell) {
