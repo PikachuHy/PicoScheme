@@ -22,6 +22,12 @@ public:
         m_frames.pop_back();
     };
 
+    Continuation(FrameStack frames, SymenvPtr& env, Cell cell)
+        : m_frames(std::move(frames)) {
+        m_frames.pop_back();
+        m_frames.emplace_back(env, cell);
+    };
+
     [[nodiscard]] const FrameStack& frames() const {
         return m_frames;
     }

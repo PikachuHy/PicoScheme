@@ -125,11 +125,19 @@ Cell Scheme::restore_from_continuation(ContPtr& cont, const Cell& args) {
     DEBUG("new frames");
     print_frames();
     auto env = m_frames.back().env();
-    Cell return_arg = eval(env, args);
+    DEBUG("args:", args);
+    Cell it = eval(env, args);
+    while (is_pair(it)) {
+        m_frames.back().push_arg(eval(env, car(it)));
+        it = cdr(it);
+    }
+    Cell return_arg;
     while (!m_frames.empty()) {
-        m_frames.back().push_arg(return_arg);
         return_arg = eval_frame_based_on_stack();
         pop_frame();
+        if (!m_frames.empty()) {
+            m_frames.back().push_arg(return_arg);
+        }
     }
     return return_arg;
 }
@@ -661,9 +669,18 @@ Cell Scheme::eval(SymenvPtr env, Cell expr) {
     if (is_cont(op)) {
         DEBUG("op", op, "is continuation");
         auto cont = get<ContPtr>(op);
-        auto cont_args = eval(env, cdr(expr));
+        Cell head = cons(none, nil);
+        Cell tail = head;
+        expr = cdr(expr);
+        while (is_pair(expr)) {
+            auto val = eval(env, car(expr));
+            set_cdr(tail, cons(val, nil));
+            tail = cdr(tail);
+            expr = cdr(expr);
+        }
+        auto cont_args = cdr(head);
         DEBUG("cont args:", cont_args);
-        throw Cell(cons(cont, cons(Intern::_quote, cons(cont_args, nil))));
+        throw Cell(cons(cont, list(Intern::_quote, cont_args)));
     }
     else if (is_func(op)) {
         ret = eval_frame_based_on_stack();
@@ -694,6 +711,15 @@ Cell Scheme::eval(SymenvPtr env, Cell expr) {
         DEBUG("opcode:", opcode);
         if (opcode == Intern::op_callcc) {
             ret = callcc(env, expr);
+        }
+        else if (opcode == Intern::op_callwval) {
+            auto consumer = eval(env, caddr(expr));
+            auto cont = std::make_shared<ContPtr::element_type>(m_frames, env, cons(consumer, nil));
+            env->add(symbol("values"), cont);
+            auto producer = eval(env, cadr(expr));
+            auto ret1 = apply(env, producer, nil);
+            auto ret2 = apply(env, consumer, cons(ret1, nil));
+            ret = ret2;
         }
         else if (opcode == Intern::_apply) {
             Cell args = cdr(expr);
@@ -1160,6 +1186,7 @@ void Scheme::print_frames(bool flag) {
     if (debugging() || flag) {
         for (size_t i = 0; i < m_frames.size(); i++) {
             DEBUG_OUTPUT(i, m_frames[i].expr());
+            DEBUG_OUTPUT("args:", m_frames[i].varg());
         }
     }
 }
