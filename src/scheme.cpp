@@ -286,6 +286,9 @@ void Scheme::load(const String& filename, const SymenvPtr& env) {
             out << e.what() << '\n';
         else
             out << e.what() << ": " << expr << '\n';
+        out << "exception occurred when loading file:" << std::endl;
+        // TODO: record line number
+        out << filename << ":1" << std::endl;
         out << "trace" << std::endl;
         print_frames(true);
     }
