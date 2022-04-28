@@ -13,6 +13,7 @@
 
 #include "clock.hpp"
 #include "cobj.h"
+#include "module.h"
 #include "number.hpp"
 #include "port.hpp"
 #include "procedure.hpp"
@@ -145,6 +146,7 @@ inline bool is_cont   (const Cell& cell) { return is_type<ContPtr>(cell); }
 inline bool is_func   (const Cell& cell) { return is_type<FunctionPtr>(cell); }
 inline bool is_proc   (const Cell& cell) { return is_type<Procedure>(cell); }
 inline bool is_syntax (const Cell& cell) { return is_type<SyntaxPtr>(cell); }
+inline bool is_module (const Cell& cell) { return is_type<Module>(cell); }
 inline bool is_macro  (const Cell& cell) { return is_proc(cell) && get<Procedure>(cell).is_macro(); }
 inline bool is_false  (const Cell& cell) { return is_type<Bool>(cell) && !get<Bool>(cell); }
 inline bool is_true   (const Cell& cell) { return !is_type<Bool>(cell) || get<Bool>(cell); }
@@ -382,6 +384,8 @@ private:
             return "#<promise>";
         else if constexpr (std::is_same_v<T, ContPtr>)
             return "#<continuation>";
+        else if constexpr (std::is_same_v<T, Module>)
+            return "#<module>";
         else
             return "#<unknown>";
     }
@@ -398,6 +402,7 @@ std::size_t hash<Cell>::operator()(const Cell& cell) const {
         [](Intern arg)           -> result_type { return std::hash<Intern>{}(arg); },
         [](Number arg)           -> result_type { return Number::hash{}(arg); },
         [](const Procedure& arg) -> result_type { return Procedure::hash{}(arg); },
+        [](const Module& arg)    -> result_type { return Module::hash{}(arg); },
         [](const Symbol& arg)    -> result_type { return Symbol::hash{}(arg); },
         [](const StringPtr& arg) -> result_type { return std::hash<String>{}(*arg);},
         [](const CObjPtr& arg)   -> result_type { return CObj::hash{}(*arg);},

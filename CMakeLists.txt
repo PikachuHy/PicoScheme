@@ -18,6 +18,7 @@ target_sources(pscm PUBLIC
         src/promise.cpp
         src/frame.cpp
         src/continuation.cpp
+        src/module.cpp
         )
 target_include_directories(pscm PUBLIC src/include)
 if (__vscode__)

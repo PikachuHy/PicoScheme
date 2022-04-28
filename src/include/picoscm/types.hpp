@@ -31,6 +31,7 @@ class  Syntax;
 class  Promise;
 class  Continuation;
 class  Frame;
+class  Module;
 enum class Intern;
 template<typename Cell> struct less;
 template<typename Cell> struct hash;
@@ -77,7 +78,8 @@ using Variant = std::variant <
     Cons*, StringPtr, VectorPtr, PortPtr, FunctionPtr, SymenvPtr,
 
     /* Extensions: */
-    RegexPtr, ClockPtr, MapPtr, HashMapPtr, CObjPtr, SyntaxPtr, Promise, ContPtr
+    RegexPtr, ClockPtr, MapPtr, HashMapPtr, CObjPtr, SyntaxPtr, Promise, ContPtr,
+    Module
 >;
 
 static const None none {}; //!< void return symbol
@@ -444,6 +446,7 @@ enum class Intern {
 
     op_current_module,
     op_set_current_module,
+    op_module_name,
     _module,
     _inherit_module,
     _use_module,

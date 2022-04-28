@@ -38,8 +38,8 @@ Scheme::Scheme(const SymenvPtr& env) {
     auto std_env = add_environment_defaults(*this);
     auto cwd = fs::current_path().string();
     module_paths.push_back(string_convert<Char>(cwd));
-    current_module = list(symbol("root"));
-    module_table[current_module] = Symenv::create(std_env);
+    current_module = Module(list(symbol("root")), Symenv::create(std_env));
+    module_table.insert_or_assign(current_module.name(), current_module);
     module_stack.push(current_module);
     const char *val = getenv("PSCM_PATH");
     if (val) {
@@ -57,13 +57,13 @@ Scheme::Scheme(const SymenvPtr& env) {
 SymenvPtr Scheme::get_module_env(const Cell& module_name) {
     auto it = module_table.find(module_name);
     if (it != module_table.end()) {
-        return it->second;
+        return it->second.env();
     }
     // load module
-    return load_module(module_name, get_current_module_env());
+    return load_module(module_name, get_current_module_env()).env();
 }
 
-SymenvPtr Scheme::load_module(const Cell& module_name, const SymenvPtr& env) {
+Module Scheme::load_module(const Cell& module_name, const SymenvPtr& env) {
     String module_file;
     Cell name = module_name;
     while (is_pair(name)) {
@@ -513,10 +513,12 @@ Cell Scheme::syntax_with_let(const SymenvPtr& env, Cell args) {
 
 Cell Scheme::syntax_with_module(const SymenvPtr& env, Cell args) {
     auto cur_m = eval(env, car(args));
-    if (module_table.find(cur_m) == module_table.end()) {
+    if (!is_module(cur_m)) {
+        DEBUG_OUTPUT("args:", args);
         throw module_error("No modules:", car(args));
     }
-    auto cur_env = module_table[cur_m];
+
+    auto cur_env = get<Module>(cur_m).env();
     auto cur_args = cdr(args);
     Cell expr = none;
     while (!is_nil(cur_args)) {
@@ -741,9 +743,9 @@ Cell Scheme::syntax_module(const SymenvPtr& senv, const Cell& args) {
     }
     auto cur_env = get_current_module_env();
     auto env = newenv(cur_env);
-    module_table[module_name] = env;
-    module_stack.push(module_name);
-    current_module = module_name;
+    current_module = Module(module_name, env);
+    module_table.insert_or_assign(module_name, current_module);
+    module_stack.push(current_module);
     if (!is_nil(cdr(args))) {
         auto use = cadr(args);
         if (get<Symbol>(car(use)).value() == L":use") {
@@ -866,12 +868,13 @@ SymenvPtr Scheme::newenv(const SymenvPtr& env) {
     return Symenv::create(env ? env : get_current_module_env());
 }
 
-Cell Scheme::set_current_module(const Cell& module_name) {
-    if (module_table.find(module_name) == module_table.end()) {
-        throw module_error("No module:", module_name);
+Module Scheme::set_current_module(const Cell& cell) {
+    if (!is_module(cell)) {
+        DEBUG_OUTPUT("args");
+        throw module_error("No module:", cell);
     }
     auto ret = current_module;
-    current_module = module_name;
+    current_module = get<Module>(cell);
     return ret;
 }
 
@@ -1031,6 +1034,7 @@ void Scheme::init_op_table() {
     };
 
     m_op_table[Intern::_lambda] = [this](const SymenvPtr& senv, const Cell& cell) {
+        DEBUG("cell:", cell);
         return Procedure{ senv, car(cell), cdr(cell) };
     };
 

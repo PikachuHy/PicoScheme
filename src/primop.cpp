@@ -2919,6 +2919,8 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args) {
         return scm.get_current_module();
     case Intern::op_set_current_module:
         return scm.set_current_module(args.at(0));
+    case Intern::op_module_name:
+        return get<Module>(args[0]).name();
     case Intern::op_append_module_path:
         return scm.append_module_path(args);
     case Intern::op_call_with_output_string:
@@ -3277,6 +3279,7 @@ SymenvPtr add_environment_defaults(Scheme& scm) {
 
           { scm.symbol("current-module"),     Intern::op_current_module },
           { scm.symbol("set-current-module"), Intern::op_set_current_module },
+          { scm.symbol("module-name"),        Intern::op_module_name },
           { scm.symbol("module"),             Intern::_module },
           { scm.symbol("inherit-module"),     Intern::_inherit_module },
           { scm.symbol("use-module"),         Intern::_use_module },

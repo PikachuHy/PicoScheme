@@ -17,6 +17,7 @@
 #include "cell.hpp"
 #include "frame.h"
 #include "gc.hpp"
+#include "module.h"
 
 namespace pscm {
 class GCollector;
@@ -44,23 +45,23 @@ public:
     Scheme(const SymenvPtr& env = nullptr);
 
     //! Return the current module name
-    [[nodiscard]] const Cell& get_current_module() const {
+    [[nodiscard]] const Module& get_current_module() const {
         return current_module;
     }
 
-    Cell set_current_module(const Cell& module_name);
+    Module set_current_module(const Cell& module_name);
 
     //! Return a shared pointer to the current module environment of this interpreter.
     SymenvPtr& get_current_module_env() {
-        return module_table[get_current_module()];
+        return current_module.env();
     };
 
     [[nodiscard]] const SymenvPtr& get_current_module_env() const {
-        return module_table.at(get_current_module());
+        return current_module.env();
     };
 
     SymenvPtr get_module_env(const Cell& module_name);
-    SymenvPtr load_module(const Cell& module_name, const SymenvPtr& env);
+    Module load_module(const Cell& module_name, const SymenvPtr& env);
     Cell append_module_path(const std::vector<Cell>& vargs);
 
     void push_frame(SymenvPtr& env, const Cell& expr);
@@ -392,10 +393,10 @@ private:
     size_t store_size = 0;
 
     Symtab symtab{ dflt_bucket_count };
-    std::unordered_map<Cell, SymenvPtr, hash<Cell>, cell_equal<Cell>> module_table;
+    CellHashMap<Module> module_table;
     std::vector<String> module_paths;
-    std::stack<Cell> module_stack;
-    Cell current_module;
+    std::stack<Module> module_stack;
+    Module current_module;
     String cur_file;
 
     bool debug = false;

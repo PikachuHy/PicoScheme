@@ -219,6 +219,7 @@ std::wostream& operator<<(std::wostream& os, const Cell& cell) {
         [&os](const ContPtr& arg)     -> std::wostream& { return os << "#<continuation @ " << arg << '>'; },
         [&os](const PortPtr&)         -> std::wostream& { return os << "#<port>"; },
         [&os](const ClockPtr& arg)    -> std::wostream& { return os << "#<clock " << *arg << ">"; },
+        [&os](const Module& arg)      -> std::wostream& { return os << "#<module " << arg.name() << ">"; },
         [&os](auto& arg)              -> std::wostream& { return os << arg; }
     }; // clang-format on
 
