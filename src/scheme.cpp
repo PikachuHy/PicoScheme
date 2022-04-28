@@ -918,8 +918,9 @@ void Scheme::partial_eval_sub(const SymenvPtr& senv, const Cell& item, Cell& tai
             concat_list(tail, l);
         }
         else {
-            auto tmp = partial_eval(senv, cadr(item), nesting - 1);
-            set_cdr(tail, cons(tmp, nil));
+            auto new_val = partial_eval(senv, cadr(item), nesting - 1);
+            new_val = cons(car(item), cons(new_val, nil));
+            set_cdr(tail, cons(new_val, nil));
             tail = cdr(tail);
         }
     }
