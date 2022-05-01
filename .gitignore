@@ -79,3 +79,4 @@ Thumbs.db
 cmake-build-*
 build
 .vscode
+.fleet
