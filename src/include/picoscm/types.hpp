@@ -25,6 +25,7 @@ struct Cell;
 struct Number;
 class  Clock;
 class  Procedure;
+class  CompiledProcedure;
 class  Function;
 class  CObj;
 class  Syntax;
@@ -79,7 +80,10 @@ using Variant = std::variant <
 
     /* Extensions: */
     RegexPtr, ClockPtr, MapPtr, HashMapPtr, CObjPtr, SyntaxPtr, Promise, ContPtr,
-    Module
+    Module,
+
+    /* Compiler: */
+    CompiledProcedure
 >;
 
 static const None none {}; //!< void return symbol
@@ -457,6 +461,17 @@ enum class Intern {
 
     op_enable_debug,
     op_disable_debug,
+
+    op_lookup_variable_value,
+    op_set_variable_value,
+    op_define_variable,
+    op_is_false,
+    op_make_compiled_procedure,
+    op_compiled_procedure_env,
+    op_compiled_procedure_entry,
+    op_extend_environment,
+    op_is_primitive_procedure,
+    op_apply_primitive_procedure
 };
 } // namespace pscm
 #endif // TYPES_HPP

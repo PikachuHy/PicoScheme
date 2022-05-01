@@ -1,48 +1,5 @@
-
-(define *tests-run* 0)
-(define *tests-passed* 0)
-
-(define-syntax test
-  (syntax-rules ()
-    ((test name expect expr)
-     (test expect expr))
-    ((test expect expr)
-     (begin
-       (set! *tests-run* (+ *tests-run* 1))
-       (let ((str (call-with-output-string
-                    (lambda (out)
-                      (write *tests-run*)
-                      (display ". ")
-                      (display 'expr out))))
-             (res expr))
-         (display str)
-         (write-char #\space)
-         (display (make-string (max 0 (- 72 (string-length str))) #\.))
-         (flush-output)
-         (cond
-          ((equal? res expect)
-           (set! *tests-passed* (+ *tests-passed* 1))
-           (display " [PASS]\n"))
-          (else
-           (display " [FAIL]\n")
-           (display "    expected ") (write expect)
-           (display " but got ") (write res) (newline))))))))
-
-(define-syntax test-assert
-  (syntax-rules ()
-    ((test-assert expr) (test #t expr))))
-
-(define (test-begin . name)
-  #f)
-
-(define (test-end)
-  (write *tests-passed*)
-  (display " out of ")
-  (write *tests-run*)
-  (display " passed (")
-  (write (* (/ *tests-passed* *tests-run*) 100))
-  (display "%)")
-  (newline))
+(module (unit-test))
+(use-module (test))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -72,6 +29,21 @@
 	    (hash-table-fold (lambda (key value prior)
 			       (if (string? key) (1+ prior) prior))
 			     0 table))))
+
+(test 4 ((lambda (x) (+ x x) 4) 20))
+
+(test ':synopsis (begin
+(define ((define-property which) opt decl)
+  which
+)
+((define-property ':synopsis) 'a 'b)
+))
+
+(test 5 (call-with-values (lambda () (values 4 5))
+        (lambda (a b) b)))
+
+(test -1 (call-with-values * -))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (test-end)

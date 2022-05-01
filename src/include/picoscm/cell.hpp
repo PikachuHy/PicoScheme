@@ -20,6 +20,8 @@
 #include "promise.h"
 #include "types.hpp"
 
+#include <boost/stacktrace.hpp>
+
 namespace pscm {
 
 //! A scheme Cell is a Variant type of all supported scheme types.
@@ -182,6 +184,14 @@ inline const Cell& caar(const Cell& cons) {
     return car(car(cons));
 }
 
+inline const Cell& caadr(const Cell& cons) {
+    return car(car(cdr(cons)));
+}
+
+inline const Cell& cdadr(const Cell& cons) {
+    return cdr(car(cdr(cons)));
+}
+
 inline const Cell& cdar(const Cell& cons) {
     return cdr(car(cons));
 }
@@ -332,6 +342,7 @@ struct bad_cell_access : public std::bad_variant_access {
                       .append(" is not a ")
                       .append(type_name());
         // clang-format on
+        std::cout << boost::stacktrace::stacktrace();
     }
 
     [[nodiscard]] const char *what() const noexcept override {
@@ -402,6 +413,7 @@ std::size_t hash<Cell>::operator()(const Cell& cell) const {
         [](Intern arg)           -> result_type { return std::hash<Intern>{}(arg); },
         [](Number arg)           -> result_type { return Number::hash{}(arg); },
         [](const Procedure& arg) -> result_type { return Procedure::hash{}(arg); },
+        [](const CompiledProcedure& arg) -> result_type { return CompiledProcedure::hash{}(arg); },
         [](const Module& arg)    -> result_type { return Module::hash{}(arg); },
         [](const Symbol& arg)    -> result_type { return Symbol::hash{}(arg); },
         [](const StringPtr& arg) -> result_type { return std::hash<String>{}(*arg);},

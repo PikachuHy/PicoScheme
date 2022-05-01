@@ -9,6 +9,7 @@
  *************************************************************************************/
 #include <set>
 
+#include "picoscm/compiler.h"
 #include "picoscm/procedure.hpp"
 #include "picoscm/scheme.hpp"
 
@@ -60,6 +61,7 @@ struct Procedure::Closure {
     SymenvPtr senv; //!< Symbol environment pointer.
     Cell args;      //!< Formal parameter symbol list or single symbol.
     Cell code;      //!< Lambda body expression list.
+    CompiledCode compiled_code;
     bool is_macro;
 };
 
@@ -257,5 +259,10 @@ Cell Procedure::partial_replace(Scheme& scm, const SymenvPtr& senv, const Cell& 
         it = cdr(it);
     }
     return cdr(ret);
+}
+
+void Procedure::compile(Scheme& scm) {
+    //    Compiler c(impl);
+    //    impl->compiled_code = c.compile(scm, impl->senv, impl->code);
 }
 } // namespace pscm

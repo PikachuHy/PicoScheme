@@ -454,22 +454,6 @@
 
 (test '(,@foo) (let ((unquote-splicing 1)) `(,@foo)))
 
-(test 'ok
-    (let ((... 2))
-      (let-syntax ((s (syntax-rules ()
-                        ((_ x ...) 'bad)
-                        ((_ . r) 'ok))))
-        (s a b c))))
-
-(test 'ok (let ()
-            (let-syntax ()
-              (define internal-def 'ok))
-            internal-def))
-
-(test 'ok (let ()
-            (letrec-syntax ()
-              (define internal-def 'ok))
-            internal-def))
 
 (test '(2 1)
     ((lambda () (let ((x 1)) (let ((y x)) (set! x 2) (list x y))))))
@@ -506,18 +490,6 @@
             (c 'talk2)
             (reverse path)))))
 
-(test 2 (let-syntax
-            ((foo (syntax-rules ::: ()
-                    ((foo ... args :::)
-                     (args ::: ...)))))
-          (foo 3 - 5)))
-
-(test '(5 4 1 2 3)
-    (let-syntax
-        ((foo (syntax-rules ()
-                ((foo args ... penultimate ultimate)
-                 (list ultimate penultimate args ...)))))
-      (foo 1 2 3 4 5)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

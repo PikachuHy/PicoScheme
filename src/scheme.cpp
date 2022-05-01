@@ -11,6 +11,7 @@
 #include <functional>
 #include <iomanip>
 
+#include "picoscm/compiler.h"
 #include "picoscm/continuation.h"
 #include "picoscm/gc.hpp"
 #include "picoscm/parser.hpp"
@@ -34,7 +35,8 @@ static_assert(std::is_same_v<Symbol, Symtab::Symbol>);
 static_assert(std::is_same_v<Symenv, SymenvPtr::element_type>);
 static_assert(std::is_same_v<Function, FunctionPtr::element_type>);
 
-Scheme::Scheme(const SymenvPtr& env) {
+Scheme::Scheme(const SymenvPtr& env)
+    : m_compiler(std::make_shared<Compiler>(*this)) {
     auto std_env = add_environment_defaults(*this);
     auto cwd = fs::current_path().string();
     module_paths.push_back(string_convert<Char>(cwd));
@@ -244,7 +246,8 @@ void Scheme::repl(const SymenvPtr& env) {
                 out << "> ";
                 expr = none;
                 expr = parser.read(in);
-                expr = eval_with_continuation(senv, expr);
+                m_compiler->compile(*this, senv, expr);
+                // expr = eval_with_continuation(senv, expr);
 
                 if (is_none(expr))
                     continue;
@@ -284,7 +287,8 @@ void Scheme::load(const String& filename, const SymenvPtr& env) {
         while (!in.eof()) {
             expr = parser.read(in);
             DEBUG(expr);
-            expr = eval_with_continuation(senv, expr);
+            m_compiler->compile(*this, senv, expr);
+            // expr = eval_with_continuation(senv, expr);
             DEBUG("-->", expr);
             expr = none;
         }
@@ -814,11 +818,13 @@ Cell Scheme::syntax_define(const SymenvPtr& senv, Cell args, bool is_public) {
             Cell it = cdr(f2);
             concat_list(it, cdr(args));
             auto f1 = Procedure{ senv, cdr(name), cons(f2, nil) };
+            f1.compile(*this);
             senv->add(get<Symbol>(car(name)), f1, is_public);
         }
         else {
             auto proc = Procedure{ senv, cdar(args), cdr(args) };
             senv->add(get<Symbol>(name), proc, is_public);
+            proc.compile(*this);
         }
     }
     else {
