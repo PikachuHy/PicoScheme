@@ -505,7 +505,7 @@ struct CompilerPrivate {
     }
 
     Cell text_of_quotation(const Cell& expr) {
-        return cdr(expr);
+        return cadr(expr);
     }
 
     template <typename StringT>
@@ -543,7 +543,8 @@ struct CompilerPrivate {
 
     InstSeq compile_variable(Cell expr, Target target, const Linkage& linkage) {
         auto code = CodeList{ Instruction::ASSIGN, target, Intern::op_lookup_variable_value, expr, Register::ENV };
-        return make_instruction_sequence({ Register::ENV }, { target }, code);
+        auto seq = make_instruction_sequence({ Register::ENV }, { target }, code);
+        return end_with_linkage(linkage, seq);
     }
 
     bool is_assignment(const Cell& expr) {
@@ -1089,9 +1090,17 @@ void Machine::run(const CodeList& code_list, const SymenvPtr& env) {
     all_code_list.reserve(all_code_list.size() + code_list.size());
     std::copy(code_list.begin(), code_list.end(), std::back_inserter(all_code_list));
     reg[Register::ENV] = env;
+    reg[Register::CONTINUE] = Int(-1);
     CodeRunner runner(*this, all_code_list);
     runner.run(pos - 1);
     std::wcout << reg[Register::VAL] << std::endl;
+}
+
+void Machine::print_reg() const {
+    DEBUG_OUTPUT("machine registers:");
+    for (const auto& [k, v] : reg) {
+        std::wcout << k << " --> " << v << std::endl;
+    }
 }
 
 void Machine::fill_label_map(const CodeList& code_list) {
@@ -1174,6 +1183,8 @@ Cell CodeRunner::run_op(Intern op) {
             }
             auto sym = get<Symbol>(vv);
             auto env = get<SymenvPtr>(m.reg[r]);
+            std::wcout << std::endl;
+            std::wcout << "env:" << env;
             return env->get(sym);
         }
         DEBUG_OUTPUT("error operand:", v);
@@ -1253,6 +1264,7 @@ Cell CodeRunner::run_op(Intern op) {
             }
         }
         DEBUG_OUTPUT("error operand:", v);
+        m.print_reg();
         throw std::runtime_error("error");
     }
     case Intern::op_compiled_procedure_entry: {
@@ -1264,6 +1276,7 @@ Cell CodeRunner::run_op(Intern op) {
             return proc.entry();
         }
         DEBUG_OUTPUT("error operand:", v);
+        m.print_reg();
         throw std::runtime_error("error");
     }
     case Intern::op_extend_environment: {
@@ -1298,6 +1311,7 @@ Cell CodeRunner::run_op(Intern op) {
             }
         }
         DEBUG_OUTPUT("error operand:", v);
+        m.print_reg();
         throw std::runtime_error("error");
     }
     case Intern::op_is_false: {
@@ -1308,6 +1322,7 @@ Cell CodeRunner::run_op(Intern op) {
     }
     default: {
         DEBUG_OUTPUT("unknown op:", op);
+        m.print_reg();
         throw std::runtime_error("unknown op");
     }
     }
@@ -1333,6 +1348,7 @@ void CodeRunner::run_inst(Instruction inst) {
             assign_reg(r, v);
         }
         std::wcout << std::endl;
+        std::wcout << "--> " << m.reg.at(r) << std::endl;
         break;
     }
     case Instruction::TEST: {
@@ -1369,6 +1385,7 @@ void CodeRunner::run_inst(Instruction inst) {
         auto v = fetch_operand();
         if (is_op(v)) {
             run_op(get_op(v));
+            std::wcout << std::endl;
             break;
         }
         std::wcout << v;
@@ -1434,10 +1451,8 @@ void CodeRunner::run_inst(Instruction inst) {
 }
 
 bool is_eof(Cell cell) {
-    if (is_pair(cell)) {
-        return false;
-    }
-    return true;
+    Cell eof = -1;
+    return cell == eof;
 }
 
 CompiledCode Compiler::compile(Scheme& scm, const SymenvPtr& env, Cell cell) {

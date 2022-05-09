@@ -140,6 +140,8 @@ public:
 
     void run(const CodeList& code_list, const SymenvPtr& env);
 
+    void print_reg() const;
+
 private:
     void fill_label_map(const CodeList& code_list);
 

@@ -220,6 +220,7 @@ std::wostream& operator<<(std::wostream& os, const Cell& cell) {
         [&os](const PortPtr&)         -> std::wostream& { return os << "#<port>"; },
         [&os](const ClockPtr& arg)    -> std::wostream& { return os << "#<clock " << *arg << ">"; },
         [&os](const Module& arg)      -> std::wostream& { return os << "#<module " << arg.name() << ">"; },
+        [&os](const CompiledProcedure& arg)      -> std::wostream& { return os << "#<proc " << arg.entry() << " symenv@" << arg.env() << ">"; },
         [&os](auto& arg)              -> std::wostream& { return os << arg; }
     }; // clang-format on
 

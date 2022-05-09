@@ -11,6 +11,7 @@
 #define PROCEDURE_HPP
 
 #include <functional>
+#include <ostream>
 #include <utility>
 
 #include "types.hpp"
