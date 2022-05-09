@@ -24,6 +24,7 @@ target_sources(pscm PUBLIC
         src/continuation.cpp
         src/module.cpp
         src/compiler.cpp
+        src/machine.cpp
         )
 target_include_directories(pscm PUBLIC src/include)
 if (__vscode__)

@@ -11,6 +11,7 @@
 #define TYPES_HPP
 
 #include <map>
+#include <memory>
 #include <regex>
 #include <string>
 #include <variant>
@@ -21,6 +22,9 @@
 namespace pscm {
 
 // clang-format off
+template<typename T>
+using sptr = std::shared_ptr<T>;
+
 struct Cell;
 struct Number;
 class  Clock;

@@ -11,9 +11,9 @@
 #include <functional>
 #include <iomanip>
 
-#include "picoscm/compiler.h"
 #include "picoscm/continuation.h"
 #include "picoscm/gc.hpp"
+#include "picoscm/machine.h"
 #include "picoscm/parser.hpp"
 #include "picoscm/port.hpp"
 #include "picoscm/primop.hpp"
@@ -36,7 +36,7 @@ static_assert(std::is_same_v<Symenv, SymenvPtr::element_type>);
 static_assert(std::is_same_v<Function, FunctionPtr::element_type>);
 
 Scheme::Scheme(const SymenvPtr& env)
-    : m_compiler(std::make_shared<Compiler>(*this)) {
+    : m_machine(std::make_shared<Machine>(*this)) {
     auto std_env = add_environment_defaults(*this);
     auto cwd = fs::current_path().string();
     module_paths.push_back(string_convert<Char>(cwd));
@@ -246,7 +246,7 @@ void Scheme::repl(const SymenvPtr& env) {
                 out << "> ";
                 expr = none;
                 expr = parser.read(in);
-                m_compiler->compile(*this, senv, expr);
+                expr = m_machine->run(senv, expr);
                 // expr = eval_with_continuation(senv, expr);
 
                 if (is_none(expr))
@@ -287,7 +287,7 @@ void Scheme::load(const String& filename, const SymenvPtr& env) {
         while (!in.eof()) {
             expr = parser.read(in);
             DEBUG(expr);
-            m_compiler->compile(*this, senv, expr);
+            expr = m_machine->run(senv, expr);
             // expr = eval_with_continuation(senv, expr);
             DEBUG("-->", expr);
             expr = none;
