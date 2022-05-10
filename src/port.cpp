@@ -196,6 +196,8 @@ static std::wostream& print_char(std::wostream& os, const Char& ch) {
     switch (ch) {
     case '\n':
         return os << "#\\newline";
+    case ' ':
+        return os << "#\\space";
     default:
         return os << "#\\" << ch;
     }

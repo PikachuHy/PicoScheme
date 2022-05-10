@@ -319,7 +319,6 @@ Cell Scheme::syntax_begin(const SymenvPtr& env, Cell args) {
     while (is_pair(args)) {
         DEBUG("eval", car(args));
         ret = eval(env, car(args));
-        m_frames.back().push_arg(ret);
         args = cdr(args);
     }
     return ret;
@@ -655,7 +654,6 @@ Cell Scheme::eval_with_continuation(SymenvPtr env, Cell expr) {
 }
 
 Cell Scheme::eval(SymenvPtr env, Cell expr) {
-    bool need_pop_frame = true;
     DEBUG("eval:", expr);
     if (is_nil(expr)) {
         return nil;
@@ -667,7 +665,6 @@ Cell Scheme::eval(SymenvPtr env, Cell expr) {
     if (!is_pair(expr)) {
         return expr;
     }
-    push_frame(env, expr);
     auto op = eval(env, car(expr));
     Cell ret;
     if (is_cont(op)) {
@@ -694,20 +691,16 @@ Cell Scheme::eval(SymenvPtr env, Cell expr) {
             auto f = get<Procedure>(op);
             auto expand_code = f.expand_only(*this, expr);
             DEBUG("expand code:", expand_code);
-            pop_frame();
-            need_pop_frame = false;
             ret = eval(env, expand_code);
         }
         else {
-            ret = eval_frame_based_on_stack();
+            ret = apply(env, op, eval_args(env, cdr(expr)));
         }
     }
     else if (is_syntax(op)) {
         const auto& matched = get<SyntaxPtr>(op)->match(cdr(expr));
         auto expand_code = matched.expand_syntax(*this, expr);
         DEBUG("expand code:", expand_code);
-        pop_frame();
-        need_pop_frame = false;
         ret = eval(env, expand_code);
     }
     else if (is_intern(op)) {
@@ -746,7 +739,7 @@ Cell Scheme::eval(SymenvPtr env, Cell expr) {
             auto it = m_op_table.find(opcode);
             if (it == m_op_table.end()) {
                 DEBUG("op:", op);
-                ret = eval_frame_based_on_stack();
+                ret = apply(env, op, eval_args(env, cdr(expr)));
             }
             else {
                 ret = it->second(env, cdr(expr));
@@ -756,10 +749,6 @@ Cell Scheme::eval(SymenvPtr env, Cell expr) {
     else {
         ret = op;
     }
-    if (need_pop_frame) {
-        pop_frame();
-    }
-
     DEBUG("eval:", expr);
     DEBUG(" --> ", ret);
     return ret;

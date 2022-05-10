@@ -8,11 +8,15 @@
  * @copyright MIT License
  *************************************************************************************/
 #include "picoscm/compiler.h"
-#include "impl/CompiledProcedureImpl.h"
-#include "impl/MachineImpl.h"
 #include "picoscm/machine.h"
 #include "picoscm/port.hpp"
 #include "picoscm/scheme.hpp"
+#include "picoscm/syntax.h"
+
+#include "impl/CodeListPrinter.h"
+#include "impl/CompiledProcedureImpl.h"
+#include "impl/MachineImpl.h"
+
 #include <algorithm>
 #include <ostream>
 
@@ -60,8 +64,8 @@ Cell CompiledProcedure::entry() const {
     return impl->entry();
 }
 
-struct CompilerPrivate {
-    CompilerPrivate(Scheme& scm, SymenvPtr env)
+struct CompilerImpl {
+    CompilerImpl(Scheme& scm, SymenvPtr env)
         : scm(scm)
         , env(std::move(env))
         , m(scm) {
@@ -91,8 +95,23 @@ struct CompilerPrivate {
         }
     }
 
+    Cell cond_to_if_sub(Cell clauses) {
+        if (is_nil(clauses)) {
+            return nil;
+        }
+        auto clause = car(clauses);
+        if (is_tagged_list(clause, "else")) {
+            return scm.cons(scm.symbol("begin"), cdr(clause));
+        }
+        else {
+            return scm.list(scm.symbol("if"), car(clause), scm.cons(scm.symbol("begin"), cdr(clause)),
+                            cond_to_if_sub(cdr(clauses)));
+        }
+    }
+
     Cell cond_to_if(const Cell& expr) {
-        return none;
+        auto clauses = cdr(expr);
+        return cond_to_if_sub(clauses);
     }
 
     bool is_self_evaluating(const Cell& expr) {
@@ -100,6 +119,12 @@ struct CompilerPrivate {
             return true;
         }
         if (is_string(expr)) {
+            return true;
+        }
+        if (is_char(expr)) {
+            return true;
+        }
+        if (is_bool(expr)) {
             return true;
         }
         return false;
@@ -327,7 +352,32 @@ struct CompilerPrivate {
         return is_pair(expr);
     }
 
+    Cell eval_op(Cell op) {
+        if (!is_symbol(op)) {
+            return none;
+        }
+        auto sym = get<Symbol>(op);
+        if (env->defined_sym(sym)) {
+            auto val = env->get(sym);
+            return val;
+        }
+        return none;
+    }
+
     InstSeq compile_application(Cell expr, Target target, Linkage linkage) {
+        auto op = eval_op(car(expr));
+        if (is_macro(op)) {
+            auto proc_macro = get<Procedure>(op);
+            auto expand_code = proc_macro.expand_only(scm, expr);
+            // DEBUG_OUTPUT("expand code:", expand_code);
+            return compile_sequence(cdr(expand_code), target, linkage);
+        }
+        else if (is_syntax(op)) {
+            const auto& matched = get<SyntaxPtr>(op)->match(cdr(expr));
+            auto expand_code = matched.expand_syntax(scm, expr);
+            // DEBUG_OUTPUT("expand code:", expand_code);
+            return compile_sequence(cdr(expand_code), target, linkage);
+        }
         auto proc_code = compile(car(expr), Register::PROC, LinkageEnum::NEXT);
         std::vector<InstSeq> operand_codes;
         auto it = cdr(expr);
@@ -421,6 +471,12 @@ struct CompilerPrivate {
     }
 
     InstSeq construct_arglist(const std::vector<InstSeq>& operand_codes) {
+        //        DEBUG_OUTPUT("operand");
+        //        for(const auto& operand: operand_codes) {
+        //            DEBUG_OUTPUT("1.");
+        //            CodeListPrinter(operand).print();
+        //        }
+        //        DEBUG_OUTPUT("---");
         if (operand_codes.empty()) {
             return make_instruction_sequence({}, { Register::ARGL }, { Instruction::ASSIGN, Register::ARGL, nil });
         }
@@ -576,41 +632,67 @@ struct CompilerPrivate {
         return cdr(expr);
     }
 
+    bool is_macro_definition(Cell expr) {
+        return is_tagged_list(expr, "define-macro");
+    }
+
+    bool is_syntax_definition(Cell expr) {
+        return is_tagged_list(expr, "define-syntax");
+    }
+
     InstSeq compile(Cell expr, Target target, Linkage linkage) {
+        // DEBUG_OUTPUT("compile expr:", expr);
+        InstSeq seq;
         if (is_self_evaluating(expr)) {
-            return compile_self_evaluating(expr, target, linkage);
+            seq = compile_self_evaluating(expr, target, linkage);
         }
         else if (is_quoted(expr)) {
-            return compile_quoted(expr, target, linkage);
+            seq = compile_quoted(expr, target, linkage);
         }
         else if (is_variable(expr)) {
-            return compile_variable(expr, target, linkage);
+            seq = compile_variable(expr, target, linkage);
         }
         else if (is_assignment(expr)) {
-            return compile_assignment(expr, target, linkage);
+            seq = compile_assignment(expr, target, linkage);
         }
         else if (is_definition(expr)) {
-            return compile_definition(expr, target, linkage);
+            seq = compile_definition(expr, target, linkage);
+        }
+        else if (is_macro_definition(expr)) {
+            auto sym = get<Symbol>(caadr(expr));
+            auto proc_macro = Procedure{ env, cdadr(expr), cddr(expr), true };
+            env->add(sym, proc_macro);
+            seq = {};
+        }
+        else if (is_syntax_definition(expr)) {
+            scm.syntax_define_syntax(env, cdr(expr));
+            seq = {};
         }
         else if (is_if(expr)) {
-            return compile_if(expr, target, linkage);
+            seq = compile_if(expr, target, linkage);
         }
         else if (is_lambda(expr)) {
-            return compile_lambda(expr, target, linkage);
+            seq = compile_lambda(expr, target, linkage);
         }
         else if (is_begin(expr)) {
-            return compile_sequence(begin_actions(expr), target, linkage);
+            seq = compile_sequence(begin_actions(expr), target, linkage);
         }
         else if (is_cond(expr)) {
-            return compile(cond_to_if(expr), target, linkage);
+            auto new_if = cond_to_if(expr);
+            // DEBUG_OUTPUT("conf->if:", new_if);
+            seq = compile(new_if, target, linkage);
         }
         else if (is_application(expr)) {
-            return compile_application(expr, target, linkage);
+            seq = compile_application(expr, target, linkage);
         }
         else {
             DEBUG_OUTPUT("Unknown expression type: COMPILE", expr);
             throw std::runtime_error("compile fail");
         }
+        // DEBUG_OUTPUT("compile expr finish:", expr);
+        // CodeListPrinter(seq).print();
+
+        return seq;
     }
 
     Int new_label_number() {
@@ -627,11 +709,13 @@ struct CompilerPrivate {
     SymenvPtr env;
     Machine m;
     Cell ok = true;
-    Int label_counter = 0;
+    static Int label_counter;
 };
 
+Int CompilerImpl::label_counter = 0;
+
 Compiler::Compiler(Scheme& scm, const SymenvPtr& env)
-    : c(std::make_shared<CompilerPrivate>(scm, env)) {
+    : c(std::make_shared<CompilerImpl>(scm, env)) {
 }
 
 bool is_eof(const Cell& cell) {
@@ -640,7 +724,7 @@ bool is_eof(const Cell& cell) {
 }
 
 CompiledCode Compiler::compile(const Cell& cell) {
-    DEBUG_OUTPUT("code:", cell);
+    DEBUG_OUTPUT("compile code:", cell);
     if (is_eof(cell)) {
         return {};
     }

@@ -254,7 +254,7 @@ private:
     friend class Machine;
 };
 
-class CompilerPrivate;
+class CompilerImpl;
 
 class Compiler {
 public:
@@ -262,7 +262,7 @@ public:
     CompiledCode compile(const Cell& cell);
 
 private:
-    sptr<CompilerPrivate> c;
+    sptr<CompilerImpl> c;
 };
 
 } // namespace pscm

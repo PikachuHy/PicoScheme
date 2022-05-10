@@ -22,6 +22,7 @@
 namespace pscm {
 class GCollector;
 class Machine;
+class CompilerImpl;
 
 class module_error : public std::runtime_error {
 public:
@@ -405,6 +406,8 @@ private:
     FrameStack m_frames;
     std::unordered_map<Intern, std::function<Cell(const SymenvPtr&, const Cell&)>> m_op_table;
     sptr<Machine> m_machine;
+
+    friend class CompilerImpl;
 };
 
 } // namespace pscm

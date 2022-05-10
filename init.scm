@@ -30,3 +30,14 @@
                 `(set! ,var ,val)) vars vals)
        . ,body)))
 
+(define (for-each f l)
+  (if (null? l)
+      '()
+      (begin (f (car l))
+	     (for-each f (cdr l)))))
+
+(define (map f l)
+  (if (null? l)
+      '()
+      (cons (f (car l))
+	    (map f (cdr l)))))

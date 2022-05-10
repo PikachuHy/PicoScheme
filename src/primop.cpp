@@ -1785,14 +1785,28 @@ static Cell display(Scheme& scm, const varg& args) {
         scm.outPort().stream() << pscm::display(args.at(0));
     }
     else {
-        auto& port = *get<PortPtr>(args[1]);
-        port.isOutput() || ((void)(throw output_port_exception(port)), 0);
+        if (is_type<PortPtr>(args[1])) {
+            auto& port = *get<PortPtr>(args[1]);
+            port.isOutput() || ((void)(throw output_port_exception(port)), 0);
 
-        try {
-            port.stream() << pscm::display(args[0]);
+            try {
+                port.stream() << pscm::display(args[0]);
+            }
+            catch (std::ios_base::failure&) {
+                throw output_port_exception(port);
+            }
         }
-        catch (std::ios_base::failure&) {
-            throw output_port_exception(port);
+        else if (is_type<StringPortPtr>(args[1])) {
+            auto& sport = *get<StringPortPtr>(args[1]);
+            Port<Char>& port = sport;
+            port.isOutput() || ((void)(throw output_port_exception(port)), 0);
+
+            try {
+                port.stream() << pscm::display(args[0]);
+            }
+            catch (std::ios_base::failure&) {
+                throw output_port_exception(port);
+            }
         }
     }
     return none;
@@ -2936,6 +2950,12 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args) {
         return none;
     case Intern::op_dynamic_wind:
         return scm.apply(senv, args[1], nil);
+    case Intern::op_genport:
+        return std::make_shared<StringPort<Char>>(StringPort<Char>::out);
+    case Intern::op_get_port_string: {
+        auto port = get<StringPortPtr>(args[0]).get();
+        return std::make_shared<String>(port->str());
+    }
     default:
         DEBUG_OUTPUT("opcode:", primop);
         throw std::invalid_argument("invalid primary opcode");
@@ -3290,6 +3310,10 @@ SymenvPtr add_environment_defaults(Scheme& scm) {
 
           { scm.symbol("enable-debug"),            Intern::op_enable_debug },
           { scm.symbol("disable-debug"),        Intern::op_disable_debug },
+
+          { scm.symbol("genport"),                Intern::op_genport },
+          { scm.symbol("get-port-string"),        Intern::op_get_port_string },
+
        });
     // clang-format on
     return std_env;
