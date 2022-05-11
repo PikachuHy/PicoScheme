@@ -24,6 +24,7 @@ enum class Instruction {
     SAVE,
     RESTORE,
     LABEL,
+    CONT,
 };
 enum class Register {
     EXP,
@@ -97,6 +98,9 @@ std::basic_ostream<CharT>& operator<<(std::basic_ostream<CharT>& os, const Instr
         break;
     case Instruction::LABEL:
         os << "label";
+        break;
+    case Instruction::CONT:
+        os << "cont";
         break;
     }
     return os;

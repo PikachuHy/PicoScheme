@@ -159,6 +159,10 @@ std::wostream& operator<<(std::wostream& os, Intern opcode) {
         return os << "unquote-splicing";
     case Intern::op_map:
         return os << "#<primop map>";
+    case Intern::op_display:
+        return os << "#<primop display>";
+    case Intern::op_callcc:
+        return os << "#<primop call-with-current-continuation>";
     default: {
         auto s = string_convert<Char>(std::string(magic_enum::enum_name(opcode)));
         os << "#<primop ";

@@ -10,6 +10,7 @@
 
 #include "picoscm/machine.h"
 #include "picoscm/compiler.h"
+#include "picoscm/continuation.h"
 #include "picoscm/scheme.hpp"
 
 #include "impl/CodeListPrinter.h"
@@ -70,7 +71,8 @@ bool is_inst(const InstCode& code) {
 
 class bytecode_error : public std::exception {
 public:
-    bytecode_error(std::string msg, InstCode code) {
+    template <typename T>
+    bytecode_error(std::string msg, const T& code) {
         reason = std::move(msg);
         std::wstringstream ss;
         ss << code;
@@ -157,6 +159,7 @@ void CodeListPrinter::print_op() {
 
 void CodeListPrinter::print_code_list() {
     while (i < code_list.size()) {
+        print_pos();
         const auto& code = code_list[i];
         if (is_inst(code)) {
             std::wcout << "  ";
@@ -217,6 +220,9 @@ void CodeListPrinter::print_inst() {
         std::wcout << "\b\b";
         print_code(code_list[i]);
         std::wcout << ":";
+        break;
+    case Instruction::CONT:
+        std::wcout << "cont";
         break;
     default: {
         DEBUG_OUTPUT("unknown inst:", inst);
@@ -316,8 +322,29 @@ void CodeRunner::run(int pos) {
     while (i + 1 < code_list.size()) {
         auto code = fetch_code();
         if (is_inst(code)) {
-            auto inst = get<Instruction>(code);
-            run_inst(inst);
+            try {
+                auto inst = get<Instruction>(code);
+                run_inst(inst);
+            }
+            catch (const ContPtr& cont) {
+                DEBUG_OUTPUT("call cont");
+                m.stack = cont->stack();
+                auto val = m.reg[Register::VAL];
+                m.print_reg();
+                DEBUG_OUTPUT("restore reg from cont");
+                m.reg = cont->reg();
+                m.print_reg();
+                m.reg[Register::VAL] = val;
+                auto pos = m.reg.at(Register::CONTINUE);
+                if (!is_number(pos)) {
+                    throw bytecode_error("except Number but got:", pos);
+                }
+                auto num = get<Number>(pos);
+                if (!is_type<Int>(num)) {
+                    throw bytecode_error("expect Int but got:", num);
+                }
+                i = get<Int>(num);
+            }
         }
         else {
             DEBUG_OUTPUT("wrong inst code:");
@@ -393,7 +420,6 @@ Cell CodeRunner::run_op(Intern op) {
             LOG_TRACE(env);
             LOG_TRACE(" sym:");
             LOG_TRACE(sym);
-            LOG_TRACE(LF);
             return env->get(sym);
         }
         DEBUG_OUTPUT("error operand:", v);
@@ -496,6 +522,10 @@ Cell CodeRunner::run_op(Intern op) {
         if (is_type<CompiledProcedure>(v)) {
             auto proc = get<CompiledProcedure>(v);
             return proc.entry();
+        }
+        if (is_cont(v)) {
+            auto cont = get<ContPtr>(v);
+            throw cont;
         }
         DEBUG_OUTPUT("error operand:", v);
         m.print_reg();
@@ -640,6 +670,7 @@ void CodeRunner::run_inst(Instruction inst) {
     case Instruction::BRANCH: {
         auto v = fetch_label();
         LOG_TRACE("  branch ");
+        LOG_TRACE(v);
         LOG_TRACE(LF);
         auto pos = m.label_map.at(v);
         i = pos;
@@ -680,6 +711,12 @@ void CodeRunner::run_inst(Instruction inst) {
                     break;
                 }
             }
+            if (is_intern(vv)) {
+                if (get<Intern>(vv) == Intern::_done_) {
+                    i = code_list.size();
+                    break;
+                }
+            }
         }
         else {
             if (is_type<Cell>(v)) {
@@ -714,6 +751,13 @@ void CodeRunner::run_inst(Instruction inst) {
         m.stack.pop();
         break;
     }
+    case Instruction::CONT: {
+        LOG_TRACE("  cont");
+        LOG_TRACE(LF);
+        auto cont = std::make_shared<Continuation>(m.stack, m.reg);
+        m.reg[Register::VAL] = cont;
+        break;
+    }
     default: {
         DEBUG_OUTPUT("unknown inst:", inst);
         throw std::runtime_error("unknown inst");
@@ -725,10 +769,14 @@ Cell MachineImpl::run(const CodeList& code_list, const SymenvPtr& env) {
     // DEBUG_OUTPUT("run: ");
     fill_label_map(code_list);
     auto pos = all_code_list.size();
+
+    DEBUG_OUTPUT("print bytecode:");
+    CodeListPrinter(code_list, pos).print();
+
     all_code_list.reserve(all_code_list.size() + code_list.size());
     std::copy(code_list.begin(), code_list.end(), std::back_inserter(all_code_list));
     reg[Register::ENV] = env;
-    reg[Register::CONTINUE] = Int(-1);
+    reg[Register::CONTINUE] = Intern::_done_;
     CodeRunner runner(*this, all_code_list);
     runner.run(pos - 1);
     std::wcout << reg[Register::VAL] << std::endl;
@@ -788,9 +836,6 @@ Machine::Machine(Scheme& scm)
 
 Cell Machine::run(SymenvPtr env, Cell expr) {
     auto code = Compiler(impl->scm, env).compile(expr);
-
-    DEBUG_OUTPUT("print bytecode:", expr);
-    CodeListPrinter(code.code).print();
 
     DEBUG_OUTPUT("run bytecode:", expr);
     auto ret = impl->run(code.code->statements, env);

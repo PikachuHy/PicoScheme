@@ -364,6 +364,21 @@ struct CompilerImpl {
         return none;
     }
 
+    InstSeq compile_continuation_call(Cell expr, Target target, Linkage linkage) {
+        DEBUG_OUTPUT("compile call/cc");
+        auto after_call = make_label(LabelEnum::AFTER_CALL);
+        auto code = CodeList{ Instruction::ASSIGN, Register::CONTINUE, after_call,      Instruction::CONT,
+
+                              Instruction::ASSIGN, Register::ARGL,     Intern::op_list, Register::VAL };
+        auto seq1 = make_instruction_sequence({ Register::VAL }, { Register::ARGL }, code);
+        auto proc_code = compile(cadr(expr), Register::PROC, LinkageEnum::NEXT);
+        auto regs = Regs{ Register::PROC, Register::CONTINUE };
+        auto seq2 = compile_procedure_call(target, linkage);
+        auto seq3 = preserving(regs, seq1, seq2);
+        auto seq4 = preserving({ Register::ENV, Register::CONTINUE }, proc_code, seq3);
+        return append_instruction_sequences(seq4, InstSeq(Instruction::LABEL, after_call));
+    }
+
     InstSeq compile_application(Cell expr, Target target, Linkage linkage) {
         auto op = eval_op(car(expr));
         if (is_macro(op)) {
@@ -377,6 +392,9 @@ struct CompilerImpl {
             auto expand_code = matched.expand_syntax(scm, expr);
             // DEBUG_OUTPUT("expand code:", expand_code);
             return compile_sequence(cdr(expand_code), target, linkage);
+        }
+        else if (is_intern(op) && get<Intern>(op) == Intern::op_callcc) {
+            return compile_continuation_call(expr, target, linkage);
         }
         auto proc_code = compile(car(expr), Register::PROC, LinkageEnum::NEXT);
         std::vector<InstSeq> operand_codes;
@@ -392,7 +410,6 @@ struct CompilerImpl {
         auto seq3 = preserving(regs, seq1, seq2);
         return preserving({ Register::ENV, Register::CONTINUE }, proc_code, seq3);
     }
-
     InstSeq compile_procedure_call(Target target, const Linkage& linkage) {
         auto primitive_branch = make_label(LabelEnum::PRIMITIVE_BRANCH);
         auto compiled_branch = make_label(LabelEnum::COMPILED_BRANCH);
@@ -728,7 +745,7 @@ CompiledCode Compiler::compile(const Cell& cell) {
     if (is_eof(cell)) {
         return {};
     }
-    auto seq = c->compile(cell, Register::VAL, LinkageEnum::NEXT);
+    auto seq = c->compile(cell, Register::VAL, LinkageEnum::RETURN);
     return { seq };
 }
 

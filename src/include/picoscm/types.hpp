@@ -98,6 +98,7 @@ static const Nil  nil  {}; //!< empty list symbol
 
 enum class Intern {
     _none_,
+    _done_,
     /* Scheme syntax opcodes: */
     _or,
     _and,
@@ -481,6 +482,8 @@ enum class Intern {
 
     op_genport,
     op_get_port_string,
+
+    op_gencont,
 };
 } // namespace pscm
 #endif // TYPES_HPP

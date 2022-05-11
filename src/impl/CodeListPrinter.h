@@ -18,6 +18,12 @@ public:
         : code_list(seq.statements) {
     }
 
+    CodeListPrinter(const CodeList& code_list, int pos)
+        : code_list(code_list)
+        , start_pos(pos) {
+        max_width = num_width(pos + code_list.size()) + 2;
+    }
+
     void print() {
         DEBUG_OUTPUT("print code list, size: ", code_list.size());
         reset();
@@ -45,6 +51,18 @@ private:
         }
     }
 
+    int num_width(int n) {
+        return std::to_string(n).size();
+    }
+
+    void print_pos() {
+        auto s = std::to_wstring(i + start_pos);
+        std::wcout << s;
+        for (int j = s.size(); j < max_width; ++j) {
+            std::wcout << " ";
+        }
+    }
+
     void print_op();
 
     void print_code(const InstCode& code) {
@@ -60,6 +78,8 @@ private:
 private:
     const CodeList& code_list;
     int i;
+    int start_pos;
+    int max_width;
 };
 
 } // namespace pscm
