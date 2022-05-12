@@ -89,64 +89,66 @@ private:
 
 void CodeListPrinter::print_op() {
     auto op = get_op(code_list[i]);
+    print(" ");
     switch (op) {
+    case Intern::op_make_compiled_macro:
     case Intern::op_make_compiled_procedure: {
-        std::wcout << "make-compiled-procedure";
+        print("make-compiled-procedure");
         print_args(2);
         break;
     }
     case Intern::op_compiled_procedure_env: {
-        std::wcout << "compiled-procedure-env";
+        print("compiled-procedure-env");
         print_args(1);
         break;
     }
     case Intern::op_compiled_procedure_entry: {
-        std::wcout << "compiled-procedure-entry";
+        print("compiled-procedure-entry");
         print_args(1);
         break;
     }
     case Intern::op_extend_environment: {
-        std::wcout << "extend-environment";
+        print("extend-environment");
         print_args(3);
         break;
     }
     case Intern::op_define_variable: {
-        std::wcout << "define-variable!";
+        print("define-variable!");
         print_args(3);
         break;
     }
     case Intern::op_list: {
-        std::wcout << "list";
+        print("list");
         print_args(1);
         break;
     }
     case Intern::op_lookup_variable_value: {
-        std::wcout << "lookup-variable-value";
+        print("lookup-variable-value");
         print_args(2);
         break;
     }
     case Intern::op_cons: {
-        std::wcout << "cons";
+        print("cons");
         print_args(2);
         break;
     }
     case Intern::op_is_primitive_procedure: {
-        std::wcout << "primitive-procedure?";
+        print("primitive-procedure?");
         print_args(1);
         break;
     }
     case Intern::op_apply_primitive_procedure: {
-        std::wcout << "apply-primitive-procedure";
+        print("apply-primitive-procedure");
         print_args(2);
         break;
     }
     case Intern::op_is_false: {
-        std::wcout << "false?";
+        print("false?");
         print_args(1);
         break;
     }
     case Intern::op_set_variable_value: {
-        std::wcout << "set!";
+        print("set!");
         print_args(3);
         break;
     }
@@ -158,17 +160,18 @@ void CodeListPrinter::print_op() {
 }
 
 void CodeListPrinter::print_code_list() {
+    DEBUG_OUTPUT("print", i, code_list.size());
     while (i < code_list.size()) {
         print_pos();
         const auto& code = code_list[i];
         if (is_inst(code)) {
-            std::wcout << "  ";
+            print("  ");
             print_inst();
         }
         else {
             print_code(code);
         }
-        std::wcout << std::endl;
+        print_endl();
         i++;
     }
 }
@@ -176,27 +179,28 @@ void CodeListPrinter::print_code_list() {
 void CodeListPrinter::print_inst() {
     auto code = code_list[i];
     auto inst = get<Instruction>(code);
+    if (inst != Instruction::LABEL && inst != Instruction::ASSIGN) {
+        print(inst);
+        print(" ");
+    }
     switch (inst) {
     case Instruction::ASSIGN:
         print_assign();
         break;
     case Instruction::GOTO:
-        std::wcout << "goto ";
+
         i++;
         print_code(code_list[i]);
         break;
     case Instruction::SAVE:
-        std::wcout << "save ";
         i++;
         print_code(code_list[i]);
         break;
     case Instruction::PERFORM:
-        std::wcout << "perform ";
         i++;
         print_op();
         break;
     case Instruction::TEST:
-        std::wcout << "test ";
         if (is_op(code_list[i + 1])) {
             i++;
             print_op();
@@ -206,23 +210,19 @@ void CodeListPrinter::print_inst() {
         }
         break;
     case Instruction::BRANCH:
-        std::wcout << "branch ";
         i++;
         print_code(code_list[i]);
         break;
     case Instruction::RESTORE:
-        std::wcout << "restore ";
         i++;
         print_code(code_list[i]);
         break;
     case Instruction::LABEL:
         i++;
-        std::wcout << "\b\b";
         print_code(code_list[i]);
-        std::wcout << ":";
+        print(":");
         break;
     case Instruction::CONT:
-        std::wcout << "cont";
         break;
     default: {
         DEBUG_OUTPUT("unknown inst:", inst);
@@ -233,7 +233,7 @@ void CodeListPrinter::print_inst() {
 
 void CodeListPrinter::print_assign() {
     auto code = code_list[i];
-    std::cout << "assign";
+    print("assign");
     print_args(1);
     if (is_op(code_list[i + 1])) {
         i++;
@@ -252,7 +252,7 @@ public:
         , code_list(code_list) {
     }
 
-    void run(int pos);
+    void run(int pos, bool print_bytecode = false);
 
 private:
     InstCode fetch_code() {
@@ -303,7 +303,7 @@ private:
     MachineImpl& m;
     const CodeList& code_list;
     int i;
-    bool print_trace = false;
+    bool print_trace = true;
 };
 
 void CodeRunner::assign_reg(Register r, const Operand& v) {
@@ -317,7 +317,11 @@ void CodeRunner::assign_reg(Register r, const Operand& v) {
     }
 }
 
-void CodeRunner::run(int pos) {
+void CodeRunner::run(int pos, bool print_bytecode) {
+    if (print_bytecode) {
+        DEBUG_OUTPUT("print bytecode:");
+        CodeListPrinter(code_list, pos).print();
+    }
     i = pos;
     while (i + 1 < code_list.size()) {
         auto code = fetch_code();
@@ -388,6 +392,15 @@ Cell CodeRunner::run_intern(const SymenvPtr& env, Intern op, const std::vector<C
         }
         auto proc = get<CompiledProcedure>(vv);
         auto port = std::make_shared<StringPort<Char>>(StringPort<Char>::out);
+        return none;
+    }
+    case Intern::op_machine_print_trace: {
+        if (is_true(args[0])) {
+            print_trace = true;
+        }
+        else {
+            print_trace = false;
+        }
         return none;
     }
     default: {
@@ -480,6 +493,7 @@ Cell CodeRunner::run_op(Intern op) {
         auto env = get<SymenvPtr>(m.reg[Register::ENV]);
         return run_intern(env, get<Intern>(proc), args);
     }
+    case Intern::op_make_compiled_macro:
     case Intern::op_make_compiled_procedure: {
         auto label = fetch_label();
         auto r = fetch_reg();
@@ -488,7 +502,7 @@ Cell CodeRunner::run_op(Intern op) {
         LOG_TRACE(" ");
         LOG_TRACE(r);
         auto env = get<SymenvPtr>(m.reg[r]);
-        auto proc = std::make_shared<CompiledProcedureImpl>(m, label, env);
+        auto proc = std::make_shared<CompiledProcedureImpl>(m, label, env, op == Intern::op_make_compiled_macro);
         return proc;
     }
     case Intern::op_compiled_procedure_env: {
@@ -528,10 +542,12 @@ Cell CodeRunner::run_op(Intern op) {
             throw cont;
         }
         DEBUG_OUTPUT("error operand:", v);
+        DEBUG_OUTPUT("expect Procedure but got:", v);
         m.print_reg();
         throw std::runtime_error("error");
     }
     case Intern::op_extend_environment: {
+        // extend-environment vars vals base-env
         auto v = fetch_cell();
         auto r1 = fetch_reg();
         auto r2 = fetch_reg();
@@ -698,6 +714,10 @@ void CodeRunner::run_inst(Instruction inst) {
             auto label = get_label(v);
             auto pos = m.label_map.at(label);
             i = pos;
+            LOG_TRACE(";;; ");
+            LOG_TRACE(" --> ");
+            LOG_TRACE(i);
+            LOG_TRACE(LF);
             break;
         }
         else if (is_reg(v)) {
@@ -708,12 +728,20 @@ void CodeRunner::run_inst(Instruction inst) {
                 if (is_type<Int>(num)) {
                     auto pos = get<Int>(num);
                     i = pos;
+                    LOG_TRACE(";;; ");
+                    LOG_TRACE(" --> ");
+                    LOG_TRACE(i);
+                    LOG_TRACE(LF);
                     break;
                 }
             }
             if (is_intern(vv)) {
                 if (get<Intern>(vv) == Intern::_done_) {
                     i = code_list.size();
+                    LOG_TRACE(";;; ");
+                    LOG_TRACE(" --> ");
+                    LOG_TRACE("DONE");
+                    LOG_TRACE(LF);
                     break;
                 }
             }
@@ -740,6 +768,11 @@ void CodeRunner::run_inst(Instruction inst) {
         LOG_TRACE(r);
         LOG_TRACE(LF);
         m.stack.push(m.reg[r]);
+        LOG_TRACE(";;; ");
+        LOG_TRACE(r);
+        LOG_TRACE(" --> ");
+        LOG_TRACE(m.reg[r]);
+        LOG_TRACE(LF);
         break;
     }
     case Instruction::RESTORE: {
@@ -749,6 +782,11 @@ void CodeRunner::run_inst(Instruction inst) {
         LOG_TRACE(LF);
         m.reg[r] = m.stack.top();
         m.stack.pop();
+        LOG_TRACE(";;; ");
+        LOG_TRACE(r);
+        LOG_TRACE(" --> ");
+        LOG_TRACE(m.reg[r]);
+        LOG_TRACE(LF);
         break;
     }
     case Instruction::CONT: {
@@ -770,11 +808,27 @@ Cell MachineImpl::run(const CodeList& code_list, const SymenvPtr& env) {
     fill_label_map(code_list);
     auto pos = all_code_list.size();
 
-    DEBUG_OUTPUT("print bytecode:");
-    CodeListPrinter(code_list, pos).print();
-
     all_code_list.reserve(all_code_list.size() + code_list.size());
     std::copy(code_list.begin(), code_list.end(), std::back_inserter(all_code_list));
+    reg[Register::ENV] = env;
+    reg[Register::CONTINUE] = Intern::_done_;
+    CodeRunner runner(*this, all_code_list);
+    runner.run(pos - 1, true);
+    std::wcout << reg[Register::VAL] << std::endl;
+
+    return reg[Register::VAL];
+}
+
+Cell MachineImpl::run(const CodeList& code_list, const CodeList& new_code_list, const SymenvPtr& env) {
+    // DEBUG_OUTPUT("run: ");
+    all_code_list.reserve(all_code_list.size() + code_list.size() + new_code_list.size());
+    fill_label_map(code_list);
+    std::copy(code_list.begin(), code_list.end(), std::back_inserter(all_code_list));
+    auto pos = all_code_list.size();
+
+    fill_label_map(new_code_list);
+    std::copy(new_code_list.begin(), new_code_list.end(), std::back_inserter(all_code_list));
+
     reg[Register::ENV] = env;
     reg[Register::CONTINUE] = Intern::_done_;
     CodeRunner runner(*this, all_code_list);

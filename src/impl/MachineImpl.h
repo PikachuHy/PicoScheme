@@ -23,6 +23,7 @@ public:
 
 private:
     void fill_label_map(const CodeList& code_list);
+    Cell run(const CodeList& code_list, const CodeList& new_code_list, const SymenvPtr& env);
 
 private:
     Scheme& scm;
@@ -33,6 +34,7 @@ private:
     friend class Machine;
     friend class CodeRunner;
     friend class CompiledProcedureImpl;
+    friend class CompilerImpl;
 };
 
 } // namespace pscm

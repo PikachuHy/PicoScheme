@@ -474,6 +474,7 @@ enum class Intern {
     op_define_variable,
     op_is_false,
     op_make_compiled_procedure,
+    op_make_compiled_macro,
     op_compiled_procedure_env,
     op_compiled_procedure_entry,
     op_extend_environment,
@@ -484,6 +485,9 @@ enum class Intern {
     op_get_port_string,
 
     op_gencont,
+
+    op_get_current_environment,
+    op_machine_print_trace,
 };
 } // namespace pscm
 #endif // TYPES_HPP

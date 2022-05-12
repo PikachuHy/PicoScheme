@@ -2956,6 +2956,14 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args) {
         auto port = get<StringPortPtr>(args[0]).get();
         return std::make_shared<String>(port->str());
     }
+    case Intern::op_get_current_environment:
+        return senv;
+    case Intern::op_lookup_variable_value: {
+        auto var = args[0];
+        auto sym = get<Symbol>(var);
+        auto env = get<SymenvPtr>(args[1]);
+        return env->get(sym);
+    }
     default:
         DEBUG_OUTPUT("opcode:", primop);
         throw std::invalid_argument("invalid primary opcode");
@@ -3314,6 +3322,9 @@ SymenvPtr add_environment_defaults(Scheme& scm) {
           { scm.symbol("genport"),                Intern::op_genport },
           { scm.symbol("get-port-string"),        Intern::op_get_port_string },
 
+          { scm.symbol("lookup-variable-value"),        Intern::op_lookup_variable_value },
+          { scm.symbol("get-current-environment"),        Intern::op_get_current_environment },
+          { scm.symbol("machine-print-trace"),        Intern::op_machine_print_trace },
        });
     // clang-format on
     return std_env;

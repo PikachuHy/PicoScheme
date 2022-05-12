@@ -163,6 +163,8 @@ std::wostream& operator<<(std::wostream& os, Intern opcode) {
         return os << "#<primop display>";
     case Intern::op_callcc:
         return os << "#<primop call-with-current-continuation>";
+    case Intern::op_isnil:
+        return os << "#<primop null?>";
     default: {
         auto s = string_convert<Char>(std::string(magic_enum::enum_name(opcode)));
         os << "#<primop ";
