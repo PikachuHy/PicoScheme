@@ -102,6 +102,9 @@ struct CompilerImpl {
             return scm.cons(scm.symbol("begin"), item);
         }
         else {
+            if (is_nil(item)) {
+                return none;
+            }
             return car(item);
         }
     }
@@ -144,6 +147,9 @@ struct CompilerImpl {
             return true;
         }
         if (is_bool(expr)) {
+            return true;
+        }
+        if (is_none(expr)) {
             return true;
         }
         return false;
