@@ -303,7 +303,7 @@ struct CompilerImpl {
         auto after_if = make_label(LabelEnum::AFTER_IF);
         Linkage consequent_linkage = linkage;
         if (is_next_linkage(linkage)) {
-            consequent_linkage = LinkageEnum::NEXT;
+            consequent_linkage = after_if;
         }
         auto p_code = compile(if_predicate(expr), Register::VAL, LinkageEnum::NEXT);
         auto c_code = compile(if_consequent(expr), target, consequent_linkage);
