@@ -398,16 +398,16 @@ struct CompilerImpl {
     InstSeq compile_continuation_call(Cell expr, Target target, Linkage linkage) {
         DEBUG_OUTPUT("compile call/cc");
         auto after_call = make_label(LabelEnum::AFTER_CALL);
-        auto code = CodeList{ Instruction::ASSIGN, Register::CONTINUE, after_call,      Instruction::CONT,
+        auto code = CodeList{ Instruction::CONT,
 
-                              Instruction::ASSIGN, Register::ARGL,     Intern::op_list, Register::VAL };
+                              Instruction::ASSIGN, Register::ARGL, Intern::op_list, Register::VAL };
         auto seq1 = make_instruction_sequence({ Register::VAL }, { Register::ARGL }, code);
         auto proc_code = compile(cadr(expr), Register::PROC, LinkageEnum::NEXT);
         auto regs = Regs{ Register::PROC, Register::CONTINUE };
         auto seq2 = compile_procedure_call(target, linkage);
         auto seq3 = preserving(regs, seq1, seq2);
         auto seq4 = preserving({ Register::ENV, Register::CONTINUE }, proc_code, seq3);
-        return append_instruction_sequences(seq4, InstSeq(Instruction::LABEL, after_call));
+        return seq4;
     }
 
     Cell let_to_lambda(const Cell& expr) {
