@@ -22,8 +22,8 @@ namespace pscm {
 #define LOG_TRACE(msg)                                                                                                 \
     do {                                                                                                               \
         if (print_trace) {                                                                                             \
-            std::wcout << msg;                                                                                         \
-            std::wcout.flush();                                                                                        \
+            stream << msg;                                                                                             \
+            stream.flush();                                                                                            \
         }                                                                                                              \
     } while (0)
 
@@ -160,7 +160,7 @@ void CodeListPrinter::print_op() {
 }
 
 void CodeListPrinter::print_code_list() {
-    DEBUG_OUTPUT("print", i, code_list.size());
+    // DEBUG_OUTPUT("print", i, code_list.size());
     while (i < code_list.size()) {
         print_pos();
         const auto& code = code_list[i];
@@ -250,6 +250,11 @@ public:
     CodeRunner(MachineImpl& m, const CodeList& code_list)
         : m(m)
         , code_list(code_list) {
+        stream.open("run.log", std::ios::out | std::ios::app);
+    }
+
+    ~CodeRunner() {
+        stream.close();
     }
 
     void run(int pos, bool print_bytecode = false);
@@ -302,8 +307,10 @@ private:
 private:
     MachineImpl& m;
     const CodeList& code_list;
+    std::wofstream stream;
     int i;
     bool print_trace = true;
+    bool print_cont = false;
 };
 
 void CodeRunner::assign_reg(Register r, const Operand& v) {
@@ -319,7 +326,7 @@ void CodeRunner::assign_reg(Register r, const Operand& v) {
 
 void CodeRunner::run(int pos, bool print_bytecode) {
     if (print_bytecode) {
-        DEBUG_OUTPUT("print bytecode:");
+        // DEBUG_OUTPUT("print bytecode:");
         CodeListPrinter(code_list, pos).print();
     }
     i = pos;
@@ -331,24 +338,44 @@ void CodeRunner::run(int pos, bool print_bytecode) {
                 run_inst(inst);
             }
             catch (const ContPtr& cont) {
-                DEBUG_OUTPUT("call cont");
+                if (print_cont) {
+                    DEBUG_OUTPUT("call cont");
+                }
                 m.stack = cont->stack();
                 auto val = m.reg[Register::VAL];
-                m.print_reg();
-                DEBUG_OUTPUT("restore reg from cont");
+                if (print_cont) {
+                    m.print_reg();
+                    DEBUG_OUTPUT("restore reg from cont");
+                }
                 m.reg = cont->reg();
-                m.print_reg();
+                if (print_cont) {
+                    m.print_reg();
+                }
                 m.reg[Register::VAL] = val;
-                auto pos = m.reg.at(Register::CONTINUE);
-                if (!is_number(pos)) {
-                    throw bytecode_error("except Number but got:", pos);
+                auto new_pos = m.reg.at(Register::CONTINUE);
+                if (is_number(new_pos)) {
+                    auto num = get<Number>(new_pos);
+                    if (!is_type<Int>(num)) {
+                        throw bytecode_error("expect Int but got:", num);
+                    }
+                    i = get<Int>(num);
+                    LOG_TRACE(";;; restore cont --> ");
+                    LOG_TRACE(i);
+                    LOG_TRACE(LF);
+                    continue;
                 }
-                auto num = get<Number>(pos);
-                if (!is_type<Int>(num)) {
-                    throw bytecode_error("expect Int but got:", num);
+                if (is_intern(new_pos)) {
+                    auto op = get<Intern>(new_pos);
+                    if (op == Intern::_done_) {
+                        return;
+                    }
                 }
-                i = get<Int>(num);
+                throw bytecode_error("except Number or <primop _done_> but got:", pos);
             }
+        }
+        else if (is_type<Comment>(code)) {
+            LOG_TRACE(get<Comment>(code));
+            LOG_TRACE(std::endl);
         }
         else {
             DEBUG_OUTPUT("wrong inst code:");
@@ -539,6 +566,10 @@ Cell CodeRunner::run_op(Intern op) {
         }
         if (is_cont(v)) {
             auto cont = get<ContPtr>(v);
+            LOG_TRACE(LF);
+            LOG_TRACE("call cont, continue = ");
+            LOG_TRACE(cont->reg().at(Register::CONTINUE));
+            LOG_TRACE(LF);
             throw cont;
         }
         DEBUG_OUTPUT("error operand:", v);
@@ -716,6 +747,8 @@ void CodeRunner::run_inst(Instruction inst) {
             i = pos;
             LOG_TRACE(";;; ");
             LOG_TRACE(" --> ");
+            LOG_TRACE(label);
+            LOG_TRACE(" ");
             LOG_TRACE(i);
             LOG_TRACE(LF);
             break;
@@ -792,7 +825,11 @@ void CodeRunner::run_inst(Instruction inst) {
     case Instruction::CONT: {
         LOG_TRACE("  cont");
         LOG_TRACE(LF);
-        auto cont = std::make_shared<Continuation>(m.stack, m.reg);
+        Cell cont = std::make_shared<Continuation>(m.stack, m.reg);
+        LOG_TRACE(";;; ---> ");
+        LOG_TRACE(cont);
+        LOG_TRACE(LF);
+        // m.print_reg();
         m.reg[Register::VAL] = cont;
         break;
     }
@@ -814,7 +851,8 @@ Cell MachineImpl::run(const CodeList& code_list, const SymenvPtr& env) {
     reg[Register::CONTINUE] = Intern::_done_;
     CodeRunner runner(*this, all_code_list);
     runner.run(pos - 1, true);
-    std::wcout << reg[Register::VAL] << std::endl;
+    std::wcout << std::endl;
+    std::wcout << " --> " << reg[Register::VAL] << std::endl;
 
     return reg[Register::VAL];
 }
@@ -858,7 +896,7 @@ void MachineImpl::fill_label_map(const CodeList& code_list) {
                     auto label = get_label(code);
                     // DEBUG_OUTPUT("label:", label, "-->", i);
                     auto pos = i + all_code_list.size();
-                    label_map[label] = pos;
+                    label_map[label] = pos - 2;
                 }
                 else {
                     DEBUG_OUTPUT("inst:", code);
@@ -888,10 +926,19 @@ Machine::Machine(Scheme& scm)
     : impl(std::make_shared<MachineImpl>(scm)) {
 }
 
+bool is_eof(const Cell& cell) {
+    Cell eof = -1;
+    return cell == eof;
+}
+
 Cell Machine::run(SymenvPtr env, Cell expr) {
+    if (is_eof(expr)) {
+        return none;
+    }
     auto code = Compiler(impl->scm, env).compile(expr);
 
     DEBUG_OUTPUT("run bytecode:", expr);
+    impl->reg.clear();
     auto ret = impl->run(code.code->statements, env);
     return ret;
     //    return none;

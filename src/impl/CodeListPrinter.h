@@ -38,7 +38,7 @@ public:
     }
 
     void print() {
-        DEBUG_OUTPUT("print code list, size: ", code_list.size());
+        //        DEBUG_OUTPUT("print code list, size: ", code_list.size());
         reset();
         /*
         for(auto code: code_list) {
@@ -70,7 +70,7 @@ private:
     }
 
     void print_pos() {
-        auto s = std::to_string(i + start_pos);
+        auto s = std::to_string(i);
         print(s);
         for (int j = s.size(); j < max_width; ++j) {
             print(" ");

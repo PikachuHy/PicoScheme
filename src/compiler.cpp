@@ -85,6 +85,9 @@ struct CompilerImpl {
     }
 
     InstSeq compile_sequence(const Cell& expr, Target target, Linkage linkage) {
+        if (is_nil(expr)) {
+            return compile(none, target, linkage);
+        }
         if (is_last_expr(expr)) {
             return compile(first_expr(expr), target, linkage);
         }
@@ -282,6 +285,7 @@ struct CompilerImpl {
         auto seq2 = preserving({ Register::ENV }, get_value_code, seq1);
         return end_with_linkage(linkage, seq2);
     }
+
     bool is_if(const Cell& expr) {
         return is_tagged_list(expr, "if");
     }
@@ -396,29 +400,31 @@ struct CompilerImpl {
     }
 
     InstSeq compile_continuation_call(Cell expr, Target target, Linkage linkage) {
-        DEBUG_OUTPUT("compile call/cc");
+        //        DEBUG_OUTPUT("compile call/cc");
         auto after_call = make_label(LabelEnum::AFTER_CALL);
-        auto code = CodeList{ Instruction::CONT,
+        auto code = CodeList{ Instruction::ASSIGN, Register::CONTINUE, after_call,
 
-                              Instruction::ASSIGN, Register::ARGL, Intern::op_list, Register::VAL };
+                              Instruction::CONT,
+
+                              Instruction::ASSIGN, Register::ARGL,     Intern::op_list, Register::VAL };
         auto seq1 = make_instruction_sequence({ Register::VAL }, { Register::ARGL }, code);
         auto proc_code = compile(cadr(expr), Register::PROC, LinkageEnum::NEXT);
         auto regs = Regs{ Register::PROC, Register::CONTINUE };
         auto seq2 = compile_procedure_call(target, linkage);
         auto seq3 = preserving(regs, seq1, seq2);
         auto seq4 = preserving({ Register::ENV, Register::CONTINUE }, proc_code, seq3);
-        return seq4;
+        auto seq5 = append_instruction_sequences(seq4, InstSeq(Instruction::LABEL, after_call));
+        return end_with_linkage(linkage, seq5);
     }
 
     Cell let_to_lambda(const Cell& expr) {
-        auto body = caddr(expr);
+        auto body = cddr(expr);
         Cell formal = scm.cons(none, nil);
         Cell actual = scm.cons(none, nil);
         auto formal_it = formal;
         auto actual_it = actual;
         auto it = cadr(expr);
         while (is_pair(it)) {
-            DEBUG_OUTPUT(it);
             auto item = car(it);
             set_cdr(formal_it, scm.cons(car(item), nil));
             set_cdr(actual_it, scm.cons(cadr(item), nil));
@@ -426,10 +432,34 @@ struct CompilerImpl {
             actual_it = cdr(actual_it);
             it = cdr(it);
         }
-        auto f = make_lambda(cdr(formal), scm.cons(body, nil));
+        auto f = make_lambda(cdr(formal), body);
         Cell code = scm.cons(f, cdr(actual));
-        DEBUG_OUTPUT(code);
         return code;
+    }
+
+    Cell cons(Cell a, Cell b) {
+        return scm.cons(std::move(a), std::move(b));
+    }
+
+    Cell let_star_to_lambda(const Cell& expr) {
+        auto bindings = cadr(expr);
+        auto body = cddr(expr);
+        // (if null? bindings) `((lambda () . ,body))
+        if (is_nil(bindings)) {
+            auto code = make_lambda(nil, body);
+            return cons(code, nil);
+        }
+        /*
+         * `(let (,(car bindings))
+         *   (let* ,(cdr bindings) . body))
+         */
+        Cell code0 = cons(scm.symbol("let*"), cons(cdr(bindings), body));
+        auto code1 = let_star_to_lambda(code0);
+        //        DEBUG_OUTPUT("let* ret:", code1);
+        auto code = cons(scm.symbol("let"), cons(cons(car(bindings), nil), code1));
+        //        DEBUG_OUTPUT("let code:", Cell(code));
+        auto code2 = let_to_lambda(code);
+        return cons(code2, nil);
     }
 
     InstSeq compile_application(Cell expr, Target target, Linkage linkage) {
@@ -461,10 +491,25 @@ struct CompilerImpl {
         }
         else if (is_intern(op)) {
             switch (get<Intern>(op)) {
-            case Intern::op_callcc:
-                return compile_continuation_call(expr, target, linkage);
-            case Intern::_let:
-                return compile(let_to_lambda(expr), target, linkage);
+            case Intern::op_callcc: {
+                auto seq = compile_continuation_call(expr, target, linkage);
+                seq.statements.insert(seq.statements.begin(), Comment{ L"begin of", expr });
+                seq.statements.push_back(Comment{ L"end of", expr });
+                return seq;
+            }
+            case Intern::_let: {
+                auto expand_code = let_to_lambda(expr);
+                DEBUG_OUTPUT("expand let:", expand_code);
+                auto seq = compile(expand_code, target, linkage);
+                seq.statements.insert(seq.statements.begin(), Comment{ L"expand", expand_code });
+                seq.statements.insert(seq.statements.begin(), Comment{ L"let", expr });
+                return seq;
+            }
+            case Intern::_let_star: {
+                auto code = let_star_to_lambda(expr);
+                DEBUG_OUTPUT("expand code:", code);
+                return compile(code, target, linkage);
+            }
             default:
                 break;
             }
@@ -484,6 +529,7 @@ struct CompilerImpl {
         auto seq3 = preserving(regs, seq1, seq2);
         return preserving({ Register::ENV, Register::CONTINUE }, proc_code, seq3);
     }
+
     InstSeq compile_procedure_call(Target target, const Linkage& linkage) {
         auto primitive_branch = make_label(LabelEnum::PRIMITIVE_BRANCH);
         auto compiled_branch = make_label(LabelEnum::COMPILED_BRANCH);
@@ -732,7 +778,7 @@ struct CompilerImpl {
     }
 
     InstSeq compile(Cell expr, Target target, Linkage linkage) {
-        DEBUG_OUTPUT("compile expr:", expr);
+        //         DEBUG_OUTPUT("compile expr:", expr);
         InstSeq seq;
         if (is_self_evaluating(expr)) {
             seq = compile_self_evaluating(expr, target, linkage);
@@ -813,16 +859,8 @@ Compiler::Compiler(Scheme& scm, const SymenvPtr& env)
     : c(std::make_shared<CompilerImpl>(scm, env)) {
 }
 
-bool is_eof(const Cell& cell) {
-    Cell eof = -1;
-    return cell == eof;
-}
-
 CompiledCode Compiler::compile(const Cell& cell) {
     DEBUG_OUTPUT("compile code:", cell);
-    if (is_eof(cell)) {
-        return {};
-    }
     auto seq = c->compile(cell, Register::VAL, LinkageEnum::RETURN);
     return { seq };
 }

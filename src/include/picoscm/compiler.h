@@ -11,6 +11,7 @@
 #ifndef PICOSCHEME_COMPILER_H
 #define PICOSCHEME_COMPILER_H
 #include "cell.hpp"
+#include <ostream>
 #include <set>
 #include <utility>
 
@@ -65,9 +66,20 @@ struct Label {
     }
 };
 
+struct Comment {
+    String msg;
+    Cell cell;
+
+    template <typename CharT>
+    friend std::basic_ostream<CharT>& operator<<(std::basic_ostream<CharT>& os, const Comment& comment) {
+        os << ";;; " << comment.msg << " " << comment.cell;
+        return os;
+    }
+};
+
 using Linkage = std::variant<LinkageEnum, Label>;
 using Operand = std::variant<Cell, Register, Label>;
-using InstCode = std::variant<Instruction, Operand>;
+using InstCode = std::variant<Instruction, Operand, Comment>;
 using Target = Register;
 using Regs = std::vector<Register>;
 using CodeList = std::vector<InstCode>;
@@ -201,7 +213,7 @@ std::basic_ostream<CharT>& operator<<(std::basic_ostream<CharT>& os, const InstC
         // clang-format off
         [&os](const Instruction& arg) { os << arg; },
         [&os](const Operand& arg)     { os << arg; },
-        [&os](const Label& arg)       { os << arg; }
+        [&os](const Comment& arg)       { os << arg; }
         // clang-format on
     };
     std::visit(stream, code);
