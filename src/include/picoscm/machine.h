@@ -10,6 +10,7 @@
 
 #ifndef PICOSCHEME_MACHINE_H
 #define PICOSCHEME_MACHINE_H
+#include "compiler.h"
 #include "types.hpp"
 
 namespace pscm {
@@ -20,6 +21,8 @@ class Machine {
 public:
     Machine(Scheme& scm);
     Cell run(SymenvPtr env, Cell expr);
+    Cell run(const Procedure& proc, const Cell& args);
+    void load(const CodeList& code_list);
 
 private:
     sptr<MachineImpl> impl;

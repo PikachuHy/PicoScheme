@@ -18,12 +18,11 @@ public:
     }
 
     Cell run(const CodeList& code_list, const SymenvPtr& env);
-
+    Cell run(const SymenvPtr& env, size_t pos);
+    Cell run(const Procedure& proc, const Cell& args);
+    size_t load(const CodeList& code_list);
     void print_reg() const;
-
-private:
     void fill_label_map(const CodeList& code_list);
-    Cell run(const CodeList& code_list, const CodeList& new_code_list, const SymenvPtr& env);
 
 private:
     Scheme& scm;

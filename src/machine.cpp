@@ -11,6 +11,7 @@
 #include "picoscm/machine.h"
 #include "picoscm/compiler.h"
 #include "picoscm/continuation.h"
+#include "picoscm/promise.h"
 #include "picoscm/scheme.hpp"
 
 #include "impl/CodeListPrinter.h"
@@ -58,13 +59,23 @@ Intern get_op(const InstCode& code) {
 }
 
 bool is_label(const InstCode& code) {
-    return is_type<Operand>(code) && is_type<Label>(get<Operand>(code));
+    if (!is_type<Operand>(code)) {
+        return false;
+    }
+    auto operand = get<Operand>(code);
+    if (!is_type<Cell>(operand)) {
+        return false;
+    }
+    auto cell = get<Cell>(operand);
+    if (!is_type<Label>(cell)) {
+        return false;
+    }
+    return true;
 }
 
 Label get_label(const InstCode& code) {
-    return get<Label>(get<Operand>(code));
+    return get<Label>(get<Cell>(get<Operand>(code)));
 }
-
 bool is_inst(const InstCode& code) {
     return is_type<Instruction>(code);
 }
@@ -153,8 +164,9 @@ void CodeListPrinter::print_op() {
         break;
     }
     default: {
-        DEBUG_OUTPUT("unknown op:", op);
-        throw std::runtime_error("unknown op");
+        print(op);
+        //        DEBUG_OUTPUT("unknown op:", op);
+        //        throw std::runtime_error("unknown op");
     }
     }
 }
@@ -237,7 +249,7 @@ void CodeListPrinter::print_assign() {
     print_args(1);
     if (is_op(code_list[i + 1])) {
         i++;
-        std::wcout << " ";
+        print(" ");
         print_op();
     }
     else {
@@ -257,7 +269,7 @@ public:
         stream.close();
     }
 
-    void run(int pos, bool print_bytecode = false);
+    void run(std::size_t pos);
 
 private:
     InstCode fetch_code() {
@@ -291,7 +303,11 @@ private:
     }
 
     Label fetch_label() {
-        return get_label(fetch_code());
+        auto cell = fetch_cell();
+        if (is_label(cell)) {
+            return get<Label>(cell);
+        }
+        throw bytecode_error("cell is not label: ", cell);
     }
 
     void assign_reg(Register r, const Operand& v);
@@ -324,11 +340,7 @@ void CodeRunner::assign_reg(Register r, const Operand& v) {
     }
 }
 
-void CodeRunner::run(int pos, bool print_bytecode) {
-    if (print_bytecode) {
-        // DEBUG_OUTPUT("print bytecode:");
-        CodeListPrinter(code_list, pos).print();
-    }
+void CodeRunner::run(std::size_t pos) {
     i = pos;
     while (i + 1 < code_list.size()) {
         auto code = fetch_code();
@@ -414,12 +426,13 @@ Cell CodeRunner::run_intern(const SymenvPtr& env, Intern op, const std::vector<C
     switch (op) {
     case Intern::op_call_with_output_string: {
         auto vv = args[0];
-        if (!is_type<CompiledProcedure>(vv)) {
-            throw bytecode_error("except CompiledProcedure but got:", vv);
+        if (!is_type<Procedure>(vv)) {
+            throw bytecode_error("except Procedure but got:", vv);
         }
-        auto proc = get<CompiledProcedure>(vv);
+        auto proc = get<Procedure>(vv);
         auto port = std::make_shared<StringPort<Char>>(StringPort<Char>::out);
-        return none;
+        m.run(proc, m.scm.cons(port, nil));
+        return std::make_shared<String>(port->str());
     }
     case Intern::op_machine_print_trace: {
         if (is_true(args[0])) {
@@ -529,7 +542,7 @@ Cell CodeRunner::run_op(Intern op) {
         LOG_TRACE(" ");
         LOG_TRACE(r);
         auto env = get<SymenvPtr>(m.reg[r]);
-        auto proc = std::make_shared<CompiledProcedureImpl>(m, label, env, op == Intern::op_make_compiled_macro);
+        auto proc = Procedure(env, label, op == Intern::op_make_compiled_macro);
         return proc;
     }
     case Intern::op_compiled_procedure_env: {
@@ -538,17 +551,17 @@ Cell CodeRunner::run_op(Intern op) {
         LOG_TRACE(v);
         if (is_type<Cell>(v)) {
             auto vv = get<Cell>(v);
-            if (is_type<CompiledProcedure>(vv)) {
-                auto proc = get<CompiledProcedure>(vv);
-                return proc.env();
+            if (is_type<Procedure>(vv)) {
+                auto proc = get<Procedure>(vv);
+                return proc.senv();
             }
         }
         else if (is_reg(v)) {
             auto r = get_reg(v);
             auto vv = m.reg[r];
-            if (is_type<CompiledProcedure>(vv)) {
-                auto proc = get<CompiledProcedure>(vv);
-                return proc.env();
+            if (is_type<Procedure>(vv)) {
+                auto proc = get<Procedure>(vv);
+                return proc.senv();
             }
         }
         DEBUG_OUTPUT("error operand:", v);
@@ -560,8 +573,8 @@ Cell CodeRunner::run_op(Intern op) {
         LOG_TRACE("compiled-procedure-entry ");
         LOG_TRACE(r);
         auto v = m.reg[r];
-        if (is_type<CompiledProcedure>(v)) {
-            auto proc = get<CompiledProcedure>(v);
+        if (is_type<Procedure>(v)) {
+            auto proc = get<Procedure>(v);
             return proc.entry();
         }
         if (is_cont(v)) {
@@ -656,9 +669,10 @@ Cell CodeRunner::run_op(Intern op) {
         return none;
     }
     default: {
-        DEBUG_OUTPUT("unknown op:", op);
-        m.print_reg();
-        throw std::runtime_error("unknown op");
+        return op;
+        //        DEBUG_OUTPUT("unknown op:", op);
+        //        m.print_reg();
+        //        throw std::runtime_error("unknown op");
     }
     }
 }
@@ -695,8 +709,12 @@ void CodeRunner::run_inst(Instruction inst) {
         LOG_TRACE("  test ");
         if (is_op(v)) {
             if (is_true(run_op(get_op(v)))) {
+                LOG_TRACE(LF);
+                LOG_TRACE(";;; --> true");
             }
             else {
+                LOG_TRACE(LF);
+                LOG_TRACE(";;; --> false");
                 // skip branch label
                 i += 2;
             }
@@ -778,6 +796,12 @@ void CodeRunner::run_inst(Instruction inst) {
                     break;
                 }
             }
+            if (is_label(vv)) {
+                auto label = get_label(vv);
+                auto pos = m.label_map.at(label);
+                i = pos;
+                break;
+            }
         }
         else {
             if (is_type<Cell>(v)) {
@@ -841,39 +865,43 @@ void CodeRunner::run_inst(Instruction inst) {
 }
 
 Cell MachineImpl::run(const CodeList& code_list, const SymenvPtr& env) {
-    // DEBUG_OUTPUT("run: ");
+    auto pos = load(code_list);
+    return run(env, pos - 1);
+}
+
+size_t MachineImpl::load(const CodeList& code_list) {
     fill_label_map(code_list);
     auto pos = all_code_list.size();
-
+    // DEBUG_OUTPUT("print bytecode:");
+    CodeListPrinter(code_list, pos).print();
     all_code_list.reserve(all_code_list.size() + code_list.size());
     std::copy(code_list.begin(), code_list.end(), std::back_inserter(all_code_list));
+    return pos;
+}
+
+Cell MachineImpl::run(const SymenvPtr& env, size_t pos) {
     reg[Register::ENV] = env;
     reg[Register::CONTINUE] = Intern::_done_;
     CodeRunner runner(*this, all_code_list);
-    runner.run(pos - 1, true);
-    std::wcout << std::endl;
-    std::wcout << " --> " << reg[Register::VAL] << std::endl;
+    runner.run(pos);
+    //    std::wcout << std::endl;
+    //    std::wcout << " --> " << reg[Register::VAL] << std::endl;
 
     return reg[Register::VAL];
 }
 
-Cell MachineImpl::run(const CodeList& code_list, const CodeList& new_code_list, const SymenvPtr& env) {
-    // DEBUG_OUTPUT("run: ");
-    all_code_list.reserve(all_code_list.size() + code_list.size() + new_code_list.size());
-    fill_label_map(code_list);
-    std::copy(code_list.begin(), code_list.end(), std::back_inserter(all_code_list));
-    auto pos = all_code_list.size();
-
-    fill_label_map(new_code_list);
-    std::copy(new_code_list.begin(), new_code_list.end(), std::back_inserter(all_code_list));
-
-    reg[Register::ENV] = env;
-    reg[Register::CONTINUE] = Intern::_done_;
-    CodeRunner runner(*this, all_code_list);
-    runner.run(pos - 1);
-    std::wcout << reg[Register::VAL] << std::endl;
-
-    return reg[Register::VAL];
+Cell MachineImpl::run(const Procedure& proc, const Cell& args) {
+    auto env = proc.senv();
+    auto entry = proc.entry();
+    auto it = label_map.find(entry);
+    if (it == label_map.end()) {
+        throw bytecode_error("no label:", entry);
+    }
+    size_t pos = it->second;
+    reg.clear();
+    reg[Register::PROC] = proc;
+    reg[Register::ARGL] = args;
+    return run(env, pos);
 }
 
 void MachineImpl::print_reg() const {
@@ -937,10 +965,18 @@ Cell Machine::run(SymenvPtr env, Cell expr) {
     }
     auto code = Compiler(impl->scm, env).compile(expr);
 
-    DEBUG_OUTPUT("run bytecode:", expr);
+    // DEBUG_OUTPUT("run bytecode:", expr);
     impl->reg.clear();
     auto ret = impl->run(code.code->statements, env);
     return ret;
     //    return none;
+}
+
+Cell Machine::run(const Procedure& proc, const Cell& args) {
+    return impl->run(proc, args);
+}
+
+void Machine::load(const CodeList& code_list) {
+    impl->load(code_list);
 }
 } // namespace pscm

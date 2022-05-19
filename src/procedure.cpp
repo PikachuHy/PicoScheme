@@ -45,6 +45,16 @@ static bool is_unique_symbol_list(Cell args) {
  */
 struct Procedure::Closure {
 
+    Closure(const SymenvPtr& senv, const Cell& args, const Cell& code, const Label& label, bool is_macro)
+        : senv{ senv }
+        , args{ args }
+        , code{ code }
+        , entry{ label }
+        , is_macro{ is_macro } {
+        if (!is_unique_symbol_list(args) || !is_pair(code))
+            throw std::invalid_argument("invalid procedure definition");
+    }
+
     Closure(const SymenvPtr& senv, const Cell& args, const Cell& code, bool is_macro)
         : senv{ senv }
         , args{ args }
@@ -54,22 +64,37 @@ struct Procedure::Closure {
             throw std::invalid_argument("invalid procedure definition");
     }
 
-    bool operator!=(const Closure& impl) const noexcept {
-        return senv != impl.senv || args != impl.args || code != impl.code || is_macro != impl.is_macro;
+    Closure(const SymenvPtr& senv, const Label& label, bool is_macro)
+        : senv{ senv }
+        , entry{ label }
+        , is_macro{ is_macro } {
+    }
+
+    bool operator!=(const Closure& rhs) const noexcept {
+        return senv != rhs.senv || args != rhs.args || code != rhs.code || entry != rhs.entry ||
+               is_macro != rhs.is_macro;
     }
 
     SymenvPtr senv; //!< Symbol environment pointer.
     Cell args;      //!< Formal parameter symbol list or single symbol.
     Cell code;      //!< Lambda body expression list.
-    CompiledCode compiled_code;
+    Label entry;    //!< Compiled code entry.
     bool is_macro;
 };
+
+Procedure::Procedure(const SymenvPtr& senv, const Cell& args, const Cell& code, const Label& label, bool is_macro)
+    : impl{ std::make_shared<Closure>(senv, args, code, is_macro) } {
+}
 
 Procedure::Procedure(const SymenvPtr& senv, const Cell& args, const Cell& code, bool is_macro)
     : impl{ std::make_shared<Closure>(senv, args, code, is_macro) } {
 }
 
-Cell Procedure::senv() const noexcept {
+Procedure::Procedure(const SymenvPtr& senv, const Label& label, bool is_macro)
+    : impl{ std::make_shared<Closure>(senv, label, is_macro) } {
+}
+
+SymenvPtr Procedure::senv() const noexcept {
     return impl->senv;
 }
 
@@ -79,6 +104,10 @@ Cell Procedure::args() const noexcept {
 
 Cell Procedure::code() const noexcept {
     return impl->code;
+}
+
+Label Procedure::entry() const noexcept {
+    return impl->entry;
 }
 
 bool Procedure::is_macro() const noexcept {

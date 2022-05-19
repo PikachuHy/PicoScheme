@@ -70,7 +70,7 @@ private:
     }
 
     void print_pos() {
-        auto s = std::to_string(i);
+        auto s = std::to_wstring(i);
         print(s);
         for (int j = s.size(); j < max_width; ++j) {
             print(" ");
@@ -80,9 +80,9 @@ private:
     void print_op();
 
     void print_code(const InstCode& code) {
-        std::wstringstream ss;
-        ss << code;
-        stream << string_convert<char>(ss.str());
+        //        std::wstringstream ss;
+        //        ss << code;
+        stream << code;
     }
 
     void print_assign();
@@ -106,7 +106,7 @@ private:
     int i;
     int start_pos;
     int max_width;
-    std::ofstream stream;
+    std::wofstream stream;
 };
 
 } // namespace pscm

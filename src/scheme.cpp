@@ -246,7 +246,7 @@ void Scheme::repl(const SymenvPtr& env) {
                 out << "> ";
                 expr = none;
                 expr = parser.read(in);
-                expr = m_machine->run(senv, expr);
+                expr = eval_with_compiler(senv, expr);
                 // expr = eval_with_continuation(senv, expr);
 
                 if (is_none(expr))
@@ -626,6 +626,21 @@ std::vector<Cell> Scheme::eval_args(const SymenvPtr& env, Cell args, bool is_lis
     return stack;
 }
 
+Cell Scheme::eval_with_compiler(SymenvPtr env, Cell expr) {
+    if (is_nil(expr)) {
+        return nil;
+    }
+    if (is_symbol(expr)) {
+        auto sym = get<Symbol>(expr);
+        return env->get(sym);
+    }
+    if (!is_pair(expr)) {
+        return expr;
+    }
+    auto ret = m_machine->run(env, expr);
+    return ret;
+}
+
 Cell Scheme::eval_with_continuation(SymenvPtr env, Cell expr) {
     ContPtr c;
     Cell c_args;
@@ -654,6 +669,15 @@ Cell Scheme::eval_with_continuation(SymenvPtr env, Cell expr) {
 }
 
 Cell Scheme::eval(SymenvPtr env, Cell expr) {
+    switch (mode) {
+    case Mode::AST:
+        return ast_eval(env, expr);
+    case Mode::BYTECODE:
+        return m_machine->run(env, expr);
+    }
+}
+
+Cell Scheme::ast_eval(SymenvPtr env, Cell expr) {
     DEBUG("eval:", expr);
     if (is_nil(expr)) {
         return nil;
@@ -1003,7 +1027,7 @@ Cell Scheme::partial_eval(const SymenvPtr& senv, const Cell& cell, int nesting) 
             // handle (... ,body) (... ,@(...))
             auto opcode = _get_intern(senv, item);
             if (opcode == Intern::_unquote) {
-                auto new_val = eval(senv, cdr(it));
+                auto new_val = eval(senv, cadr(it));
                 set_cdr(tail, new_val);
                 it = cdr(it);
             }

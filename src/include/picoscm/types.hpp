@@ -27,6 +27,7 @@ using sptr = std::shared_ptr<T>;
 
 struct Cell;
 struct Number;
+struct Label;
 class  Clock;
 class  Procedure;
 class  CompiledProcedure;
@@ -89,7 +90,7 @@ using Variant = std::variant <
     Module,
 
     /* Compiler: */
-    CompiledProcedure
+    Label
 >;
 
 static const None none {}; //!< void return symbol

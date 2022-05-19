@@ -14,6 +14,7 @@
 #include <ostream>
 #include <utility>
 
+#include "label.h"
 #include "types.hpp"
 
 namespace pscm {
@@ -67,13 +68,15 @@ public:
      * @param code  Non empty list of one or more scheme expression forming the lambda body.
      */
     Procedure(const SymenvPtr& senv, const Cell& args, const Cell& code, bool is_macro = false);
-
+    Procedure(const SymenvPtr& senv, const Cell& args, const Cell& code, const Label& label, bool is_macro = false);
+    Procedure(const SymenvPtr& senv, const Label& label, bool is_macro = false);
     /// Predicate returns true if closure should be applied as macro.
     bool is_macro() const noexcept;
 
-    Cell senv() const noexcept;
+    SymenvPtr senv() const noexcept;
     Cell args() const noexcept;
     Cell code() const noexcept;
+    Label entry() const noexcept;
 
     void compile(Scheme& scm);
 

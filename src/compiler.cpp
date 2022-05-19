@@ -139,7 +139,28 @@ struct CompilerImpl {
         return cond_to_if_sub(clauses);
     }
 
+    Cell and_to_if_sub(const Cell& expr) {
+        if (is_nil(cdr(expr))) {
+            return car(expr);
+        }
+        return scm.list(Intern::_if, car(expr), and_to_if_sub(cdr(expr)), false);
+        //        return cons(Intern::_if, cons(car(expr), cons(and_to_if_sub(cdr(expr)), false)));
+    }
+
+    Cell and_to_if(const Cell& expr) {
+        if (is_nil(cdr(expr))) {
+            return true;
+        }
+        return and_to_if_sub(cdr(expr));
+    }
+
     bool is_self_evaluating(const Cell& expr) {
+        if (is_nil(expr)) {
+            return true;
+        }
+        if (is_intern(expr)) {
+            return true;
+        }
         if (is_number(expr)) {
             return true;
         }
@@ -330,10 +351,6 @@ struct CompilerImpl {
         return preserving({ Register::ENV, Register::CONTINUE }, p_code, seq3);
     }
 
-    bool is_lambda(const Cell& expr) {
-        return is_tagged_list(expr, "lambda");
-    }
-
     InstSeq tack_on_instruction_sequence(const InstSeq& seq, const InstSeq& body_seq) {
         return make_instruction_sequence(seq.needs, seq.modifies, append(seq.statements, body_seq.statements));
     }
@@ -375,25 +392,16 @@ struct CompilerImpl {
         return append_instruction_sequences(inst_seq1, inst_seq2);
     }
 
-    bool is_begin(const Cell& expr) {
-        return is_tagged_list(expr, "begin");
-    }
-
-    bool is_cond(const Cell& expr) {
-        return is_tagged_list(expr, "cond");
-    }
-
-    bool is_application(const Cell& expr) {
-        return is_pair(expr);
-    }
-
     Cell eval_op(Cell op) {
+        if (is_intern(op)) {
+            return op;
+        }
         if (!is_symbol(op)) {
             return none;
         }
         auto sym = get<Symbol>(op);
-        if (compiler_env->defined_sym(sym)) {
-            auto val = compiler_env->get(sym);
+        if (env->defined_sym(sym)) {
+            auto val = env->get(sym);
             return val;
         }
         return none;
@@ -465,23 +473,10 @@ struct CompilerImpl {
     InstSeq compile_application(Cell expr, Target target, Linkage linkage) {
         auto op = eval_op(car(expr));
         if (is_macro(op)) {
-            auto code = CodeList{ Instruction::ASSIGN, Register::PROC, car(expr),
-
-                                  Instruction::ASSIGN, Register::ARGL, cdr(expr),
-
-                                  Instruction::ASSIGN, Register::VAL,  Intern::op_compiled_procedure_entry,
-                                  Register::PROC,
-
-                                  Instruction::GOTO,   Register::VAL };
-            auto pos = all_compiled_code.size();
-            all_compiled_code.reserve(all_compiled_code.size() + code.size());
-            std::copy(code.begin(), code.end(), std::back_inserter(all_compiled_code));
-            auto expand_code = MachineImpl(scm).run(all_compiled_code, compiler_env);
-
-            //            auto proc_macro = get<Procedure>(op);
-            //            auto expand_code = proc_macro.expand_only(scm, expr);
-            DEBUG_OUTPUT("expand code:", expand_code);
-            return compile_sequence(cdr(expand_code), target, linkage);
+            auto proc_macro = get<Procedure>(op);
+            auto expand_code = scm.machine()->run(proc_macro, cdr(expr));
+            // DEBUG_OUTPUT("expand code:", expand_code);
+            return compile(expand_code, target, linkage);
         }
         else if (is_syntax(op)) {
             const auto& matched = get<SyntaxPtr>(op)->match(cdr(expr));
@@ -525,6 +520,23 @@ struct CompilerImpl {
         }
         auto regs = Regs{ Register::PROC, Register::CONTINUE };
         auto seq1 = construct_arglist(operand_codes);
+        auto seq2 = compile_procedure_call(target, linkage);
+        auto seq3 = preserving(regs, seq1, seq2);
+        return preserving({ Register::ENV, Register::CONTINUE }, proc_code, seq3);
+    }
+
+    InstSeq compile_apply(Cell expr, Target target, Linkage linkage) {
+        auto proc = cadr(expr);
+        auto args = caddr(expr);
+        args = cadr(args);
+        auto proc_code = compile(proc, Register::PROC, LinkageEnum::NEXT);
+        auto code = CodeList{
+            Instruction::ASSIGN, Register::PROC, proc,
+
+            Instruction::ASSIGN, Register::ARGL, args,
+        };
+        auto regs = Regs{ Register::PROC, Register::CONTINUE };
+        auto seq1 = make_instruction_sequence({}, { Register::PROC, Register::ARGL }, code);
         auto seq2 = compile_procedure_call(target, linkage);
         auto seq3 = preserving(regs, seq1, seq2);
         return preserving({ Register::ENV, Register::CONTINUE }, proc_code, seq3);
@@ -737,16 +749,6 @@ struct CompilerImpl {
         return ret;
     }
 
-    InstSeq append_instruction_sequences(Label label, const InstSeq& seq) {
-        auto seq1 = make_instruction_sequence({}, {}, { label });
-        return append_instruction_sequences(seq1, seq);
-    }
-
-    InstSeq append_instruction_sequences(const InstSeq& seq, Label label) {
-        auto seq2 = make_instruction_sequence({}, {}, { label });
-        return append_instruction_sequences(seq, seq2);
-    }
-
     InstSeq append_instruction_sequences(const InstSeq& seq1, const InstSeq& seq2) {
         auto needs = list_union(seq1.needs, list_difference(seq2.needs, seq1.modifies));
         auto modifies = list_union(seq1.modifies, seq2.modifies);
@@ -759,72 +761,94 @@ struct CompilerImpl {
         return seq;
     }
 
-    InstSeq append_instruction_sequences(const InstSeq& seq1, const InstSeq& seq2, const Label& label) {
-        auto seq = append_instruction_sequences(seq1, seq2);
-        seq.statements.push_back(label);
-        return seq;
-    }
-
     Cell begin_actions(Cell expr) {
         return cdr(expr);
     }
 
-    bool is_macro_definition(Cell expr) {
-        return is_tagged_list(expr, "define-macro");
-    }
-
-    bool is_syntax_definition(Cell expr) {
-        return is_tagged_list(expr, "define-syntax");
+    InstSeq compile_intern(Intern op, Cell expr, Target target, Linkage linkage) {
+        InstSeq seq;
+        switch (get<Intern>(op)) {
+        case Intern::_quote: {
+            seq = compile_quoted(expr, target, linkage);
+            break;
+        }
+        case Intern::_unquote: {
+            seq = compile(cdr(expr), target, linkage);
+            break;
+        }
+        case Intern::_setb: {
+            seq = compile_assignment(expr, target, linkage);
+            break;
+        }
+        case Intern::_define: {
+            seq = compile_definition(expr, target, linkage);
+            break;
+        }
+        case Intern::_macro: {
+            seq = compile_definition(expr, target, linkage, true);
+            break;
+        }
+        case Intern::_define_syntax: {
+            scm.syntax_define_syntax(env, cdr(expr));
+            seq = {};
+            break;
+        }
+        case Intern::_if: {
+            seq = compile_if(expr, target, linkage);
+            break;
+        }
+        case Intern::_lambda: {
+            seq = compile_lambda(expr, target, linkage);
+            break;
+        }
+        case Intern::_begin: {
+            seq = compile_sequence(cdr(expr), target, linkage);
+            break;
+        }
+        case Intern::_cond: {
+            auto new_if = cond_to_if(expr);
+            // DEBUG_OUTPUT("cond->if:", new_if);
+            seq = compile(new_if, target, linkage);
+            break;
+        }
+        case Intern::_and: {
+            auto new_if = and_to_if(expr);
+            // DEBUG_OUTPUT("and->if:", new_if);
+            seq = compile(new_if, target, linkage);
+            break;
+        }
+        case Intern::_apply: {
+            seq = compile_apply(expr, target, linkage);
+            break;
+        }
+        default: {
+            seq = compile_application(expr, target, linkage);
+        }
+        }
+        return seq;
     }
 
     InstSeq compile(Cell expr, Target target, Linkage linkage) {
-        //         DEBUG_OUTPUT("compile expr:", expr);
+        // DEBUG_OUTPUT("compile expr:", expr);
         InstSeq seq;
         if (is_self_evaluating(expr)) {
             seq = compile_self_evaluating(expr, target, linkage);
         }
-        else if (is_quoted(expr)) {
-            seq = compile_quoted(expr, target, linkage);
-        }
         else if (is_variable(expr)) {
             seq = compile_variable(expr, target, linkage);
         }
-        else if (is_assignment(expr)) {
-            seq = compile_assignment(expr, target, linkage);
-        }
-        else if (is_definition(expr)) {
-            seq = compile_definition(expr, target, linkage);
-        }
-        else if (is_macro_definition(expr)) {
-            auto sym = get<Symbol>(caadr(expr));
-            auto proc_macro = Procedure{ env, cdadr(expr), cddr(expr), true };
-            compiler_env->add(sym, proc_macro);
-            seq = compile_definition(expr, target, linkage, true);
-        }
-        else if (is_syntax_definition(expr)) {
-            scm.syntax_define_syntax(env, cdr(expr));
-            seq = {};
-        }
-        else if (is_if(expr)) {
-            seq = compile_if(expr, target, linkage);
-        }
-        else if (is_lambda(expr)) {
-            seq = compile_lambda(expr, target, linkage);
-        }
-        else if (is_begin(expr)) {
-            seq = compile_sequence(begin_actions(expr), target, linkage);
-        }
-        else if (is_cond(expr)) {
-            auto new_if = cond_to_if(expr);
-            DEBUG_OUTPUT("conf->if:", new_if);
-            seq = compile(new_if, target, linkage);
-        }
-        else if (is_application(expr)) {
-            seq = compile_application(expr, target, linkage);
-        }
         else {
-            DEBUG_OUTPUT("Unknown expression type: COMPILE", expr);
-            throw std::runtime_error("compile fail");
+            auto op = eval_op(car(expr));
+            if (is_intern(op)) {
+                seq = compile_intern(get<Intern>(op), expr, target, linkage);
+            }
+            else if (is_pair(expr)) {
+                seq = compile_application(expr, target, linkage);
+            }
+            else {
+                DEBUG_OUTPUT("Unknown expression type: COMPILE", expr);
+                throw std::runtime_error("compile fail");
+            }
         }
         // DEBUG_OUTPUT("compile expr finish:", expr);
         // CodeListPrinter(seq).print();
@@ -860,7 +884,7 @@ Compiler::Compiler(Scheme& scm, const SymenvPtr& env)
 }
 
 CompiledCode Compiler::compile(const Cell& cell) {
-    DEBUG_OUTPUT("compile code:", cell);
+    // DEBUG_OUTPUT("compile code:", cell);
     auto seq = c->compile(cell, Register::VAL, LinkageEnum::RETURN);
     return { seq };
 }

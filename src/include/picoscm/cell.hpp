@@ -141,6 +141,7 @@ inline bool is_clock  (const Cell& cell) { return is_type<ClockPtr>(cell); }
 inline bool is_cobj   (const Cell& cell) { return is_type<CObjPtr>(cell); }
 inline bool is_promise(const Cell& cell) { return is_type<Promise>(cell); }
 inline bool is_number (const Cell& cell) { return is_type<Number>(cell); }
+inline bool is_label  (const Cell& cell) { return is_type<Label>(cell); }
 inline bool is_symbol (const Cell& cell) { return is_type<Symbol>(cell); }
 inline bool is_symenv (const Cell& cell) { return is_type<SymenvPtr>(cell); }
 inline bool is_vector (const Cell& cell) { return is_type<VectorPtr>(cell); }
@@ -397,6 +398,8 @@ private:
             return "#<continuation>";
         else if constexpr (std::is_same_v<T, Module>)
             return "#<module>";
+        else if constexpr (std::is_same_v<T, Label>)
+            return "#<label>";
         else
             return "#<unknown>";
     }
@@ -412,8 +415,8 @@ std::size_t hash<Cell>::operator()(const Cell& cell) const {
         [](Char arg)             -> result_type { return std::hash<Char>{}(arg); },
         [](Intern arg)           -> result_type { return std::hash<Intern>{}(arg); },
         [](Number arg)           -> result_type { return Number::hash{}(arg); },
+        [](Label arg)            -> result_type { return Label::hash{}(arg); },
         [](const Procedure& arg) -> result_type { return Procedure::hash{}(arg); },
-        [](const CompiledProcedure& arg) -> result_type { return CompiledProcedure::hash{}(arg); },
         [](const Module& arg)    -> result_type { return Module::hash{}(arg); },
         [](const Symbol& arg)    -> result_type { return Symbol::hash{}(arg); },
         [](const StringPtr& arg) -> result_type { return std::hash<String>{}(*arg);},

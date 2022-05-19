@@ -165,6 +165,20 @@ std::wostream& operator<<(std::wostream& os, Intern opcode) {
         return os << "#<primop call-with-current-continuation>";
     case Intern::op_isnil:
         return os << "#<primop null?>";
+    case Intern::op_ispair:
+        return os << "#<primop pair?>";
+    case Intern::op_isvec:
+        return os << "#<primop vector?>";
+    case Intern::op_newline:
+        return os << "#<primop newline>";
+    case Intern::op_eq:
+        return os << "#<primop eq?>";
+    case Intern::op_eqv:
+        return os << "#<primop eqv?>";
+    case Intern::op_issym:
+        return os << "#<primop symbol?>";
+    case Intern::op_call_with_output_string:
+        return os << "#<primop call-with-output-string>";
     default: {
         auto s = string_convert<Char>(std::string(magic_enum::enum_name(opcode)));
         os << "#<primop ";
@@ -225,10 +239,11 @@ std::wostream& operator<<(std::wostream& os, const Cell& cell) {
         [&os](const SymenvPtr& arg)   -> std::wostream& { return os << "#<symenv " << arg.get() << '>'; },
         [&os](const FunctionPtr& arg) -> std::wostream& { return os << "#<function " << arg->name() << " @ " << arg << '>'; },
         [&os](const ContPtr& arg)     -> std::wostream& { return os << "#<continuation @ " << arg << '>'; },
+        [&os](const HashMapPtr & arg) -> std::wostream& { return os << "#<hashmap @ " << arg << '>'; },
         [&os](const PortPtr&)         -> std::wostream& { return os << "#<port>"; },
         [&os](const ClockPtr& arg)    -> std::wostream& { return os << "#<clock " << *arg << ">"; },
         [&os](const Module& arg)      -> std::wostream& { return os << "#<module " << arg.name() << ">"; },
-        [&os](const CompiledProcedure& arg)      -> std::wostream& { return os << "#<proc " << arg.entry() << " symenv@" << arg.env() << ">"; },
+        [&os](const Label& arg)       -> std::wostream& { return os << arg; },
         [&os](auto& arg)              -> std::wostream& { return os << arg; }
     }; // clang-format on
 

@@ -11,6 +11,7 @@
 #ifndef PICOSCHEME_COMPILER_H
 #define PICOSCHEME_COMPILER_H
 #include "cell.hpp"
+#include "label.h"
 #include <ostream>
 #include <set>
 #include <utility>
@@ -41,30 +42,6 @@ enum class LinkageEnum {
     NEXT,
     RETURN,
 };
-enum class LabelEnum {
-    TRUE_BRANCH,
-    FALSE_BRANCH,
-    AFTER_IF,
-    PROC_RETURN,
-    PRIMITIVE_BRANCH,
-    COMPILED_BRANCH,
-    AFTER_CALL,
-    ENTRY,
-    AFTER_LAMBDA
-};
-
-struct Label {
-    LabelEnum type;
-    Int num;
-
-    bool operator==(const Label& rhs) const {
-        return type == rhs.type && num == rhs.num;
-    }
-
-    bool operator!=(const Label& rhs) const {
-        return !(rhs == *this);
-    }
-};
 
 struct Comment {
     String msg;
@@ -78,7 +55,7 @@ struct Comment {
 };
 
 using Linkage = std::variant<LinkageEnum, Label>;
-using Operand = std::variant<Cell, Register, Label>;
+using Operand = std::variant<Cell, Register>;
 using InstCode = std::variant<Instruction, Operand, Comment>;
 using Target = Register;
 using Regs = std::vector<Register>;
@@ -159,40 +136,6 @@ std::basic_ostream<CharT>& operator<<(std::basic_ostream<CharT>& os, LinkageEnum
     return os;
 }
 
-template <typename CharT>
-std::basic_ostream<CharT>& operator<<(std::basic_ostream<CharT>& os, const Label& label) {
-    switch (label.type) {
-    case LabelEnum::TRUE_BRANCH:
-        os << "true-branch";
-        break;
-    case LabelEnum::FALSE_BRANCH:
-        os << "false-branch";
-        break;
-    case LabelEnum::AFTER_IF:
-        os << "after-if";
-        break;
-    case LabelEnum::PROC_RETURN:
-        os << "proc-return";
-        break;
-    case LabelEnum::PRIMITIVE_BRANCH:
-        os << "primitive-branch";
-        break;
-    case LabelEnum::COMPILED_BRANCH:
-        os << "compiled-branch";
-        break;
-    case LabelEnum::AFTER_CALL:
-        os << "after-call";
-        break;
-    case LabelEnum::ENTRY:
-        os << "entry";
-        break;
-    case LabelEnum::AFTER_LAMBDA:
-        os << "after-lambda";
-        break;
-    }
-    os << label.num;
-    return os;
-}
 
 template <typename CharT>
 std::basic_ostream<CharT>& operator<<(std::basic_ostream<CharT>& os, const Operand& operand) {

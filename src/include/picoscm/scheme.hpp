@@ -22,6 +22,7 @@
 namespace pscm {
 class GCollector;
 class Machine;
+class Compiler;
 class CompilerImpl;
 
 class module_error : public std::runtime_error {
@@ -61,6 +62,10 @@ public:
     [[nodiscard]] const SymenvPtr& get_current_module_env() const {
         return current_module.env();
     };
+
+    sptr<Machine>& machine() {
+        return m_machine;
+    }
 
     SymenvPtr get_module_env(const Cell& module_name);
     Module load_module(const Cell& module_name, const SymenvPtr& env);
@@ -197,6 +202,7 @@ public:
     }
 
     Cell eval_with_continuation(SymenvPtr env, Cell expr);
+    Cell eval_with_compiler(SymenvPtr env, Cell expr);
     /**
      * Evaluate a scheme expression at the argument symbol environment.
      *
@@ -206,6 +212,7 @@ public:
      * @return Evaluation result or special symbol @em none for no result.
      */
     Cell eval(SymenvPtr env, Cell expr);
+    Cell ast_eval(SymenvPtr env, Cell expr);
     /**
      * Evaluate a scheme code at the argument symbol environment.
      *
@@ -380,6 +387,7 @@ protected:
     void print_frames(bool flag = false);
 
 private:
+    enum class Mode { AST, BYTECODE };
     friend class GCollector;
     //<! Initial default hash table bucket count.
     static constexpr size_t dflt_bucket_count = 1024;
@@ -406,6 +414,8 @@ private:
     FrameStack m_frames;
     std::unordered_map<Intern, std::function<Cell(const SymenvPtr&, const Cell&)>> m_op_table;
     sptr<Machine> m_machine;
+    sptr<Compiler> m_compiler;
+    Mode mode = Mode::BYTECODE;
 
     friend class CompilerImpl;
 };

@@ -8,6 +8,8 @@ int main(int argc, char* argv[]) {
     std::ofstream ofstream;
     ofstream.open("inst.log", std::ios::out);
     ofstream.close();
+    ofstream.open("run.log", std::ios::out);
+    ofstream.close();
     Scheme scm;
     //    scm.load("/Users/pikachu/texmacs_dev/pr/PicoScheme/init.scm");
     //    scm.load("/Users/pikachu/texmacs_dev/pr/PicoScheme/eval.scm");
