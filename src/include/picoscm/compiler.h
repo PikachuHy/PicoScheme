@@ -316,7 +316,6 @@ struct InstSeq {
 
 class compiler_error : public std::exception {
 public:
-    compiler_error(const std::string& msg, Cell cell);
     compiler_error(const std::string& msg, const InstCode& code);
 
     const char *what() const noexcept override;

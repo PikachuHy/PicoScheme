@@ -100,6 +100,7 @@ static const Nil  nil  {}; //!< empty list symbol
 enum class Intern {
     _none_,
     _done_,
+    _runtime_value_,
     /* Scheme syntax opcodes: */
     _or,
     _and,

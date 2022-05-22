@@ -33,10 +33,6 @@ bool is_return_linkage(Linkage linkage) {
     return is_type<LinkageEnum>(linkage) && get<LinkageEnum>(linkage) == LinkageEnum::RETURN;
 }
 
-compiler_error::compiler_error(const std::string& msg, Cell cell) {
-    using Port = StringPort<Char>;
-}
-
 compiler_error::compiler_error(const std::string& msg, const InstCode& code) {
     using Port = StringPort<Char>;
 
@@ -67,9 +63,8 @@ Cell CompiledProcedure::entry() const {
 struct CompilerImpl {
     CompilerImpl(Scheme& scm, SymenvPtr env)
         : scm(scm)
-        , env(std::move(env))
         , m(scm) {
-        compiler_env = Symenv::create(this->env);
+        env_stack.push(env);
     }
 
     bool is_last_expr(Cell expr) {
@@ -117,7 +112,8 @@ struct CompilerImpl {
             return false;
         }
         auto clause = car(clauses);
-        if (is_tagged_list(clause, "else")) {
+        auto op = eval_op(car(clause));
+        if (is_intern(op) && get<Intern>(op) == Intern::_else) {
             if (is_nil(cdr(clauses))) {
                 return cond_if_body(clause);
             }
@@ -126,10 +122,10 @@ struct CompilerImpl {
         else {
             auto item = cond_to_if_sub(cdr(clauses));
             if (is_nil(item)) {
-                return scm.list(scm.symbol("if"), car(clause), cond_if_body(clause));
+                return scm.list(Intern::_if, car(clause), cond_if_body(clause));
             }
             else {
-                return scm.list(scm.symbol("if"), car(clause), cond_if_body(clause), item);
+                return scm.list(Intern::_if, car(clause), cond_if_body(clause), item);
             }
         }
     }
@@ -222,10 +218,6 @@ struct CompilerImpl {
         return false;
     }
 
-    bool is_quoted(const Cell& expr) {
-        return is_tagged_list(expr, "quote");
-    }
-
     InstSeq compile_quoted(const Cell& expr, Target target, const Linkage& linkage) {
         auto seq = CodeList{ Instruction::ASSIGN, target, text_of_quotation(expr) };
         auto inst_seq = make_instruction_sequence({}, { target }, seq);
@@ -240,10 +232,6 @@ struct CompilerImpl {
         auto code = CodeList{ Instruction::ASSIGN, target, Intern::op_lookup_variable_value, expr, Register::ENV };
         auto seq = make_instruction_sequence({ Register::ENV }, { target }, code);
         return end_with_linkage(linkage, seq);
-    }
-
-    bool is_assignment(const Cell& expr) {
-        return is_tagged_list(expr, "set!");
     }
 
     Cell assignment_variable(const Cell& expr) {
@@ -269,10 +257,6 @@ struct CompilerImpl {
         auto seq1 = make_instruction_sequence({ Register::ENV, Register::VAL }, { target }, code);
         auto seq2 = preserving({ Register::ENV }, get_value_code, seq1);
         return end_with_linkage(linkage, seq2);
-    }
-
-    bool is_definition(const Cell& expr) {
-        return is_tagged_list(expr, "define");
     }
 
     Cell definition_variable(const Cell& expr) {
@@ -319,10 +303,6 @@ struct CompilerImpl {
         auto seq1 = make_instruction_sequence({ Register::ENV, Register::VAL }, { target }, code);
         auto seq2 = preserving({ Register::ENV }, get_value_code, seq1);
         return end_with_linkage(linkage, seq2);
-    }
-
-    bool is_if(const Cell& expr) {
-        return is_tagged_list(expr, "if");
     }
 
     Cell if_predicate(const Cell& expr) {
@@ -384,16 +364,8 @@ struct CompilerImpl {
         return append_instruction_sequences(seq3, InstSeq(Instruction::LABEL, after_lambda));
     }
 
-    Cell lambda_parameters(Cell expr) {
-        return cadr(expr);
-    }
-
-    Cell lambda_body(const Cell& expr) {
-        return cddr(expr);
-    }
-
     InstSeq compile_lambda_body(const Cell& expr, const Label& proc_entry) {
-        auto formals = lambda_parameters(expr);
+        auto formals = cadr(expr);
         CodeList inst_seq0 = { Instruction::LABEL,  proc_entry,
 
                                Instruction::ASSIGN, Register::ENV, Intern::op_compiled_procedure_env, Register::PROC,
@@ -402,7 +374,17 @@ struct CompilerImpl {
                                Register::ARGL,      Register::ENV };
         auto inst_seq1 =
             make_instruction_sequence({ Register::ENV, Register::PROC, Register::ARGL }, { Register::ENV }, inst_seq0);
-        auto inst_seq2 = compile_sequence(lambda_body(expr), Register::VAL, LinkageEnum::RETURN);
+        // create new env
+        auto new_env = Symenv::create(cur_env());
+        while (is_pair(formals)) {
+            auto var = car(formals);
+            auto sym = get<Symbol>(var);
+            formals = cdr(formals);
+            new_env->add(sym, Intern::_runtime_value_);
+        }
+        push_env(new_env);
+        auto inst_seq2 = compile_sequence(cddr(expr), Register::VAL, LinkageEnum::RETURN);
+        pop_env();
         return append_instruction_sequences(inst_seq1, inst_seq2);
     }
 
@@ -414,6 +396,7 @@ struct CompilerImpl {
             return none;
         }
         auto sym = get<Symbol>(op);
+        auto env = cur_env();
         if (env->defined_sym(sym)) {
             auto val = env->get(sym);
             return val;
@@ -793,7 +776,7 @@ struct CompilerImpl {
             break;
         }
         case Intern::_define_syntax: {
-            scm.syntax_define_syntax(env, cdr(expr));
+            scm.syntax_define_syntax(cur_env(), cdr(expr));
             seq = {};
             break;
         }
@@ -871,11 +854,22 @@ struct CompilerImpl {
         return { label, new_label_number() };
     }
 
+    SymenvPtr cur_env() {
+        return env_stack.top();
+    }
+
+    void push_env(SymenvPtr env) {
+        env_stack.push(env);
+    }
+
+    void pop_env() {
+        env_stack.pop();
+    }
+
     CodeList code_list;
     CellHashMap<Int> label_map;
     Scheme& scm;
-    SymenvPtr env;
-    SymenvPtr compiler_env;
+    std::stack<SymenvPtr> env_stack;
     Machine m;
     Cell ok = true;
     static Int label_counter;
