@@ -542,18 +542,12 @@ struct CompilerImpl {
     InstSeq compile_apply(Cell expr, Target target, Linkage linkage) {
         auto proc = cadr(expr);
         auto args = caddr(expr);
-        args = cadr(args);
+        // DEBUG_OUTPUT("args:", args);
         auto proc_code = compile(proc, Register::PROC, LinkageEnum::NEXT);
-        auto code = CodeList{
-            Instruction::ASSIGN, Register::PROC, proc,
-
-            Instruction::ASSIGN, Register::ARGL, args,
-        };
-        auto regs = Regs{ Register::PROC, Register::CONTINUE };
-        auto seq1 = make_instruction_sequence({}, { Register::PROC, Register::ARGL }, code);
+        auto args_code = compile(args, Register::ARGL, LinkageEnum::NEXT);
         auto seq2 = compile_procedure_call(target, linkage);
-        auto seq3 = preserving(regs, seq1, seq2);
-        return preserving({ Register::ENV, Register::CONTINUE }, proc_code, seq3);
+        auto seq3 = preserving({ Register::PROC }, args_code, seq2);
+        return append_instruction_sequences(proc_code, seq3);
     }
 
     InstSeq compile_procedure_call(Target target, const Linkage& linkage) {
