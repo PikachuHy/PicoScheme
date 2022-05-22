@@ -18,6 +18,7 @@
 
 namespace pscm {
 enum class Instruction {
+    NOOP,
     GOTO,
     ASSIGN,
     PERFORM,
@@ -55,15 +56,154 @@ struct Comment {
 };
 
 using Linkage = std::variant<LinkageEnum, Label>;
-using Operand = std::variant<Cell, Register>;
-using InstCode = std::variant<Instruction, Operand, Comment>;
+using InstCode = std::variant<Instruction, Cell, Register, Comment>;
 using Target = Register;
 using Regs = std::vector<Register>;
-using CodeList = std::vector<InstCode>;
+
+class CodeList {
+public:
+    CodeList() {
+        tail = &dummy;
+        last_visited = nullptr;
+        total = 0;
+    }
+
+    CodeList(std::initializer_list<InstCode> l) {
+        tail = &dummy;
+        last_visited = nullptr;
+        total = 0;
+        for (const auto& it : l) {
+            push_back(it);
+        }
+    }
+
+    struct Node {
+        Node(InstCode code = Instruction::NOOP, Node *next = nullptr)
+            : code(std::move(code))
+            , next(next) {
+        }
+
+        InstCode code;
+        Node *next;
+    };
+
+    template <typename T, typename... Args>
+    void push_back(T code, Args&&...args) {
+        push_back(code);
+        push_back(std::forward<Args>(args)...);
+    }
+
+    template <typename T>
+    void push_back(T code) {
+        tail->next = new Node(code);
+        tail = tail->next;
+        total++;
+    }
+
+    template <typename T, typename... Args>
+    void push_front(T code, Args&&...args) {
+        push_front(std::forward<Args>(args)...);
+        push_front(code);
+    }
+
+    template <typename T>
+    void push_front(T code) {
+        dummy.next = new Node(std::move(code), dummy.next);
+        total++;
+    }
+
+    CodeList& merge(const CodeList& l) {
+        total += l.total;
+        tail->next = l.dummy.next;
+        tail = l.tail;
+        return *this;
+    }
+
+    std::size_t size() const {
+        return total;
+    }
+
+    bool empty() const noexcept {
+        return dummy.next == nullptr;
+    }
+
+    InstCode operator[](std::size_t index) const {
+        if (last_visited && last_visited_index < index) {
+            while (last_visited && last_visited_index < index) {
+                last_visited_index++;
+                last_visited = last_visited->next;
+            }
+            return last_visited_code(index);
+        }
+
+        reset_last_visited(index);
+        last_visited_index = index;
+        return last_visited_code(index);
+    }
+
+    Node *tail;
+
+    struct Iterator {
+        Iterator(Node *head)
+            : it(head) {
+        }
+
+        Iterator& operator++() {
+            it = it->next;
+            return *this;
+        }
+
+        InstCode operator*() {
+            return it->code;
+        }
+
+        bool operator==(const Iterator& rhs) const {
+            return it == rhs.it;
+        }
+
+        bool operator!=(const Iterator& rhs) const {
+            return !(rhs == *this);
+        }
+
+        Node *it;
+    };
+
+    Iterator begin() {
+        return Iterator(dummy.next);
+    }
+
+    Iterator end() {
+        return Iterator(nullptr);
+    }
+
+private:
+    void reset_last_visited(std::size_t index) const {
+        last_visited = dummy.next;
+        for (int i = 0; last_visited && i < index; ++i) {
+            last_visited = last_visited->next;
+        }
+    }
+
+    InstCode last_visited_code(std::size_t index) const {
+        if (last_visited) {
+            return last_visited->code;
+        }
+        throw std::out_of_range(std::to_string(index));
+    }
+
+private:
+    Node dummy;
+    std::size_t total;
+    mutable Node *last_visited;
+    mutable std::size_t last_visited_index;
+};
 
 template <typename CharT>
 std::basic_ostream<CharT>& operator<<(std::basic_ostream<CharT>& os, const Instruction& inst) {
     switch (inst) {
+    case Instruction::NOOP:
+        os << "noop";
+        break;
     case Instruction::GOTO:
         os << "goto";
         break;
@@ -136,26 +276,13 @@ std::basic_ostream<CharT>& operator<<(std::basic_ostream<CharT>& os, LinkageEnum
     return os;
 }
 
-
-template <typename CharT>
-std::basic_ostream<CharT>& operator<<(std::basic_ostream<CharT>& os, const Operand& operand) {
-    overloads stream{
-        // clang-format off
-        [&os](const Cell& arg)         { os << arg; },
-        [&os](const Register& arg)     { os << arg; },
-        [&os](const Label& arg)        { os << arg; }
-        // clang-format on
-    };
-    std::visit(stream, operand);
-    return os;
-}
-
 template <typename CharT>
 std::basic_ostream<CharT>& operator<<(std::basic_ostream<CharT>& os, const InstCode& code) {
     overloads stream{
         // clang-format off
-        [&os](const Instruction& arg) { os << arg; },
-        [&os](const Operand& arg)     { os << arg; },
+        [&os](const Instruction& arg)   { os << arg; },
+        [&os](const Cell& arg)          { os << arg; },
+        [&os](const Register& arg)      { os << arg; },
         [&os](const Comment& arg)       { os << arg; }
         // clang-format on
     };

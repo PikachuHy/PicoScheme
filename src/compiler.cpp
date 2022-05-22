@@ -488,7 +488,7 @@ struct CompilerImpl {
             switch (get<Intern>(op)) {
             case Intern::op_callcc: {
                 auto seq = compile_continuation_call(expr, target, linkage);
-                seq.statements.insert(seq.statements.begin(), Comment{ L"begin of", expr });
+                seq.statements.push_front(Comment{ L"begin of", expr });
                 seq.statements.push_back(Comment{ L"end of", expr });
                 return seq;
             }
@@ -496,8 +496,8 @@ struct CompilerImpl {
                 auto expand_code = let_to_lambda(expr);
                 DEBUG_OUTPUT("expand let:", expand_code);
                 auto seq = compile(expand_code, target, linkage);
-                seq.statements.insert(seq.statements.begin(), Comment{ L"expand", expand_code });
-                seq.statements.insert(seq.statements.begin(), Comment{ L"let", expr });
+                seq.statements.push_front(Comment{ L"expand", expand_code });
+                seq.statements.push_front(Comment{ L"let", expr });
                 return seq;
             }
             case Intern::_let_star: {
@@ -632,12 +632,14 @@ struct CompilerImpl {
         auto code0 = CodeList{ Instruction::ASSIGN, Register::ARGL, Intern::op_list, Register::VAL };
         auto seq0 = make_instruction_sequence({ Register::VAL }, { Register::ARGL }, code0);
         auto code_to_get_last_arg = append_instruction_sequences(operand_codes.back(), seq0);
-        int i = operand_codes.size() - 2;
-        auto code1 = CodeList{ Instruction::ASSIGN, Register::ARGL, Intern::op_cons, Register::VAL, Register::ARGL };
-        auto seq1 = make_instruction_sequence({ Register::VAL, Register::ARGL }, { Register::ARGL }, code1);
-        while (i >= 0) {
-            auto code_for_next_arg = preserving({ Register::ARGL }, operand_codes[i], seq1);
-            i--;
+        auto it = operand_codes.rbegin();
+        it++;
+        while (it != operand_codes.rend()) {
+            auto code1 =
+                CodeList{ Instruction::ASSIGN, Register::ARGL, Intern::op_cons, Register::VAL, Register::ARGL };
+            auto seq1 = make_instruction_sequence({ Register::VAL, Register::ARGL }, { Register::ARGL }, code1);
+            auto code_for_next_arg = preserving({ Register::ARGL }, *it, seq1);
+            it++;
             code_to_get_last_arg = preserving({ Register::ENV }, code_to_get_last_arg, code_for_next_arg);
         }
         return code_to_get_last_arg;
@@ -647,7 +649,7 @@ struct CompilerImpl {
         return {};
     }
 
-    InstSeq make_instruction_sequence(Regs needs, Regs modifies, std::vector<InstCode> statements) {
+    InstSeq make_instruction_sequence(Regs needs, Regs modifies, CodeList statements) {
         return { std::move(needs), std::move(modifies), std::move(statements) };
     }
 
@@ -687,29 +689,31 @@ struct CompilerImpl {
         return preserving({ Register::CONTINUE }, inst_seq, compile_linkage(linkage));
     }
 
+    /**
+     * if seq1 modifies the register and seq2 actually needs the register's original contents,
+     * then `preserving` wraps a `save` and a `restore` of the register
+     * around the seq1 before append the sequences.
+     * Otherwise, `preserving` simply returns the appended instruction sequences.
+     * @param regs a set of registers
+     * @param seq1 the first sequence
+     * @param seq2 the second sequence
+     * @return
+     */
     InstSeq preserving(const Regs& regs, const InstSeq& seq1, const InstSeq& seq2) {
         if (regs.empty()) {
             return append_instruction_sequences(seq1, seq2);
         }
-        CodeList pre;
-        CodeList post;
-        CodeList statements;
+        CodeList statements = seq1.statements;
         Regs needs = seq1.needs;
         Regs modifies = seq1.modifies;
         for (auto reg : regs) {
             if (is_needs_register(seq2, reg) && is_modifies_register(seq1, reg)) {
                 needs = list_union(Regs{ reg }, needs);
                 modifies = list_difference(modifies, Regs{ reg });
-                pre.push_back(reg);
-                pre.push_back(Instruction::SAVE);
-                post.push_back(Instruction::RESTORE);
-                post.push_back(reg);
+                statements.push_front(Instruction::SAVE, reg);
+                statements.push_back(Instruction::RESTORE, reg);
             }
         }
-        statements.reserve(pre.size() + statements.size() + post.size());
-        std::copy(pre.rbegin(), pre.rend(), std::back_inserter(statements));
-        std::copy(seq1.statements.begin(), seq1.statements.end(), std::back_inserter(statements));
-        std::copy(post.begin(), post.end(), std::back_inserter(statements));
         auto new_seq = make_instruction_sequence(needs, modifies, statements);
         return append_instruction_sequences(new_seq, seq2);
     }
@@ -742,11 +746,7 @@ struct CompilerImpl {
         if (b.empty()) {
             return a;
         }
-        CodeList ret;
-        ret.reserve(a.size() + b.size());
-        std::copy(a.begin(), a.end(), std::back_inserter(ret));
-        std::copy(b.begin(), b.end(), std::back_inserter(ret));
-        return ret;
+        return CodeList().merge(a).merge(b);
     }
 
     InstSeq append_instruction_sequences(const InstSeq& seq1, const InstSeq& seq2) {
@@ -759,10 +759,6 @@ struct CompilerImpl {
         auto seq = append_instruction_sequences(seq1, seq2);
         seq = append_instruction_sequences(seq, seq3);
         return seq;
-    }
-
-    Cell begin_actions(Cell expr) {
-        return cdr(expr);
     }
 
     InstSeq compile_intern(Intern op, Cell expr, Target target, Linkage linkage) {
@@ -850,10 +846,6 @@ struct CompilerImpl {
                 throw std::runtime_error("compile fail");
             }
         }
-        // DEBUG_OUTPUT("compile expr finish:", expr);
-        // CodeListPrinter(seq).print();
-        all_compiled_code.reserve(all_compiled_code.size() + seq.statements.size());
-        std::copy(seq.statements.begin(), seq.statements.end(), std::back_inserter(all_compiled_code));
         return seq;
     }
 
@@ -873,11 +865,9 @@ struct CompilerImpl {
     Machine m;
     Cell ok = true;
     static Int label_counter;
-    static CodeList all_compiled_code;
 };
 
 Int CompilerImpl::label_counter = 0;
-CodeList CompilerImpl::all_compiled_code = {};
 
 Compiler::Compiler(Scheme& scm, const SymenvPtr& env)
     : c(std::make_shared<CompilerImpl>(scm, env)) {

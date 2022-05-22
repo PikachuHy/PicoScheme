@@ -30,43 +30,30 @@ namespace pscm {
 
 #define LF std::endl;
 
-bool is_reg(const Operand& operand) {
-    return is_type<Register>(operand);
-}
-
 bool is_reg(const InstCode& code) {
-    return is_type<Operand>(code) && is_type<Register>(get<Operand>(code));
+    return is_type<Register>(code);
 }
 
 Register get_reg(const InstCode& code) {
-    return get<Register>(get<Operand>(code));
-}
-
-bool is_op(const Operand& operand) {
-    return is_type<Cell>(operand) && is_type<Intern>(get<Cell>(operand));
-}
-
-Intern get_op(const Operand& operand) {
-    return get<Intern>(get<Cell>(operand));
+    return get<Register>(code);
 }
 
 bool is_op(const InstCode& code) {
-    return is_type<Operand>(code) && is_op(get<Operand>(code));
+    if (!is_type<Cell>(code)) {
+        return false;
+    }
+    return is_intern(get<Cell>(code));
 }
 
 Intern get_op(const InstCode& code) {
-    return get_op(get<Operand>(code));
+    return get<Intern>(get<Cell>(code));
 }
 
 bool is_label(const InstCode& code) {
-    if (!is_type<Operand>(code)) {
+    if (!is_type<Cell>(code)) {
         return false;
     }
-    auto operand = get<Operand>(code);
-    if (!is_type<Cell>(operand)) {
-        return false;
-    }
-    auto cell = get<Cell>(operand);
+    auto cell = get<Cell>(code);
     if (!is_type<Label>(cell)) {
         return false;
     }
@@ -74,7 +61,7 @@ bool is_label(const InstCode& code) {
 }
 
 Label get_label(const InstCode& code) {
-    return get<Label>(get<Cell>(get<Operand>(code)));
+    return get<Label>(get<Cell>(code));
 }
 bool is_inst(const InstCode& code) {
     return is_type<Instruction>(code);
@@ -90,7 +77,7 @@ public:
         reason.append(string_convert<char>(ss.str()));
     }
 
-    const char *what() const noexcept override {
+    [[nodiscard]] const char *what() const noexcept override {
         return reason.c_str();
     }
 
@@ -196,6 +183,8 @@ void CodeListPrinter::print_inst() {
         print(" ");
     }
     switch (inst) {
+    case Instruction::NOOP:
+        break;
     case Instruction::ASSIGN:
         print_assign();
         break;
@@ -284,17 +273,8 @@ private:
         return get_reg(fetch_code());
     }
 
-    Operand fetch_operand() {
-        auto code = fetch_code();
-        if (is_type<Operand>(code)) {
-            return get<Operand>(code);
-        }
-        DEBUG_OUTPUT("error:", code, "is not operand");
-        throw std::runtime_error("error");
-    }
-
     Cell fetch_cell() {
-        auto operand = fetch_operand();
+        auto operand = fetch_code();
         if (is_type<Cell>(operand)) {
             return get<Cell>(operand);
         }
@@ -310,7 +290,7 @@ private:
         throw bytecode_error("cell is not label: ", cell);
     }
 
-    void assign_reg(Register r, const Operand& v);
+    void assign_reg(Register r, const InstCode& v);
 
     void run_inst(Instruction inst);
 
@@ -329,7 +309,7 @@ private:
     bool print_cont = false;
 };
 
-void CodeRunner::assign_reg(Register r, const Operand& v) {
+void CodeRunner::assign_reg(Register r, const InstCode& v) {
     if (is_reg(v)) {
         auto r2 = get<Register>(v);
         m.reg[r] = m.reg[r2];
@@ -452,7 +432,7 @@ Cell CodeRunner::run_intern(const SymenvPtr& env, Intern op, const std::vector<C
 Cell CodeRunner::run_op(Intern op) {
     switch (op) {
     case Intern::op_lookup_variable_value: {
-        auto v = fetch_operand();
+        auto v = fetch_code();
         auto r = fetch_reg();
         LOG_TRACE("lookup-variable-value ");
         LOG_TRACE(v);
@@ -495,7 +475,7 @@ Cell CodeRunner::run_op(Intern op) {
         return m.scm.cons(m.reg[r1], m.reg[r2]);
     }
     case Intern::op_is_primitive_procedure: {
-        auto v = fetch_operand();
+        auto v = fetch_code();
         LOG_TRACE("primitive-procedure? ");
         LOG_TRACE(v);
         Cell vv;
@@ -546,7 +526,7 @@ Cell CodeRunner::run_op(Intern op) {
         return proc;
     }
     case Intern::op_compiled_procedure_env: {
-        auto v = fetch_operand();
+        auto v = fetch_code();
         LOG_TRACE("compiled-procedure-env ");
         LOG_TRACE(v);
         if (is_type<Cell>(v)) {
@@ -617,7 +597,7 @@ Cell CodeRunner::run_op(Intern op) {
         return new_env;
     }
     case Intern::op_define_variable: {
-        auto v = fetch_operand();
+        auto v = fetch_code();
         auto r1 = fetch_reg();
         auto r2 = fetch_reg();
         LOG_TRACE("define-variable! ");
@@ -646,7 +626,7 @@ Cell CodeRunner::run_op(Intern op) {
         return is_false(v);
     }
     case Intern::op_set_variable_value: {
-        auto v = fetch_operand();
+        auto v = fetch_code();
         auto r1 = fetch_reg();
         auto r2 = fetch_reg();
         LOG_TRACE("set! ");
@@ -681,7 +661,7 @@ void CodeRunner::run_inst(Instruction inst) {
     switch (inst) {
     case Instruction::ASSIGN: {
         auto r = fetch_reg();
-        auto v = fetch_operand();
+        auto v = fetch_code();
         LOG_TRACE("  assign ");
         LOG_TRACE(r);
         LOG_TRACE(" ");
@@ -743,7 +723,7 @@ void CodeRunner::run_inst(Instruction inst) {
     }
     case Instruction::PERFORM: {
         LOG_TRACE("  perform ");
-        auto v = fetch_operand();
+        auto v = fetch_code();
         if (is_op(v)) {
             run_op(get_op(v));
             LOG_TRACE(LF);
@@ -755,7 +735,7 @@ void CodeRunner::run_inst(Instruction inst) {
         throw std::runtime_error("error");
     }
     case Instruction::GOTO: {
-        auto v = fetch_operand();
+        auto v = fetch_code();
         LOG_TRACE("  goto ");
         LOG_TRACE(v);
         LOG_TRACE(LF);
@@ -874,8 +854,7 @@ size_t MachineImpl::load(const CodeList& code_list) {
     auto pos = all_code_list.size();
     // DEBUG_OUTPUT("print bytecode:");
     CodeListPrinter(code_list, pos).print();
-    all_code_list.reserve(all_code_list.size() + code_list.size());
-    std::copy(code_list.begin(), code_list.end(), std::back_inserter(all_code_list));
+    all_code_list.merge(code_list);
     return pos;
 }
 

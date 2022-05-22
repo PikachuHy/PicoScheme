@@ -21,7 +21,7 @@ public:
         init_stream();
     }
 
-    CodeListPrinter(const CodeList& code_list, int pos)
+    CodeListPrinter(const CodeList& code_list, std::size_t pos)
         : code_list(code_list)
         , start_pos(pos) {
         i = start_pos;
@@ -53,7 +53,7 @@ public:
 
 private:
     void reset() {
-        i = start_pos + 1;
+        i = start_pos;
     }
 
     void print_args(int n) {
@@ -103,8 +103,8 @@ private:
 
 private:
     const CodeList& code_list;
-    int i;
-    int start_pos;
+    std::size_t i;
+    std::size_t start_pos;
     int max_width;
     std::wofstream stream;
 };
