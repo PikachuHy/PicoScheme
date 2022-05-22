@@ -154,6 +154,20 @@ struct CompilerImpl {
         return and_to_if_sub(cdr(expr));
     }
 
+    Cell or_to_if_sub(const Cell& expr) {
+        if (is_nil(cdr(expr))) {
+            return car(expr);
+        }
+        return scm.list(Intern::_if, car(expr), car(expr), or_to_if_sub(cdr(expr)));
+    }
+
+    Cell or_to_if(const Cell& expr) {
+        if (is_nil(cdr(expr))) {
+            return none;
+        }
+        return or_to_if_sub(cdr(expr));
+    }
+
     bool is_self_evaluating(const Cell& expr) {
         if (is_nil(expr)) {
             return true;
@@ -810,6 +824,12 @@ struct CompilerImpl {
         case Intern::_and: {
             auto new_if = and_to_if(expr);
             // DEBUG_OUTPUT("and->if:", new_if);
+            seq = compile(new_if, target, linkage);
+            break;
+        }
+        case Intern::_or: {
+            auto new_if = or_to_if(expr);
+            // DEBUG_OUTPUT("or->if:", new_if);
             seq = compile(new_if, target, linkage);
             break;
         }
