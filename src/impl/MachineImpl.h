@@ -5,6 +5,7 @@
 #ifndef PICOSCHEME_MACHINEIMPL_H
 #define PICOSCHEME_MACHINEIMPL_H
 #include "picoscm/compiler.h"
+#include "picoscm/dynamic_wind.h"
 #include <stack>
 #include <unordered_map>
 
@@ -28,6 +29,7 @@ private:
     Scheme& scm;
     std::unordered_map<Register, Cell> reg;
     std::stack<Cell> stack;
+    std::vector<DynamicWind> wind;
     std::unordered_map<Label, Int> label_map;
     CodeList all_code_list;
     friend class Machine;

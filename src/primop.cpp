@@ -3325,6 +3325,9 @@ SymenvPtr add_environment_defaults(Scheme& scm) {
           { scm.symbol("lookup-variable-value"),        Intern::op_lookup_variable_value },
           { scm.symbol("get-current-environment"),        Intern::op_get_current_environment },
           { scm.symbol("machine-print-trace"),        Intern::op_machine_print_trace },
+
+          { scm.symbol("generate-dynamic-wind"),        Intern::op_make_dynamic_wind },
+          { scm.symbol("pop-dynamic-wind"),             Intern::op_pop_dynamic_wind },
        });
     // clang-format on
     return std_env;

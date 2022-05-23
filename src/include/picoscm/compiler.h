@@ -300,13 +300,10 @@ struct InstSeq {
     InstSeq() {
     }
 
-    InstSeq(InstCode code) {
-        statements.push_back(code);
-    }
-
-    InstSeq(InstCode code1, InstCode code2) {
-        statements.push_back(code1);
-        statements.push_back(code2);
+    InstSeq(std::initializer_list<InstCode> codes) {
+        for (const auto& code : codes) {
+            statements.push_back(code);
+        }
     }
 
     Regs needs;

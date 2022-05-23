@@ -338,10 +338,10 @@ struct CompilerImpl {
 
                                Instruction::BRANCH, f_branch };
         auto seq0 = make_instruction_sequence({ Register::VAL }, {}, code0);
-        InstSeq seq2 =
-            parallel_instruction_sequences(append_instruction_sequences(InstSeq(Instruction::LABEL, t_branch), c_code),
-                                           append_instruction_sequences(InstSeq(Instruction::LABEL, f_branch), a_code));
-        auto seq3 = append_instruction_sequences(seq0, seq2, InstSeq(Instruction::LABEL, after_if));
+        InstSeq seq2 = parallel_instruction_sequences(
+            append_instruction_sequences(InstSeq{ Instruction::LABEL, t_branch }, c_code),
+            append_instruction_sequences(InstSeq{ Instruction::LABEL, f_branch }, a_code));
+        auto seq3 = append_instruction_sequences(seq0, seq2, InstSeq{ Instruction::LABEL, after_if });
         return preserving({ Register::ENV, Register::CONTINUE }, p_code, seq3);
     }
 
@@ -361,7 +361,7 @@ struct CompilerImpl {
         auto seq1 = make_instruction_sequence({ Register::ENV }, { target }, code0);
         auto seq2 = end_with_linkage(lambda_linkage, seq1);
         auto seq3 = tack_on_instruction_sequence(seq2, compile_lambda_body(expr, proc_entry));
-        return append_instruction_sequences(seq3, InstSeq(Instruction::LABEL, after_lambda));
+        return append_instruction_sequences(seq3, InstSeq{ Instruction::LABEL, after_lambda });
     }
 
     InstSeq compile_lambda_body(const Cell& expr, const Label& proc_entry) {
@@ -418,7 +418,7 @@ struct CompilerImpl {
         auto seq2 = compile_procedure_call(target, linkage);
         auto seq3 = preserving(regs, seq1, seq2);
         auto seq4 = preserving({ Register::ENV, Register::CONTINUE }, proc_code, seq3);
-        auto seq5 = append_instruction_sequences(seq4, InstSeq(Instruction::LABEL, after_call));
+        auto seq5 = append_instruction_sequences(seq4, InstSeq{ Instruction::LABEL, after_call });
         return end_with_linkage(linkage, seq5);
     }
 
@@ -532,7 +532,6 @@ struct CompilerImpl {
         auto seq3 = preserving({ Register::PROC }, args_code, seq2);
         return append_instruction_sequences(proc_code, seq3);
     }
-
     InstSeq compile_procedure_call(Target target, const Linkage& linkage) {
         auto primitive_branch = make_label(LabelEnum::PRIMITIVE_BRANCH);
         auto compiled_branch = make_label(LabelEnum::COMPILED_BRANCH);
@@ -551,9 +550,9 @@ struct CompilerImpl {
         auto seq2 = make_instruction_sequence({ Register::PROC, Register::ARGL }, { target }, code1);
         auto seq3 = end_with_linkage(linkage, seq2);
         auto seq4 = parallel_instruction_sequences(
-            append_instruction_sequences(InstSeq(Instruction::LABEL, compiled_branch), seq1),
-            append_instruction_sequences(InstSeq(Instruction::LABEL, primitive_branch), seq3));
-        return append_instruction_sequences(seq0, seq4, InstSeq(Instruction::LABEL, after_call));
+            append_instruction_sequences(InstSeq{ Instruction::LABEL, compiled_branch }, seq1),
+            append_instruction_sequences(InstSeq{ Instruction::LABEL, primitive_branch }, seq3));
+        return append_instruction_sequences(seq0, seq4, InstSeq{ Instruction::LABEL, after_call });
     }
 
     InstSeq compile_proc_apply(Target target, Linkage linkage) {
@@ -746,10 +745,10 @@ struct CompilerImpl {
         return make_instruction_sequence(needs, modifies, append(seq1.statements, seq2.statements));
     }
 
-    InstSeq append_instruction_sequences(const InstSeq& seq1, const InstSeq& seq2, const InstSeq& seq3) {
+    template <typename... Args>
+    InstSeq append_instruction_sequences(const InstSeq& seq1, const InstSeq& seq2, Args&&...args) {
         auto seq = append_instruction_sequences(seq1, seq2);
-        seq = append_instruction_sequences(seq, seq3);
-        return seq;
+        return append_instruction_sequences(seq, std::forward<Args>(args)...);
     }
 
     InstSeq compile_intern(Intern op, Cell expr, Target target, Linkage linkage) {

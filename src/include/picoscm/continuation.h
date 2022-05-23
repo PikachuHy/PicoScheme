@@ -11,6 +11,7 @@
 #ifndef PICOSCHEME_CONTINUATION_H
 #define PICOSCHEME_CONTINUATION_H
 #include "compiler.h"
+#include "dynamic_wind.h"
 #include "frame.h"
 #include <utility>
 #include <vector>
@@ -29,9 +30,10 @@ public:
         m_frames.emplace_back(env, cell);
     };
 
-    Continuation(std::stack<Cell> stack, std::unordered_map<Register, Cell> reg)
+    Continuation(std::stack<Cell> stack, std::unordered_map<Register, Cell> reg, std::vector<DynamicWind> wind)
         : m_stack(std::move(stack))
-        , m_reg(std::move(reg)) {
+        , m_reg(std::move(reg))
+        , m_wind(std::move(wind)) {
     }
 
     [[nodiscard]] const FrameStack& frames() const {
@@ -46,10 +48,15 @@ public:
         return m_reg;
     }
 
+    [[nodiscard]] const std::vector<DynamicWind>& wind() const {
+        return m_wind;
+    }
+
 private:
     FrameStack m_frames;
     std::stack<Cell> m_stack;
     std::unordered_map<Register, Cell> m_reg;
+    std::vector<DynamicWind> m_wind;
 };
 } // namespace pscm
 #endif // PICOSCHEME_CONTINUATION_H

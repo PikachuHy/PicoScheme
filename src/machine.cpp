@@ -11,6 +11,7 @@
 #include "picoscm/machine.h"
 #include "picoscm/compiler.h"
 #include "picoscm/continuation.h"
+#include "picoscm/dynamic_wind.h"
 #include "picoscm/promise.h"
 #include "picoscm/scheme.hpp"
 
@@ -343,6 +344,10 @@ void CodeRunner::run(std::size_t pos) {
                 if (print_cont) {
                     m.print_reg();
                 }
+                m.wind = cont->wind();
+                if (!m.wind.empty()) {
+                    m.run(m.wind.back().before, nil);
+                }
                 m.reg[Register::VAL] = val;
                 auto new_pos = m.reg.at(Register::CONTINUE);
                 if (is_number(new_pos)) {
@@ -363,6 +368,10 @@ void CodeRunner::run(std::size_t pos) {
                     }
                 }
                 throw bytecode_error("except Number or <primop _done_> but got:", pos);
+            }
+            catch (const std::runtime_error& ex) {
+                m.print_reg();
+                throw ex;
             }
         }
         else if (is_type<Comment>(code)) {
@@ -421,6 +430,17 @@ Cell CodeRunner::run_intern(const SymenvPtr& env, Intern op, const std::vector<C
         else {
             print_trace = false;
         }
+        return none;
+    }
+    case Intern::op_make_dynamic_wind: {
+        auto before = get<Procedure>(args[0]);
+        auto thunk = get<Procedure>(args[1]);
+        auto after = get<Procedure>(args[2]);
+        m.wind.emplace_back(before, thunk, after);
+        return none;
+    }
+    case Intern::op_pop_dynamic_wind: {
+        m.wind.pop_back();
         return none;
     }
     default: {
@@ -829,7 +849,7 @@ void CodeRunner::run_inst(Instruction inst) {
     case Instruction::CONT: {
         LOG_TRACE("  cont");
         LOG_TRACE(LF);
-        Cell cont = std::make_shared<Continuation>(m.stack, m.reg);
+        Cell cont = std::make_shared<Continuation>(m.stack, m.reg, m.wind);
         LOG_TRACE(";;; ---> ");
         LOG_TRACE(cont);
         LOG_TRACE(LF);
@@ -877,10 +897,13 @@ Cell MachineImpl::run(const Procedure& proc, const Cell& args) {
         throw bytecode_error("no label:", entry);
     }
     size_t pos = it->second;
+    auto old_reg = reg;
     reg.clear();
     reg[Register::PROC] = proc;
     reg[Register::ARGL] = args;
-    return run(env, pos);
+    auto ret = run(env, pos);
+    reg = old_reg;
+    return ret;
 }
 
 void MachineImpl::print_reg() const {
