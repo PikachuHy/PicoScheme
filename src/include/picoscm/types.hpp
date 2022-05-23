@@ -66,7 +66,6 @@ using CObjPtr     = std::shared_ptr<CObj>;
 using ContPtr     = std::shared_ptr<Continuation>;
 using VectorPtr   = std::shared_ptr<std::vector<Cell>>;
 using PortPtr     = std::shared_ptr<Port<Char>>;
-using StringPortPtr = std::shared_ptr<StringPort<Char>>;
 using FunctionPtr = std::shared_ptr<Function>;
 using Symtab      = SymbolTable<String>;
 using Symbol      = Symtab::Symbol;
@@ -83,7 +82,6 @@ using Variant = std::variant <
 
     /* Pointer types: */
     Cons*, StringPtr, VectorPtr, PortPtr, FunctionPtr, SymenvPtr,
-    StringPortPtr,
 
     /* Extensions: */
     RegexPtr, ClockPtr, MapPtr, HashMapPtr, CObjPtr, SyntaxPtr, Promise, ContPtr,

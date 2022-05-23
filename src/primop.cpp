@@ -1785,28 +1785,14 @@ static Cell display(Scheme& scm, const varg& args) {
         scm.outPort().stream() << pscm::display(args.at(0));
     }
     else {
-        if (is_type<PortPtr>(args[1])) {
-            auto& port = *get<PortPtr>(args[1]);
-            port.isOutput() || ((void)(throw output_port_exception(port)), 0);
+        auto& port = *get<PortPtr>(args[1]);
+        port.isOutput() || ((void)(throw output_port_exception(port)), 0);
 
-            try {
-                port.stream() << pscm::display(args[0]);
-            }
-            catch (std::ios_base::failure&) {
-                throw output_port_exception(port);
-            }
+        try {
+            port.stream() << pscm::display(args[0]);
         }
-        else if (is_type<StringPortPtr>(args[1])) {
-            auto& sport = *get<StringPortPtr>(args[1]);
-            Port<Char>& port = sport;
-            port.isOutput() || ((void)(throw output_port_exception(port)), 0);
-
-            try {
-                port.stream() << pscm::display(args[0]);
-            }
-            catch (std::ios_base::failure&) {
-                throw output_port_exception(port);
-            }
+        catch (std::ios_base::failure&) {
+            throw output_port_exception(port);
         }
     }
     return none;
@@ -2952,10 +2938,6 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args) {
         return scm.apply(senv, args[1], nil);
     case Intern::op_genport:
         return std::make_shared<StringPort<Char>>(StringPort<Char>::out);
-    case Intern::op_get_port_string: {
-        auto port = get<StringPortPtr>(args[0]).get();
-        return std::make_shared<String>(port->str());
-    }
     case Intern::op_get_current_environment:
         return senv;
     case Intern::op_lookup_variable_value: {
