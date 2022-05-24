@@ -350,6 +350,10 @@ void CodeRunner::run(std::size_t pos) {
                 }
                 m.reg[Register::VAL] = val;
                 auto new_pos = m.reg.at(Register::CONTINUE);
+                if (is_label(new_pos)) {
+                    auto label = get_label(new_pos);
+                    new_pos = m.label_map.at(label);
+                }
                 if (is_number(new_pos)) {
                     auto num = get<Number>(new_pos);
                     if (!is_type<Int>(num)) {
@@ -367,7 +371,7 @@ void CodeRunner::run(std::size_t pos) {
                         return;
                     }
                 }
-                throw bytecode_error("except Number or <primop _done_> but got:", pos);
+                throw bytecode_error("except Label or <primop _done_> but got:", pos);
             }
             catch (const std::runtime_error& ex) {
                 m.print_reg();
@@ -530,6 +534,9 @@ Cell CodeRunner::run_op(Intern op) {
             args.push_back(car(it));
             it = cdr(it);
         }
+        if (!is_nil(it)) {
+            args.push_back(it);
+        }
         auto env = get<SymenvPtr>(m.reg[Register::ENV]);
         return run_intern(env, get<Intern>(proc), args);
     }
@@ -621,6 +628,8 @@ Cell CodeRunner::run_op(Intern op) {
         auto r1 = fetch_reg();
         auto r2 = fetch_reg();
         LOG_TRACE("define-variable! ");
+        LOG_TRACE(v);
+        LOG_TRACE(" ");
         LOG_TRACE(r1);
         LOG_TRACE(" ");
         LOG_TRACE(r2);
@@ -691,8 +700,7 @@ void CodeRunner::run_inst(Instruction inst) {
         else if (is_label(v)) {
             LOG_TRACE(v);
             auto label = get_label(v);
-            auto pos = m.label_map.at(label);
-            assign_reg(r, pos);
+            assign_reg(r, label);
         }
         else {
             LOG_TRACE(v);
@@ -800,6 +808,12 @@ void CodeRunner::run_inst(Instruction inst) {
                 auto label = get_label(vv);
                 auto pos = m.label_map.at(label);
                 i = pos;
+                LOG_TRACE(";;; ");
+                LOG_TRACE(" --> ");
+                LOG_TRACE(label);
+                LOG_TRACE(" ");
+                LOG_TRACE(i);
+                LOG_TRACE(LF);
                 break;
             }
         }
@@ -837,6 +851,9 @@ void CodeRunner::run_inst(Instruction inst) {
         LOG_TRACE("  restore ");
         LOG_TRACE(r);
         LOG_TRACE(LF);
+        if (m.stack.empty()) {
+            throw bytecode_error("stack is empty, while restore ", r);
+        }
         m.reg[r] = m.stack.top();
         m.stack.pop();
         LOG_TRACE(";;; ");

@@ -522,16 +522,39 @@ struct CompilerImpl {
         return preserving({ Register::ENV, Register::CONTINUE }, proc_code, seq3);
     }
 
-    InstSeq compile_apply(Cell expr, Target target, Linkage linkage) {
+    InstSeq compile_apply(const Cell& expr, Target target, Linkage linkage) {
         auto proc = cadr(expr);
         auto args = caddr(expr);
         // DEBUG_OUTPUT("args:", args);
         auto proc_code = compile(proc, Register::PROC, LinkageEnum::NEXT);
+        proc_code.statements.push_front(Comment{ L"apply proc:", proc });
+        // CodeListPrinter(proc_code, true).print();
+        // std::wcout << std::endl;
         auto args_code = compile(args, Register::ARGL, LinkageEnum::NEXT);
+        args_code.statements.push_front(Comment{ L"apply proc args:", args });
+        // CodeListPrinter(args_code, true).print();
+
         auto seq2 = compile_procedure_call(target, linkage);
-        auto seq3 = preserving({ Register::PROC }, args_code, seq2);
+        auto seq3 = preserving({ Register::PROC, Register::CONTINUE }, args_code, seq2);
         return append_instruction_sequences(proc_code, seq3);
     }
+
+    InstSeq compile_values(const Cell& expr, Target target, Linkage linkage) {
+        std::vector<InstSeq> operand_codes;
+        auto it = cdr(expr);
+        while (is_pair(it)) {
+            auto inst_seq = compile(car(it), Register::VAL, LinkageEnum::NEXT);
+            operand_codes.push_back(inst_seq);
+            it = cdr(it);
+        }
+        auto seq1 = construct_arglist(operand_codes);
+        auto seq2 = InstSeq{ Instruction::ASSIGN, Register::VAL, Register::ARGL };
+        auto seq3 = InstSeq{ Instruction::GOTO, Register::CONTINUE };
+        auto seq4 = append_instruction_sequences(seq1, seq2, seq3);
+        seq4.statements.push_front(Comment{ L"values", expr });
+        return seq4;
+    }
+
     InstSeq compile_procedure_call(Target target, const Linkage& linkage) {
         auto primitive_branch = make_label(LabelEnum::PRIMITIVE_BRANCH);
         auto compiled_branch = make_label(LabelEnum::COMPILED_BRANCH);
@@ -811,6 +834,10 @@ struct CompilerImpl {
         }
         case Intern::_apply: {
             seq = compile_apply(expr, target, linkage);
+            break;
+        }
+        case Intern::_values: {
+            seq = compile_values(expr, target, linkage);
             break;
         }
         default: {

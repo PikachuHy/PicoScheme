@@ -132,6 +132,7 @@ enum class Intern {
     _delay,
     op_force,
     _expand,
+    _values,
 
     /* Section 6.1: Equivalence predicates */
     op_eq,

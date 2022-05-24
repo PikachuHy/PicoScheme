@@ -3310,6 +3310,8 @@ SymenvPtr add_environment_defaults(Scheme& scm) {
 
           { scm.symbol("generate-dynamic-wind"),        Intern::op_make_dynamic_wind },
           { scm.symbol("pop-dynamic-wind"),             Intern::op_pop_dynamic_wind },
+
+          { scm.symbol("values"),             Intern::_values },
        });
     // clang-format on
     return std_env;
