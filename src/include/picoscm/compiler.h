@@ -342,9 +342,10 @@ class Compiler {
 public:
     Compiler(Scheme& scm, const SymenvPtr& env);
     CompiledCode compile(const Cell& cell);
+    std::pair<Label, InstSeq> compile_lambda(const Cell& cell, bool is_macro = false);
 
 private:
-    sptr<CompilerImpl> c;
+    sptr<CompilerImpl> impl;
 };
 
 } // namespace pscm

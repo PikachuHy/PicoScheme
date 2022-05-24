@@ -268,17 +268,8 @@ struct CompilerImpl {
         }
     }
 
-    Cell make_lambda(const Cell& parameters, Cell body) {
-        return scm.cons(scm.symbol("lambda"), scm.cons(parameters, body));
-    }
-
-    Cell definition_value(const Cell& expr, bool is_macro = false) {
-        if (is_symbol(cadr(expr))) {
-            return caddr(expr);
-        }
-        else {
-            return make_lambda(cdadr(expr), cddr(expr));
-        }
+    Cell make_lambda(const Cell& parameters, const Cell& body) {
+        return scm.cons(Intern::_lambda, scm.cons(parameters, body));
     }
 
     InstSeq compile_definition(const Cell& expr, Target target, Linkage linkage, bool is_macro = false) {
@@ -289,7 +280,7 @@ struct CompilerImpl {
         }
         else {
             auto f = make_lambda(cdadr(expr), cddr(expr));
-            get_value_code = compile_lambda(f, Register::VAL, LinkageEnum::NEXT, is_macro);
+            get_value_code = compile_lambda(f, Register::VAL, LinkageEnum::NEXT, is_macro).second;
         }
         auto code = CodeList{ Instruction::PERFORM,
                               Intern::op_define_variable,
@@ -349,7 +340,8 @@ struct CompilerImpl {
         return make_instruction_sequence(seq.needs, seq.modifies, append(seq.statements, body_seq.statements));
     }
 
-    InstSeq compile_lambda(const Cell& expr, Target target, const Linkage& linkage, bool is_macro = false) {
+    std::pair<Label, InstSeq> compile_lambda(const Cell& expr, Target target, const Linkage& linkage,
+                                             bool is_macro = false) {
         auto proc_entry = make_label(LabelEnum::ENTRY);
         auto after_lambda = make_label(LabelEnum::AFTER_LAMBDA);
         auto lambda_linkage = linkage;
@@ -361,7 +353,8 @@ struct CompilerImpl {
         auto seq1 = make_instruction_sequence({ Register::ENV }, { target }, code0);
         auto seq2 = end_with_linkage(lambda_linkage, seq1);
         auto seq3 = tack_on_instruction_sequence(seq2, compile_lambda_body(expr, proc_entry));
-        return append_instruction_sequences(seq3, InstSeq{ Instruction::LABEL, after_lambda });
+        auto seq4 = append_instruction_sequences(seq3, InstSeq{ Instruction::LABEL, after_lambda });
+        return { proc_entry, seq4 };
     }
 
     InstSeq compile_lambda_body(const Cell& expr, const Label& proc_entry) {
@@ -807,7 +800,7 @@ struct CompilerImpl {
             break;
         }
         case Intern::_lambda: {
-            seq = compile_lambda(expr, target, linkage);
+            seq = compile_lambda(expr, target, linkage).second;
             break;
         }
         case Intern::_begin: {
@@ -904,13 +897,17 @@ struct CompilerImpl {
 Int CompilerImpl::label_counter = 0;
 
 Compiler::Compiler(Scheme& scm, const SymenvPtr& env)
-    : c(std::make_shared<CompilerImpl>(scm, env)) {
+    : impl(std::make_shared<CompilerImpl>(scm, env)) {
 }
 
 CompiledCode Compiler::compile(const Cell& cell) {
     // DEBUG_OUTPUT("compile code:", cell);
-    auto seq = c->compile(cell, Register::VAL, LinkageEnum::RETURN);
+    auto seq = impl->compile(cell, Register::VAL, LinkageEnum::RETURN);
     return { seq };
+}
+
+std::pair<Label, InstSeq> Compiler::compile_lambda(const Cell& cell, bool is_macro) {
+    return impl->compile_lambda(cell, Register::VAL, LinkageEnum::RETURN, is_macro);
 }
 
 CompiledCode::CompiledCode(const InstSeq& seq) {

@@ -246,8 +246,7 @@ void Scheme::repl(const SymenvPtr& env) {
                 out << "> ";
                 expr = none;
                 expr = parser.read(in);
-                expr = eval_with_compiler(senv, expr);
-                // expr = eval_with_continuation(senv, expr);
+                expr = eval(senv, expr);
 
                 if (is_none(expr))
                     continue;
@@ -674,7 +673,78 @@ Cell Scheme::eval(SymenvPtr env, Cell expr) {
         return ast_eval(env, expr);
     case Mode::BYTECODE:
         return m_machine->run(env, expr);
+    case Mode::MIX:
+        return mix_eval(env, expr);
     }
+}
+
+Cell Scheme::make_lambda(const Cell& parameters, const Cell& body) {
+    return list(Intern::_lambda, parameters, body);
+}
+
+Cell Scheme::eval_op(const SymenvPtr& env, Cell op) {
+    if (is_intern(op)) {
+        return op;
+    }
+    if (!is_symbol(op)) {
+        return none;
+    }
+    auto sym = get<Symbol>(op);
+    if (env->defined_sym(sym)) {
+        auto val = env->get(sym);
+        return val;
+    }
+    return none;
+}
+
+Cell Scheme::mix_eval(SymenvPtr env, Cell expr) {
+    if (is_nil(expr)) {
+        return nil;
+    }
+    if (is_symbol(expr)) {
+        auto sym = get<Symbol>(expr);
+        return env->get(sym);
+    }
+    if (!is_pair(expr)) {
+        return expr;
+    }
+    if (is_pair(car(expr))) {
+        return m_machine->run(env, expr);
+    }
+    auto op = eval_op(env, car(expr));
+    if (is_intern(op)) {
+        switch (get<Intern>(op)) {
+        case Intern::_define: {
+            auto var = cadr(expr);
+            auto val = caddr(expr);
+            if (is_pair(var)) {
+                val = make_lambda(cdr(var), val);
+                var = car(var);
+            }
+            auto sym = get<Symbol>(var);
+            if (is_nil(val)) {
+                env->add(sym, val);
+                return none;
+            }
+            auto cur_op = eval_op(env, car(val));
+            if (is_intern(cur_op)) {
+                switch (get<Intern>(cur_op)) {
+                case Intern::_lambda: {
+                    auto [entry, seq] = Compiler(*this, env).compile_lambda(val);
+                    m_machine->load(seq.statements);
+                    env->add(sym, Procedure(env, cadr(val), entry));
+                    return none;
+                }
+                default: {
+                }
+                }
+            }
+        }
+        default: {
+        }
+        }
+    }
+    return m_machine->run(env, expr);
 }
 
 Cell Scheme::ast_eval(SymenvPtr env, Cell expr) {

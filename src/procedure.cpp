@@ -55,6 +55,16 @@ struct Procedure::Closure {
             throw std::invalid_argument("invalid procedure definition");
     }
 
+    Closure(const SymenvPtr& senv, const Cell& args, const Label& label, bool is_macro)
+        : senv{ senv }
+        , args{ args }
+        , code{ none }
+        , entry{ label }
+        , is_macro{ is_macro } {
+        if (!is_unique_symbol_list(args))
+            throw std::invalid_argument("invalid procedure definition");
+    }
+
     Closure(const SymenvPtr& senv, const Cell& args, const Cell& code, bool is_macro)
         : senv{ senv }
         , args{ args }
@@ -84,6 +94,10 @@ struct Procedure::Closure {
 
 Procedure::Procedure(const SymenvPtr& senv, const Cell& args, const Cell& code, const Label& label, bool is_macro)
     : impl{ std::make_shared<Closure>(senv, args, code, is_macro) } {
+}
+
+Procedure::Procedure(const SymenvPtr& senv, const Cell& args, const Label& label, bool is_macro)
+    : impl{ std::make_shared<Closure>(senv, args, label, is_macro) } {
 }
 
 Procedure::Procedure(const SymenvPtr& senv, const Cell& args, const Cell& code, bool is_macro)

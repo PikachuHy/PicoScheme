@@ -69,6 +69,7 @@ public:
      */
     Procedure(const SymenvPtr& senv, const Cell& args, const Cell& code, bool is_macro = false);
     Procedure(const SymenvPtr& senv, const Cell& args, const Cell& code, const Label& label, bool is_macro = false);
+    Procedure(const SymenvPtr& senv, const Cell& args, const Label& label, bool is_macro = false);
     Procedure(const SymenvPtr& senv, const Label& label, bool is_macro = false);
     /// Predicate returns true if closure should be applied as macro.
     bool is_macro() const noexcept;
