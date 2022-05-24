@@ -12,7 +12,6 @@
 #include "picoscm/compiler.h"
 #include "picoscm/continuation.h"
 #include "picoscm/dynamic_wind.h"
-#include "picoscm/promise.h"
 #include "picoscm/scheme.hpp"
 
 #include "impl/CodeListPrinter.h"

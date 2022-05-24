@@ -19,7 +19,6 @@ target_sources(pscm PUBLIC
         src/scheme.cpp
         src/port.cpp
         src/syntax.cpp
-        src/promise.cpp
         src/frame.cpp
         src/continuation.cpp
         src/module.cpp

@@ -573,10 +573,6 @@ Cell Scheme::syntax_syntax_rules(const SymenvPtr& senv, Cell args) {
     return syntaxPtr;
 }
 
-Cell Scheme::syntax_delay(const SymenvPtr& senv, const Cell& args) {
-    return Promise(Procedure(senv, nil, args));
-}
-
 Cell Scheme::append_module_path(const std::vector<Cell>& vargs) {
     for (const auto& args : vargs) {
         auto path = get<StringPtr>(args);
@@ -820,10 +816,6 @@ void Scheme::init_op_table() {
 
     m_op_table[Intern::_define_syntax] = [this](const SymenvPtr& senv, const Cell& cell) {
         return this->syntax_define_syntax(senv, cell);
-    };
-
-    m_op_table[Intern::_delay] = [this](const SymenvPtr& senv, const Cell& cell) {
-        return this->syntax_delay(senv, cell);
     };
 
     m_op_table[Intern::_begin] = [this](const SymenvPtr& senv, const Cell& cell) {

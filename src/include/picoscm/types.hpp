@@ -34,7 +34,6 @@ class  CompiledProcedure;
 class  Function;
 class  CObj;
 class  Syntax;
-class  Promise;
 class  Continuation;
 class  Frame;
 class  Module;
@@ -84,7 +83,7 @@ using Variant = std::variant <
     Cons*, StringPtr, VectorPtr, PortPtr, FunctionPtr, SymenvPtr,
 
     /* Extensions: */
-    RegexPtr, ClockPtr, MapPtr, HashMapPtr, CObjPtr, SyntaxPtr, Promise, ContPtr,
+    RegexPtr, ClockPtr, MapPtr, HashMapPtr, CObjPtr, SyntaxPtr, ContPtr,
     Module,
 
     /* Compiler: */
@@ -129,8 +128,6 @@ enum class Intern {
     _unquote,
     _unquotesplice,
     op_dynamic_wind,
-    _delay,
-    op_force,
     _expand,
     _values,
 

@@ -2330,10 +2330,6 @@ namespace pscm {
 
 Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args) {
     switch (primop) {
-    case Intern::op_force: {
-        auto promise = args[0];
-        return get<Promise>(promise).force(scm, senv);
-    }
 
     /* Section 6.1: Equivalence predicates */
     case Intern::op_eq:
@@ -2952,8 +2948,6 @@ SymenvPtr add_environment_defaults(Scheme& scm) {
           { scm.symbol("unquote-splicing"), Intern::_unquotesplice },
           { scm.symbol("apply"),            Intern::_apply },
           { scm.symbol("dynamic-wind"),     Intern::op_dynamic_wind },
-          { scm.symbol("delay"),            Intern::_delay },
-          { scm.symbol("force"),            Intern::op_force },
           { scm.symbol("expand"),           Intern::_expand },
 
           /* Section 6.1: Equivalence predicates */

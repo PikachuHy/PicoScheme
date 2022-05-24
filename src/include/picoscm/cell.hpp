@@ -17,7 +17,6 @@
 #include "number.hpp"
 #include "port.hpp"
 #include "procedure.hpp"
-#include "promise.h"
 #include "types.hpp"
 
 #include <boost/stacktrace.hpp>
@@ -139,7 +138,6 @@ inline bool is_intern (const Cell& cell) { return is_type<Intern>(cell); }
 inline bool is_port   (const Cell& cell) { return is_type<PortPtr>(cell); }
 inline bool is_clock  (const Cell& cell) { return is_type<ClockPtr>(cell); }
 inline bool is_cobj   (const Cell& cell) { return is_type<CObjPtr>(cell); }
-inline bool is_promise(const Cell& cell) { return is_type<Promise>(cell); }
 inline bool is_number (const Cell& cell) { return is_type<Number>(cell); }
 inline bool is_label  (const Cell& cell) { return is_type<Label>(cell); }
 inline bool is_symbol (const Cell& cell) { return is_type<Symbol>(cell); }
@@ -392,8 +390,6 @@ private:
             return "#<procedure>";
         else if constexpr (std::is_same_v<T, HashMapPtr>)
             return "#<hash-table>";
-        else if constexpr (std::is_same_v<T, Promise>)
-            return "#<promise>";
         else if constexpr (std::is_same_v<T, ContPtr>)
             return "#<continuation>";
         else if constexpr (std::is_same_v<T, Module>)
@@ -421,7 +417,6 @@ std::size_t hash<Cell>::operator()(const Cell& cell) const {
         [](const Symbol& arg)    -> result_type { return Symbol::hash{}(arg); },
         [](const StringPtr& arg) -> result_type { return std::hash<String>{}(*arg);},
         [](const CObjPtr& arg)   -> result_type { return CObj::hash{}(*arg);},
-        [](const Promise& arg)   -> result_type { return Promise::hash{}(arg);},
         [](auto& arg)            -> result_type { return std::hash<std::decay_t<decltype(arg)>>{}(arg); },
     }; // clang-format on
     if (is_pair(cell)) {
