@@ -349,7 +349,7 @@ struct CompilerImpl {
             lambda_linkage = after_lambda;
         }
         auto op = is_macro ? Intern::op_make_compiled_macro : Intern::op_make_compiled_procedure;
-        auto code0 = CodeList{ Instruction::ASSIGN, target, op, proc_entry, Register::ENV };
+        auto code0 = CodeList{ Instruction::ASSIGN, target, op, cadr(expr), proc_entry, Register::ENV };
         auto seq1 = make_instruction_sequence({ Register::ENV }, { target }, code0);
         auto seq2 = end_with_linkage(lambda_linkage, seq1);
         auto seq3 = tack_on_instruction_sequence(seq2, compile_lambda_body(expr, proc_entry));

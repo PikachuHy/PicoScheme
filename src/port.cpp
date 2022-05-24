@@ -205,7 +205,7 @@ static std::wostream& operator<<(std::wostream& os, const Procedure& proc) {
     else {
         os << "#<clojure ";
     }
-    os << proc.args() << ">";
+    os << proc.args() << " " << proc.entry() << ">";
     return os;
 }
 

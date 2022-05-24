@@ -93,7 +93,7 @@ void CodeListPrinter::print_op() {
     case Intern::op_make_compiled_macro:
     case Intern::op_make_compiled_procedure: {
         print("make-compiled-procedure");
-        print_args(2);
+        print_args(3);
         break;
     }
     case Intern::op_compiled_procedure_env: {
@@ -542,14 +542,17 @@ Cell CodeRunner::run_op(Intern op) {
     }
     case Intern::op_make_compiled_macro:
     case Intern::op_make_compiled_procedure: {
+        auto args = fetch_code();
         auto label = fetch_label();
         auto r = fetch_reg();
         LOG_TRACE("make-compiled-procedure ");
+        LOG_TRACE(args);
+        LOG_TRACE(" ");
         LOG_TRACE(label);
         LOG_TRACE(" ");
         LOG_TRACE(r);
         auto env = get<SymenvPtr>(m.reg[r]);
-        auto proc = Procedure(env, label, op == Intern::op_make_compiled_macro);
+        auto proc = Procedure(env, get<Cell>(args), label, op == Intern::op_make_compiled_macro);
         return proc;
     }
     case Intern::op_compiled_procedure_env: {
