@@ -331,8 +331,6 @@ protected:
 
     Cell syntax_use_module(const SymenvPtr& senv, Cell args);
 
-    Cell syntax_quasiquote(const SymenvPtr& senv, Cell args);
-
     Cell syntax_define(const SymenvPtr& senv, Cell args, bool is_public = false);
     /**
      * Scheme syntax define-syntax.

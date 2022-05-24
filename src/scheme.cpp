@@ -812,10 +812,6 @@ Cell Scheme::syntax_use_module(const SymenvPtr& senv, Cell args) {
     return none;
 }
 
-Cell Scheme::syntax_quasiquote(const SymenvPtr& senv, Cell args) {
-    return partial_eval(senv, args);
-}
-
 Cell Scheme::syntax_define(const SymenvPtr& senv, Cell args, bool is_public) {
     if (is_pair(car(args))) {
         auto name = caar(args);
@@ -1048,10 +1044,6 @@ Cell Scheme::callcc(const SymenvPtr& senv, const Cell& cell) {
 }
 
 void Scheme::init_op_table() {
-    m_op_table[Intern::_quasiquote] = [this](const SymenvPtr& senv, const Cell& cell) {
-        return this->syntax_quasiquote(senv, car(cell));
-    };
-
     m_op_table[Intern::_quote] = [this](const SymenvPtr& senv, const Cell& cell) {
         return car(cell);
     };
