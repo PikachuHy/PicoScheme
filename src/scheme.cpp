@@ -489,34 +489,6 @@ Cell Scheme::syntax_with_module(const SymenvPtr& env, Cell args) {
     return expr;
 }
 
-Cell Scheme::syntax_and(const SymenvPtr& env, Cell args) {
-    Cell res = true;
-
-    if (is_pair(args)) {
-        for (/* */; is_pair(cdr(args)); args = cdr(args))
-            if (is_false(res = eval(env, car(args))))
-                return res;
-
-        is_nil(cdr(args)) || (void(throw std::invalid_argument("not a proper list")), 0);
-        return eval(env, car(args));
-    }
-    return res;
-}
-
-Cell Scheme::syntax_or(const SymenvPtr& env, Cell args) {
-    Cell res = false;
-
-    if (is_pair(args)) {
-        for (/* */; is_pair(cdr(args)); args = cdr(args))
-            if (is_true(res = eval(env, car(args))))
-                return res;
-
-        is_nil(cdr(args)) || (void(throw std::invalid_argument("not a proper list")), 0);
-        return eval(env, car(args));
-    }
-    return res;
-}
-
 Cell Scheme::eval_list(const SymenvPtr& env, Cell list, bool is_list) {
     if (!is_pair(list))
         return nil;
@@ -1191,14 +1163,6 @@ void Scheme::init_op_table() {
 
     m_op_table[Intern::_with_module] = [this](const SymenvPtr& senv, const Cell& cell) {
         return this->syntax_with_module(senv, cell);
-    };
-
-    m_op_table[Intern::_and] = [this](const SymenvPtr& senv, const Cell& cell) {
-        return this->syntax_and(senv, cell);
-    };
-
-    m_op_table[Intern::_or] = [this](const SymenvPtr& senv, const Cell& cell) {
-        return this->syntax_or(senv, cell);
     };
 
     m_op_table[Intern::_module] = [this](const SymenvPtr& senv, const Cell& cell) {

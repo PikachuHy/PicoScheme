@@ -325,10 +325,6 @@ protected:
 
     Cell syntax_with_module(const SymenvPtr& env, Cell args);
 
-    Cell syntax_and(const SymenvPtr& env, Cell args);
-
-    Cell syntax_or(const SymenvPtr& env, Cell args);
-
     Cell syntax_module(const SymenvPtr& senv, const Cell& args);
 
     Cell syntax_inherit_module(const SymenvPtr& senv, Cell args);
