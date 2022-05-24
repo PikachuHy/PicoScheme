@@ -483,21 +483,6 @@ std::vector<Cell> Scheme::eval_args(const SymenvPtr& env, Cell args, bool is_lis
     return stack;
 }
 
-Cell Scheme::eval_with_compiler(SymenvPtr env, Cell expr) {
-    if (is_nil(expr)) {
-        return nil;
-    }
-    if (is_symbol(expr)) {
-        auto sym = get<Symbol>(expr);
-        return env->get(sym);
-    }
-    if (!is_pair(expr)) {
-        return expr;
-    }
-    auto ret = m_machine->run(env, expr);
-    return ret;
-}
-
 Cell Scheme::eval(SymenvPtr env, Cell expr) {
     switch (mode) {
     case Mode::AST:

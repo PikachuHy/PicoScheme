@@ -201,7 +201,6 @@ public:
         load(string_convert<Char>(filename), env);
     }
 
-    Cell eval_with_compiler(SymenvPtr env, Cell expr);
     /**
      * Evaluate a scheme expression at the argument symbol environment.
      *
