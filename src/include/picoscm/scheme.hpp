@@ -209,7 +209,6 @@ public:
      * @return Evaluation result or special symbol @em none for no result.
      */
     Cell eval(SymenvPtr env, Cell expr);
-    Cell mix_eval(SymenvPtr env, Cell expr);
     /**
      * Evaluate a scheme code at the argument symbol environment.
      *
@@ -341,11 +340,7 @@ protected:
 
     void print_frames(bool flag = false);
 
-    Cell make_lambda(const Cell& parameters, const Cell& body);
-    Cell eval_op(const SymenvPtr& env, Cell op);
-
 private:
-    enum class Mode { MIX, BYTECODE };
     friend class GCollector;
     //<! Initial default hash table bucket count.
     static constexpr size_t dflt_bucket_count = 1024;
@@ -373,7 +368,6 @@ private:
     std::unordered_map<Intern, std::function<Cell(const SymenvPtr&, const Cell&)>> m_op_table;
     sptr<Machine> m_machine;
     sptr<Compiler> m_compiler;
-    Mode mode = Mode::MIX;
 
     friend class CompilerImpl;
 };
