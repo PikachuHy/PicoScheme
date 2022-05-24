@@ -595,53 +595,6 @@ static Cell apply(Scheme& scm, const SymenvPtr& senv, const varg& args) {
 
 static Cell vec2list(Scheme& scm, const varg& args);
 
-/**
- * Call with current continuation.
- *
- * Simple implementation as escape continuation
- */
-static Cell callcc(Scheme& scm, const SymenvPtr& senv, const varg& args) {
-    /*
-    auto lambda = [](Scheme& scm, const SymenvPtr&, const varg& args) -> Cell {
-        throw continuation_exception{ scm, args };
-        return none;
-    };
-
-    try {
-        return pscm::apply(scm, senv, args.at(0), scm.function(senv,
-    std::move(lambda))); } catch (const continuation_exception& e) { return
-    e.continuation;
-    }
-    */
-    return none;
-}
-
-static Cell callwval(Scheme& scm, const SymenvPtr& senv, const varg& args) {
-    struct callwval_exception : std::exception {
-        callwval_exception(Scheme& scm, const SymenvPtr& senv, varg args = varg{})
-            : senv{ senv }
-            , args{ std::move(args) } {
-            auto values = [this](Scheme& scm, const SymenvPtr&, const varg& args) -> Cell {
-                if (this->args.empty())
-                    throw callwval_exception{ scm, this->senv, args };
-                return primop::list(scm, args);
-            };
-            scm.function(senv, "values", std::move(values));
-        }
-
-        SymenvPtr senv;
-        varg args;
-    };
-
-    try {
-        callwval_exception exc{ scm, senv };
-        return primop::apply(scm, senv, args.at(0));
-    }
-    catch (const callwval_exception& e) {
-        return primop::apply(scm, senv, args.at(1), e.args);
-    }
-}
-
 struct scheme_exception : std::exception {
     scheme_exception(Scheme& scm, SymenvPtr senv, varg args)
         : senv{ std::move(senv) }
@@ -2730,10 +2683,6 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args) {
     /* Section 6.10: Control features */
     case Intern::op_isproc:
         return primop::is_proc(args);
-    case Intern::op_callcc:
-        return primop::callcc(scm, senv, args);
-    case Intern::op_callwval:
-        return primop::callwval(scm, senv, args);
     case Intern::op_map:
         return primop::map(scm, senv, args);
     case Intern::op_foreach:

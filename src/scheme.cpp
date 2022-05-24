@@ -88,91 +88,6 @@ Module Scheme::load_module(const Cell& module_name, const SymenvPtr& env) {
     throw module_error("no module: ", module_name);
 }
 
-void Scheme::push_frame(SymenvPtr& env, const Cell& expr) {
-    m_frames.emplace_back(env, expr);
-    auto op = _get_intern(env, m_frames.back().op());
-    if (op == Intern::op_dynamic_wind) {
-        DEBUG("before", cadr(expr));
-        auto f = eval(env, cadr(expr));
-        apply(env, f, nil);
-    }
-}
-
-void Scheme::replace_frame(SymenvPtr& env, const Cell& expr) {
-    pop_frame();
-    push_frame(env, expr);
-}
-
-void Scheme::pop_frame() {
-    if (m_frames.empty()) {
-        DEBUG_OUTPUT("frames is emtpy");
-    }
-    else {
-        auto env = m_frames.back().env();
-        auto expr = m_frames.back().args();
-        auto op = _get_intern(env, m_frames.back().op());
-        if (op == Intern::op_dynamic_wind) {
-            DEBUG("after", caddr(expr));
-            auto f = eval(env, caddr(expr));
-            apply(env, f, nil);
-        }
-        m_frames.pop_back();
-    }
-}
-
-Cell Scheme::restore_from_continuation(ContPtr& cont, const Cell& args) {
-    DEBUG("old frames");
-    print_frames();
-    m_frames = cont->frames();
-    DEBUG("new frames");
-    print_frames();
-    auto env = m_frames.back().env();
-    DEBUG("args:", args);
-    Cell it = eval(env, args);
-    while (is_pair(it)) {
-        m_frames.back().push_arg(eval(env, car(it)));
-        it = cdr(it);
-    }
-    Cell return_arg;
-    while (!m_frames.empty()) {
-        return_arg = eval_frame_based_on_stack();
-        pop_frame();
-        if (!m_frames.empty()) {
-            m_frames.back().push_arg(return_arg);
-        }
-    }
-    return return_arg;
-}
-
-Cell Scheme::eval_frame_based_on_stack() {
-    auto& frame = m_frames.back();
-    auto pc = frame.arg_count();
-    auto op = frame.op();
-    DEBUG("op:", op);
-    auto args = frame.args();
-    DEBUG("arg:", args);
-    auto env = frame.env();
-    for (int i = 0; i < pc; ++i) {
-        if (is_pair(args)) {
-            args = cdr(args);
-        }
-        else {
-            return frame.varg().back();
-        }
-    }
-    while (!is_nil(args)) {
-        auto val = eval(env, car(args));
-        m_frames.back().push_arg(val);
-        args = cdr(args);
-    }
-    op = eval(env, op);
-    if (is_intern(op) && get<Intern>(op) == Intern::_begin) {
-        return m_frames.back().varg().back();
-    }
-    auto ret = apply(env, op, m_frames.back().varg());
-    return ret;
-}
-
 Cell Scheme::apply(const SymenvPtr& env, Intern opcode, const std::vector<Cell>& args) {
     DEBUG("opcode:", opcode);
     auto it = m_op_table.find(opcode);
@@ -485,8 +400,6 @@ std::vector<Cell> Scheme::eval_args(const SymenvPtr& env, Cell args, bool is_lis
 
 Cell Scheme::eval(SymenvPtr env, Cell expr) {
     switch (mode) {
-    case Mode::AST:
-        return ast_eval(env, expr);
     case Mode::BYTECODE:
         return m_machine->run(env, expr);
     case Mode::MIX:
@@ -561,107 +474,6 @@ Cell Scheme::mix_eval(SymenvPtr env, Cell expr) {
         }
     }
     return m_machine->run(env, expr);
-}
-
-Cell Scheme::ast_eval(SymenvPtr env, Cell expr) {
-    DEBUG("eval:", expr);
-    if (is_nil(expr)) {
-        return nil;
-    }
-    if (is_symbol(expr)) {
-        auto sym = get<Symbol>(expr);
-        return env->get(sym);
-    }
-    if (!is_pair(expr)) {
-        return expr;
-    }
-    auto op = eval(env, car(expr));
-    Cell ret;
-    if (is_cont(op)) {
-        DEBUG("op", op, "is continuation");
-        auto cont = get<ContPtr>(op);
-        Cell head = cons(none, nil);
-        Cell tail = head;
-        expr = cdr(expr);
-        while (is_pair(expr)) {
-            auto val = eval(env, car(expr));
-            set_cdr(tail, cons(val, nil));
-            tail = cdr(tail);
-            expr = cdr(expr);
-        }
-        auto cont_args = cdr(head);
-        DEBUG("cont args:", cont_args);
-        throw Cell(cons(cont, list(Intern::_quote, cont_args)));
-    }
-    else if (is_func(op)) {
-        ret = eval_frame_based_on_stack();
-    }
-    else if (is_proc(op)) {
-        if (is_macro(op)) {
-            auto f = get<Procedure>(op);
-            auto expand_code = f.expand_only(*this, expr);
-            DEBUG("expand code:", expand_code);
-            ret = eval(env, expand_code);
-        }
-        else {
-            ret = apply(env, op, eval_args(env, cdr(expr)));
-        }
-    }
-    else if (is_syntax(op)) {
-        const auto& matched = get<SyntaxPtr>(op)->match(cdr(expr));
-        auto expand_code = matched.expand_syntax(*this, expr);
-        DEBUG("expand code:", expand_code);
-        ret = eval(env, expand_code);
-    }
-    else if (is_intern(op)) {
-        auto opcode = get<Intern>(op);
-        DEBUG("opcode:", opcode);
-        if (opcode == Intern::op_callcc) {
-            ret = callcc(env, expr);
-        }
-        else if (opcode == Intern::op_callwval) {
-            auto consumer = eval(env, caddr(expr));
-            auto cont = std::make_shared<ContPtr::element_type>(m_frames, env, cons(consumer, nil));
-            env->add(symbol("values"), cont);
-            auto producer = eval(env, cadr(expr));
-            auto ret1 = apply(env, producer, nil);
-            auto ret2 = apply(env, consumer, cons(ret1, nil));
-            ret = ret2;
-        }
-        else if (opcode == Intern::_apply) {
-            Cell args = cdr(expr);
-            Cell proc = eval(env, car(args));
-            if (is_proc(proc)) {
-                if (is_macro(proc)) {
-                    auto expand_code = expand(proc, args);
-                    ret = eval(env, expand_code);
-                }
-                else {
-                    ret = apply(env, get<Procedure>(proc), cdr(args), false);
-                }
-            }
-            else {
-                // proc is either an opcode or function pointer:
-                ret = apply(env, proc, eval_args(env, cdr(args), false));
-            }
-        }
-        else {
-            auto it = m_op_table.find(opcode);
-            if (it == m_op_table.end()) {
-                DEBUG("op:", op);
-                ret = apply(env, op, eval_args(env, cdr(expr)));
-            }
-            else {
-                ret = it->second(env, cdr(expr));
-            }
-        }
-    }
-    else {
-        ret = op;
-    }
-    DEBUG("eval:", expr);
-    DEBUG(" --> ", ret);
-    return ret;
 }
 
 Cell Scheme::syntax_module(const SymenvPtr& senv, const Cell& args) {

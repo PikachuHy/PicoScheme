@@ -75,7 +75,6 @@ public:
     void replace_frame(SymenvPtr& env, const Cell& expr);
     void pop_frame();
 
-    Cell restore_from_continuation(ContPtr& cont, const Cell& args);
     Cell eval_frame_based_on_stack();
     //! Insert a new symbol and value or reassign an already bound value of an existing symbol
     //! at the top environment of this scheme interpreter.
@@ -210,7 +209,6 @@ public:
      * @return Evaluation result or special symbol @em none for no result.
      */
     Cell eval(SymenvPtr env, Cell expr);
-    Cell ast_eval(SymenvPtr env, Cell expr);
     Cell mix_eval(SymenvPtr env, Cell expr);
     /**
      * Evaluate a scheme code at the argument symbol environment.
@@ -357,7 +355,7 @@ protected:
     Cell eval_op(const SymenvPtr& env, Cell op);
 
 private:
-    enum class Mode { MIX, AST, BYTECODE };
+    enum class Mode { MIX, BYTECODE };
     friend class GCollector;
     //<! Initial default hash table bucket count.
     static constexpr size_t dflt_bucket_count = 1024;
