@@ -498,33 +498,6 @@ Cell Scheme::eval_with_compiler(SymenvPtr env, Cell expr) {
     return ret;
 }
 
-Cell Scheme::eval_with_continuation(SymenvPtr env, Cell expr) {
-    ContPtr c;
-    Cell c_args;
-    bool need_restore = false;
-    while (true) {
-        try {
-            if (need_restore) {
-                return restore_from_continuation(c, c_args);
-                need_restore = false;
-            }
-            else {
-                return eval(env, expr);
-            }
-        }
-        catch (const Cell& cell) {
-            if (is_cont(car(cell))) {
-                c = get<ContPtr>(car(cell));
-                c_args = cdr(cell);
-                need_restore = true;
-                continue;
-            }
-            DEBUG_OUTPUT("op:", car(cell));
-            throw std::runtime_error("unsupported op");
-        }
-    }
-}
-
 Cell Scheme::eval(SymenvPtr env, Cell expr) {
     switch (mode) {
     case Mode::AST:
