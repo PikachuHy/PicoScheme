@@ -376,31 +376,6 @@ Cell Scheme::syntax_cond(const SymenvPtr& env, Cell args) {
     return none;
 }
 
-Cell Scheme::syntax_case(const SymenvPtr& env, Cell args) {
-    auto key = eval(env, car(args));
-    auto clauses = cdr(args);
-    while (is_pair(clauses)) {
-        auto clause = car(clauses);
-        is_pair(clause) || (void(throw std::invalid_argument("invalid case syntax")), 0);
-        auto datum_list = car(clause);
-        if (!is_pair(datum_list)) {
-            if (_get_intern(env, datum_list) == Intern::_else) {
-                return syntax_begin(env, cdr(clause));
-            }
-            throw std::invalid_argument("invalid case syntax");
-        }
-        while (is_pair(datum_list)) {
-            auto datum = car(datum_list);
-            if (is_equal(key, datum)) {
-                return syntax_begin(env, cdr(clause));
-            }
-            datum_list = cdr(datum_list);
-        }
-        clauses = cdr(clauses);
-    }
-    return none;
-}
-
 Cell Scheme::syntax_when(const SymenvPtr& env, Cell args) {
     if (is_true(eval(env, car(args))) && is_pair(args = cdr(args))) {
         for (/* */; is_pair(cdr(args)); args = cdr(args))
@@ -1091,10 +1066,6 @@ void Scheme::init_op_table() {
 
     m_op_table[Intern::_cond] = [this](const SymenvPtr& senv, const Cell& cell) {
         return this->syntax_cond(senv, cell);
-    };
-
-    m_op_table[Intern::_case] = [this](const SymenvPtr& senv, const Cell& cell) {
-        return this->syntax_case(senv, cell);
     };
 
     m_op_table[Intern::_when] = [this](const SymenvPtr& senv, const Cell& cell) {

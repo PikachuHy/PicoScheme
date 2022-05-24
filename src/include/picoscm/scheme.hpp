@@ -293,18 +293,6 @@ protected:
      */
     Cell syntax_cond(const SymenvPtr& env, Cell args);
 
-    /**
-     * Scheme syntax case.
-     *
-     * @verbatim
-     * (case <key> <clause>_1 <clause>_2 ...)
-     *
-     * <clause> := ((<datum_1> ...) <expression_1> <expression_2> ...)
-     *          |  (else  <expression_1> <expression_2> ...)
-     * @endverbatim
-     */
-    Cell syntax_case(const SymenvPtr& env, Cell args);
-
     Cell syntax_when(const SymenvPtr& env, Cell args);
 
     Cell syntax_unless(const SymenvPtr& env, Cell args);
