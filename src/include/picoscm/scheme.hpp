@@ -321,8 +321,6 @@ protected:
 
     Cell syntax_unless(const SymenvPtr& env, Cell args);
 
-    Cell syntax_let(const SymenvPtr& env, Cell args, bool star = false);
-
     Cell syntax_with_let(const SymenvPtr& env, Cell args);
 
     Cell syntax_with_module(const SymenvPtr& env, Cell args);

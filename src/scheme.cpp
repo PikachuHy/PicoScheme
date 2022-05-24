@@ -461,55 +461,6 @@ Cell Scheme::syntax_unless(const SymenvPtr& env, Cell args) {
     return none;
 }
 
-Cell Scheme::syntax_let(const SymenvPtr& env, Cell args, bool star) {
-    SymenvPtr cur_env = newenv(env);
-    Cell cur_args = args;
-    if (is_pair(car(args))) {
-        auto bindings = car(args);
-        auto sub_env = env->create(cur_env);
-        for (; !is_nil(bindings) && is_pair(car(bindings)); bindings = cdr(bindings)) {
-            auto binding = car(bindings);
-            auto var = car(binding);
-            auto val = cadr(binding);
-            auto sym = get<Symbol>(var);
-            auto _env = star ? sub_env : env;
-            auto v = eval(_env, val);
-            sub_env->add(sym, v);
-        }
-        cur_args = cdr(args);
-        cur_env = sub_env;
-    }
-    else if (is_symbol(car(args))) {
-        // named let
-        // (let ⟨variable⟩ ⟨bindings⟩ ⟨body⟩)
-        auto variable = get<Symbol>(car(args));
-        auto bindings = cadr(args);
-        auto body = caddr(args);
-        auto new_env = newenv(env);
-        auto proc_args = cons(none, nil);
-        Cell proc_args_it = proc_args;
-        for (; !is_nil(bindings) && is_pair(car(bindings)); bindings = cdr(bindings)) {
-            auto binding = car(bindings);
-            auto var = car(binding);
-            auto val = cadr(binding);
-            auto sym = get<Symbol>(var);
-            auto v = eval(env, val);
-            new_env->add(sym, v);
-
-            set_cdr(proc_args_it, cons(sym, nil));
-            proc_args_it = cdr(proc_args_it);
-        }
-        new_env->add(variable, Procedure(new_env, cdr(proc_args), cons(body, nil)));
-        return eval(new_env, body);
-    }
-    Cell expr = none;
-    while (!is_nil(cur_args)) {
-        expr = eval(cur_env, car(cur_args));
-        cur_args = cdr(cur_args);
-    }
-    return expr;
-}
-
 Cell Scheme::syntax_with_let(const SymenvPtr& env, Cell args) {
     auto cur_env = get<SymenvPtr>(eval(env, car(args)));
     auto cur_args = cdr(args);
@@ -1232,14 +1183,6 @@ void Scheme::init_op_table() {
 
     m_op_table[Intern::_unless] = [this](const SymenvPtr& senv, const Cell& cell) {
         return this->syntax_unless(senv, cell);
-    };
-
-    m_op_table[Intern::_let] = [this](const SymenvPtr& senv, const Cell& cell) {
-        return this->syntax_let(senv, cell);
-    };
-
-    m_op_table[Intern::_let_star] = [this](const SymenvPtr& senv, const Cell& cell) {
-        return this->syntax_let(senv, cell, true);
     };
 
     m_op_table[Intern::_with_let] = [this](const SymenvPtr& senv, const Cell& cell) {
