@@ -108,10 +108,16 @@ struct CompilerImpl {
     }
 
     Cell handle_cond_arrow(const Cell& clause, const Cell& item) {
-        auto maybe_arrow = cadr(clause);
+        auto maybe_arrow = cdr(clause);
+        if (is_nil(maybe_arrow)) {
+            maybe_arrow = none;
+        }
+        else {
+            maybe_arrow = cadr(clause);
+        }
+
         maybe_arrow = eval_op(maybe_arrow);
         if (is_nil(item)) {
-
             if (is_arrow(maybe_arrow)) {
                 auto sym = scm.symbol();
                 Cell new_if = scm.list(Intern::_if, sym, scm.list(caddr(clause), sym));
