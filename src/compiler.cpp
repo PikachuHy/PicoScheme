@@ -97,13 +97,47 @@ struct CompilerImpl {
     Cell cond_if_body(Cell clause) {
         auto item = cdr(clause);
         if (is_pair(item) && !is_nil(cdr(item))) {
-            return scm.cons(scm.symbol("begin"), item);
+            return scm.cons(Intern::_begin, item);
         }
         else {
             if (is_nil(item)) {
                 return none;
             }
             return car(item);
+        }
+    }
+
+    Cell handle_cond_arrow(const Cell& clause, const Cell& item) {
+        auto maybe_arrow = cadr(clause);
+        maybe_arrow = eval_op(maybe_arrow);
+        if (is_nil(item)) {
+
+            if (is_arrow(maybe_arrow)) {
+                auto sym = scm.symbol();
+                Cell new_if = scm.list(Intern::_if, sym, scm.list(caddr(clause), sym));
+                return scm.list(Intern::_let, scm.list(scm.list(sym, car(clause))), new_if);
+            }
+            else {
+                return scm.list(Intern::_if, car(clause), cond_if_body(clause));
+            }
+        }
+        else {
+
+            if (is_arrow(maybe_arrow)) {
+                /*
+                auto sym = scm.symbol("t");
+                auto op_if = scm.symbol("if");
+                auto op_let = scm.symbol("let");
+                 */
+                auto sym = scm.symbol();
+                auto op_if = Intern::_if;
+                auto op_let = Intern::_let;
+                Cell new_if = scm.list(op_if, sym, scm.list(caddr(clause), sym), item);
+                return scm.list(op_let, scm.list(scm.list(sym, car(clause))), new_if);
+            }
+            else {
+                return scm.list(Intern::_if, car(clause), cond_if_body(clause), item);
+            }
         }
     }
 
@@ -121,12 +155,8 @@ struct CompilerImpl {
         }
         else {
             auto item = cond_to_if_sub(cdr(clauses));
-            if (is_nil(item)) {
-                return scm.list(Intern::_if, car(clause), cond_if_body(clause));
-            }
-            else {
-                return scm.list(Intern::_if, car(clause), cond_if_body(clause), item);
-            }
+            auto new_if = handle_cond_arrow(clause, item);
+            return new_if;
         }
     }
 
