@@ -416,6 +416,18 @@ Cell CodeRunner::apply(const CompiledProcedure& proc, const Cell& args) {
 
 Cell CodeRunner::run_intern(const SymenvPtr& env, Intern op, const std::vector<Cell>& args) {
     switch (op) {
+    case Intern::op_callcc: {
+        auto f = args[0];
+        Cell cont = std::make_shared<Continuation>(m.stack, m.reg, m.wind);
+        if (is_intern(f)) {
+            return m.scm.apply(env, f, { cont });
+        }
+        if (is_proc(f)) {
+            auto proc = get<Procedure>(f);
+            return m.run(proc, m.scm.cons(cont, nil));
+        }
+        throw bytecode_error("except Procedure or Intern but got:", f);
+    }
     case Intern::op_call_with_output_string: {
         auto vv = args[0];
         if (!is_type<Procedure>(vv)) {
@@ -840,12 +852,14 @@ void CodeRunner::run_inst(Instruction inst) {
         LOG_TRACE("  save ");
         LOG_TRACE(r);
         LOG_TRACE(LF);
-        m.stack.push(m.reg[r]);
+        m.stack.push_back(m.reg[r]);
         LOG_TRACE(";;; ");
         LOG_TRACE(r);
         LOG_TRACE(" --> ");
         LOG_TRACE(m.reg[r]);
         LOG_TRACE(LF);
+        //        DEBUG_OUTPUT("save", r);
+        //        m.print_stack();
         break;
     }
     case Instruction::RESTORE: {
@@ -856,13 +870,15 @@ void CodeRunner::run_inst(Instruction inst) {
         if (m.stack.empty()) {
             throw bytecode_error("stack is empty, while restore ", r);
         }
-        m.reg[r] = m.stack.top();
-        m.stack.pop();
+        m.reg[r] = m.stack.back();
+        m.stack.pop_back();
         LOG_TRACE(";;; ");
         LOG_TRACE(r);
         LOG_TRACE(" --> ");
         LOG_TRACE(m.reg[r]);
         LOG_TRACE(LF);
+        //        DEBUG_OUTPUT("restore", r);
+        //        m.print_stack();
         break;
     }
     case Instruction::CONT: {
@@ -929,6 +945,13 @@ void MachineImpl::print_reg() const {
     DEBUG_OUTPUT("machine registers:");
     for (const auto& [k, v] : reg) {
         std::wcout << k << " --> " << v << std::endl;
+    }
+}
+
+void MachineImpl::print_stack() const {
+    DEBUG_OUTPUT("machine stack:");
+    for (const auto& it : stack) {
+        std::wcout << it << std::endl;
     }
 }
 

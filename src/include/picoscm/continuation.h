@@ -30,7 +30,7 @@ public:
         m_frames.emplace_back(env, cell);
     };
 
-    Continuation(std::stack<Cell> stack, std::unordered_map<Register, Cell> reg, std::vector<DynamicWind> wind)
+    Continuation(std::vector<Cell> stack, std::unordered_map<Register, Cell> reg, std::vector<DynamicWind> wind)
         : m_stack(std::move(stack))
         , m_reg(std::move(reg))
         , m_wind(std::move(wind)) {
@@ -40,7 +40,7 @@ public:
         return m_frames;
     }
 
-    [[nodiscard]] const std::stack<Cell>& stack() const {
+    [[nodiscard]] const std::vector<Cell>& stack() const {
         return m_stack;
     }
 
@@ -54,7 +54,7 @@ public:
 
 private:
     FrameStack m_frames;
-    std::stack<Cell> m_stack;
+    std::vector<Cell> m_stack;
     std::unordered_map<Register, Cell> m_reg;
     std::vector<DynamicWind> m_wind;
 };

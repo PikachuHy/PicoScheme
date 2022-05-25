@@ -23,12 +23,13 @@ public:
     Cell run(const Procedure& proc, const Cell& args);
     size_t load(const CodeList& code_list);
     void print_reg() const;
+    void print_stack() const;
     void fill_label_map(const CodeList& code_list);
 
 private:
     Scheme& scm;
     std::unordered_map<Register, Cell> reg;
-    std::stack<Cell> stack;
+    std::vector<Cell> stack;
     std::vector<DynamicWind> wind;
     std::unordered_map<Label, Int> label_map;
     CodeList all_code_list;

@@ -222,6 +222,12 @@ struct CompilerImpl {
         if (is_none(expr)) {
             return true;
         }
+        if (is_proc(expr)) {
+            return true;
+        }
+        if (is_port(expr)) {
+            return true;
+        }
         return false;
     }
 
@@ -390,6 +396,7 @@ struct CompilerImpl {
         auto seq2 = end_with_linkage(lambda_linkage, seq1);
         auto seq3 = tack_on_instruction_sequence(seq2, compile_lambda_body(expr, proc_entry));
         auto seq4 = append_instruction_sequences(seq3, InstSeq{ Instruction::LABEL, after_lambda });
+        seq4.statements.push_front(Comment{ L"lambda", expr });
         return { proc_entry, seq4 };
     }
 
@@ -554,6 +561,7 @@ struct CompilerImpl {
     InstSeq compile_apply(const Cell& expr, Target target, Linkage linkage) {
         auto proc = cadr(expr);
         auto args = caddr(expr);
+        // DEBUG_OUTPUT("proc:", proc);
         // DEBUG_OUTPUT("args:", args);
         auto proc_code = compile(proc, Register::PROC, LinkageEnum::NEXT);
         proc_code.statements.push_front(Comment{ L"apply proc:", proc });
