@@ -262,11 +262,12 @@ public:
 
 private:
     InstCode fetch_code() {
-        if (i + 1 > code_list.size()) {
-            DEBUG_OUTPUT("error: overflow", i + 1, "/", code_list.size());
+        if (i > code_list.size()) {
+            DEBUG_OUTPUT("error: overflow", i, "/", code_list.size());
         }
+        auto code = code_list[i];
         i++;
-        return code_list[i];
+        return code;
     }
 
     Register fetch_reg() {
@@ -304,7 +305,7 @@ private:
     MachineImpl& m;
     const CodeList& code_list;
     std::wofstream stream;
-    int i;
+    std::size_t i;
     bool print_trace = true;
     bool print_cont = false;
 };
@@ -322,7 +323,7 @@ void CodeRunner::assign_reg(Register r, const InstCode& v) {
 
 void CodeRunner::run(std::size_t pos) {
     i = pos;
-    while (i + 1 < code_list.size()) {
+    while (i < code_list.size()) {
         auto code = fetch_code();
         if (is_inst(code)) {
             try {
@@ -383,9 +384,9 @@ void CodeRunner::run(std::size_t pos) {
         }
         else {
             DEBUG_OUTPUT("wrong inst code:");
-            for (int j = std::max(0, i - 2); j < std::min(int(code_list.size()), i + 2); ++j) {
+            for (std::size_t j = i < 2 ? 0 : i - 2; j < std::min(code_list.size(), i + 2); ++j) {
                 std::wcout << code_list[j];
-                if (i == j) {
+                if (i == j + 1) {
                     std::wcout << " <----";
                 }
                 std::wcout << std::endl;
@@ -933,7 +934,7 @@ void CodeRunner::run_inst(Instruction inst) {
 
 Cell MachineImpl::run(const CodeList& code_list, const SymenvPtr& env) {
     auto pos = load(code_list);
-    return run(env, pos - 1);
+    return run(env, pos);
 }
 
 size_t MachineImpl::load(const CodeList& code_list) {
@@ -1000,7 +1001,7 @@ void MachineImpl::fill_label_map(const CodeList& code_list) {
                     auto label = get_label(code);
                     // DEBUG_OUTPUT("label:", label, "-->", i);
                     auto pos = i + all_code_list.size();
-                    label_map[label] = pos - 2;
+                    label_map[label] = pos - 1;
                 }
                 else {
                     DEBUG_OUTPUT("inst:", code);
