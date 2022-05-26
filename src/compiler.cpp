@@ -626,6 +626,24 @@ struct CompilerImpl {
         return {};
     }
 
+    InstSeq compile_expand(const Cell& expr, Target target, Linkage linkage) {
+        auto expr_to_expand = cadr(expr);
+        // DEBUG_OUTPUT(expr_to_expand);
+        Cell op = car(expr_to_expand);
+        Cell expand_code = expr_to_expand;
+        if (is_symbol(op)) {
+            op = eval_op(op);
+            // DEBUG_OUTPUT(op);
+            if (is_macro(op)) {
+                auto proc_macro = get<Procedure>(op);
+                // DEBUG_OUTPUT(cdr(expr_to_expand));
+                expand_code = scm.machine()->run(proc_macro, cdr(expr_to_expand));
+            }
+        }
+        // DEBUG_OUTPUT("expand:", expand_code);
+        return compile_self_evaluating(expand_code, target, linkage);
+    }
+
     InstSeq compile_procedure_call(Target target, const Linkage& linkage) {
         auto primitive_branch = make_label(LabelEnum::PRIMITIVE_BRANCH);
         auto compiled_branch = make_label(LabelEnum::COMPILED_BRANCH);
@@ -921,6 +939,10 @@ struct CompilerImpl {
         }
         case Intern::_inherit_module: {
             seq = compile_inherit_module(expr, target, linkage);
+            break;
+        }
+        case Intern::_expand: {
+            seq = compile_expand(expr, target, linkage);
             break;
         }
         default: {
