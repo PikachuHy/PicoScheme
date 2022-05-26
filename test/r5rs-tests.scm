@@ -1,49 +1,3 @@
-
-(define *tests-run* 0)
-(define *tests-passed* 0)
-
-(define-syntax test
-  (syntax-rules ()
-    ((test name expect expr)
-     (test expect expr))
-    ((test expect expr)
-     (begin
-       (set! *tests-run* (+ *tests-run* 1))
-       (let ((str (call-with-output-string
-                    (lambda (out)
-                      (write *tests-run*)
-                      (display ". ")
-                      (display 'expr out))))
-             (res expr))
-         (display str)
-         (write-char #\space)
-         (display (make-string (max 0 (- 72 (string-length str))) #\.))
-         (flush-output)
-         (cond
-          ((equal? res expect)
-           (set! *tests-passed* (+ *tests-passed* 1))
-           (display-green " [PASS]\n"))
-          (else
-           (display-red " [FAIL]\n")
-           (display "    expected ") (write expect)
-           (display " but got ") (write res) (newline))))))))
-
-(define-syntax test-assert
-  (syntax-rules ()
-    ((test-assert expr) (test #t expr))))
-
-(define (test-begin . name)
-  #f)
-
-(define (test-end)
-  (write *tests-passed*)
-  (display " out of ")
-  (write *tests-run*)
-  (display " passed (")
-  (write (* (/ *tests-passed* *tests-run*) 100))
-  (display "%)")
-  (newline))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (test-begin "r5rs")
@@ -149,13 +103,36 @@
 
 (test #f (eqv? 'a 'b))
 
+(test #t (eqv? 2 2))
+
 (test #t (eqv? '() '()))
+
+(test #t (eqv? 100000000 100000000))
 
 (test #f (eqv? (cons 1 2) (cons 1 2)))
 
 (test #f (eqv? (lambda () 1) (lambda () 2)))
 
+(test #f (eqv? #f 'nil))
+
 (test #t (let ((p (lambda (x) x))) (eqv? p p)))
+
+(define gen-counter
+  (lambda ()
+    (let ((n 0))
+      (lambda () (set! n (+ n 1) n)))))
+
+(test #t (let ((g (gen-counter)))
+	   (eqv? g g)))
+
+(test #f (eqv? (gen-counter) (gen-counter)))
+
+(test #f (letrec ((f (lambda () (if (eqv? f g) 'f 'both)))
+		  (g (lambda () (if (eqv? f g) 'g 'both))))
+	   (eqv? f g)))
+
+(test #t (let ((x '(a)))
+	   (eqv? x x)))
 
 (test #t (eq? 'a 'a))
 
@@ -166,6 +143,9 @@
 (test #t (eq? car car))
 
 (test #t (let ((x '(a))) (eq? x x)))
+
+(test #t (let ((x '#()))
+	   (eq? x x)))
 
 (test #t (let ((p (lambda (x) x))) (eq? p p)))
 
@@ -191,7 +171,7 @@
 
 (test 4 (max 3 4))
 
-;;(test 4 (max 3.9 4))
+(test 4 (max 3.9 4))
 
 (test 7 (+ 3 4))
 
@@ -252,6 +232,26 @@
 (test "177" (number->string 127 8))
 
 (test "101" (number->string 5 2))
+
+(test #t (complex? 3+4i))
+
+(test #t (complex? 3))
+
+(test #t (real? 3))
+
+(test #t (real? -2.5+0.0i))
+
+(test #t (real? #e1e10))
+;;; TODO
+;; (test #t (rational? 6/10))
+
+;; (test #t (rational? 6/3))
+
+(test #t (integer? 3+0i))
+
+(test #t (integer? 3.0))
+
+;; (test #t (integer? 8/4))
 
 (test #f (not 3))
 
@@ -427,6 +427,19 @@
 
 (test 3 (call-with-current-continuation (lambda (k) (+ 2 5 (k 3)))))
 
+(test -3 (call/cc
+	  (lambda (exit)
+	    (for-each
+	     (lambda (x)
+	       (if (negative? x)
+		   (exit x)))
+	     '(54 0 37 -3 245 19))
+	    #t)))
+
+(test 4 (list-length '(1 2 3 4)))
+
+(test #f (list-length '(a b . c)))
+
 (test 7 (apply + (list 3 4)))
 
 (test '(b e h) (map cadr '((a b) (d e) (g h))))
@@ -446,13 +459,25 @@
 
 (test '(3 3) (let ((p (delay (+ 1 2)))) (list (force p) (force p))))
 
+(define count 0)
+(define p
+  (delay (begin
+	   (set! count (+ count 1))
+	   (if (> count x)
+	       count
+	       (force p)))))
+(define x 5)
+(test 6 (force p))
+(test 6 (begin (set! x 10)
+	(force p)))
+
 (test 'ok (let ((else 1)) (cond (else 'ok) (#t 'bad))))
 
 (test 'ok (let ((=> 1)) (cond (#t => 'ok))))
 
-(test '(,foo) (let ((unquote 1)) `(,foo)))
+; (test '(,foo) (let ((unquote 1)) `(,foo)))
 
-(test '(,@foo) (let ((unquote-splicing 1)) `(,@foo)))
+; (test '(,@foo) (let ((unquote-splicing 1)) `(,@foo)))
 
 
 (test '(2 1)
@@ -490,7 +515,11 @@
             (c 'talk2)
             (reverse path)))))
 
+(test 5 (call-with-values
+	    (lambda () (values 4 5))
+	  (lambda (a b) b)))
 
+(test -1 (call-with-values * -))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (test-end)
