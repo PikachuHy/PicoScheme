@@ -250,4 +250,14 @@
        (define ,var ,val)
        (export ',sym))))
 
+(define-macro (define-public-macro var val)
+  (define (get-sym var)
+    (if (symbol? var)
+	var
+	(get-sym (car var))))
+  (let ((sym (get-sym var)))
+    `(begin
+       (define-macro ,var ,val)
+       (export ',sym))))
+
 (define (noop) #f)
