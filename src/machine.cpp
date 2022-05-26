@@ -438,6 +438,15 @@ Cell CodeRunner::run_intern(const SymenvPtr& env, Intern op, const std::vector<C
         m.run(proc, m.scm.cons(port, nil));
         return std::make_shared<String>(port->str());
     }
+    case Intern::op_hash_table_fold: {
+        auto proc = get<Procedure>(args[0]);
+        auto prior = args[1];
+        auto hash_table = get<HashMapPtr>(args[2]);
+        for (const auto& [k, v] : *hash_table) {
+            prior = m.run(proc, m.scm.list(k, v, prior));
+        }
+        return prior;
+    }
     case Intern::op_machine_print_trace: {
         if (is_true(args[0])) {
             print_trace = true;
