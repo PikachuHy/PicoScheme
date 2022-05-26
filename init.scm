@@ -239,3 +239,15 @@
 			(+ (r (cdr obj)) 1))
 		       (else (return #f))))))
        (r obj)))))
+
+(define-macro (define-public var val)
+  (define (get-sym var)
+    (if (symbol? var)
+	var
+	(get-sym (car var))))
+  (let ((sym (get-sym var)))
+    `(begin
+       (define ,var ,val)
+       (export ',sym))))
+
+(define (noop) #f)
