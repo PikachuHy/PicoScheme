@@ -294,6 +294,7 @@ protected:
 
     Cell syntax_with_let(const SymenvPtr& env, Cell args);
 
+public:
     Cell syntax_with_module(const SymenvPtr& env, Cell args);
 
     Cell syntax_module(const SymenvPtr& senv, const Cell& args);
@@ -302,6 +303,7 @@ protected:
 
     Cell syntax_use_module(const SymenvPtr& senv, Cell args);
 
+private:
     Cell syntax_define(const SymenvPtr& senv, Cell args, bool is_public = false);
     /**
      * Scheme syntax define-syntax.

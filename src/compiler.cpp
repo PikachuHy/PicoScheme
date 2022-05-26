@@ -611,6 +611,21 @@ struct CompilerImpl {
         return seq4;
     }
 
+    InstSeq compile_module(const Cell& expr, Target target, Linkage linkage) {
+        scm.syntax_module(cur_env(), cdr(expr));
+        return {};
+    }
+
+    InstSeq compile_use_module(const Cell& expr, Target target, Linkage linkage) {
+        scm.syntax_use_module(cur_env(), cdr(expr));
+        return {};
+    }
+
+    InstSeq compile_inherit_module(const Cell& expr, Target target, Linkage linkage) {
+        scm.syntax_inherit_module(cur_env(), cdr(expr));
+        return {};
+    }
+
     InstSeq compile_procedure_call(Target target, const Linkage& linkage) {
         auto primitive_branch = make_label(LabelEnum::PRIMITIVE_BRANCH);
         auto compiled_branch = make_label(LabelEnum::COMPILED_BRANCH);
@@ -894,6 +909,18 @@ struct CompilerImpl {
         }
         case Intern::_values: {
             seq = compile_values(expr, target, linkage);
+            break;
+        }
+        case Intern::_module: {
+            seq = compile_module(expr, target, linkage);
+            break;
+        }
+        case Intern::_use_module: {
+            seq = compile_use_module(expr, target, linkage);
+            break;
+        }
+        case Intern::_inherit_module: {
+            seq = compile_inherit_module(expr, target, linkage);
             break;
         }
         default: {

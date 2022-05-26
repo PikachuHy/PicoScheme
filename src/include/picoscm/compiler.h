@@ -113,6 +113,9 @@ public:
     }
 
     CodeList& merge(const CodeList& l) {
+        if (l.empty()) {
+            return *this;
+        }
         total += l.total;
         tail->next = l.dummy.next;
         tail = l.tail;
