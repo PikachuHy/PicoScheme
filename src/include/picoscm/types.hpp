@@ -488,6 +488,8 @@ enum class Intern {
 
     op_get_current_environment,
     op_machine_print_trace,
+
+    op_inc,
 };
 } // namespace pscm
 #endif // TYPES_HPP

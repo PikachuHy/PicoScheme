@@ -2891,6 +2891,10 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args) {
         auto env = get<SymenvPtr>(args[1]);
         return env->get(sym);
     }
+    case Intern::op_inc: {
+        auto num = get<Number>(args[0]);
+        return num + 1;
+    }
     default:
         DEBUG_OUTPUT("opcode:", primop);
         throw std::invalid_argument("invalid primary opcode");
@@ -3255,6 +3259,8 @@ SymenvPtr add_environment_defaults(Scheme& scm) {
           { scm.symbol("pop-dynamic-wind"),             Intern::op_pop_dynamic_wind },
 
           { scm.symbol("values"),             Intern::_values },
+
+          { scm.symbol("1+"),                 Intern::op_inc },
        });
     // clang-format on
     return std_env;
