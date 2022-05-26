@@ -536,7 +536,7 @@ Cell CodeRunner::run_op(Intern op) {
             std::cout << std::endl;
             throw std::runtime_error("error");
         }
-        return is_intern(vv);
+        return is_intern(vv) || is_func(vv);
     }
     case Intern::op_apply_primitive_procedure: {
         auto r1 = fetch_reg();
@@ -558,7 +558,13 @@ Cell CodeRunner::run_op(Intern op) {
             args.push_back(it);
         }
         auto env = get<SymenvPtr>(m.reg[Register::ENV]);
-        return run_intern(env, get<Intern>(proc), args);
+        if (is_func(proc)) {
+            auto f = get<FunctionPtr>(proc);
+            return m.scm.apply(env, f, args);
+        }
+        else {
+            return run_intern(env, get<Intern>(proc), args);
+        }
     }
     case Intern::op_make_compiled_macro:
     case Intern::op_make_compiled_procedure: {
