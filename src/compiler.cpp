@@ -315,14 +315,33 @@ struct CompilerImpl {
     }
 
     InstSeq compile_definition(const Cell& expr, Target target, Linkage linkage, bool is_macro = false) {
-        auto var = definition_variable(expr);
+        Cell var;
         InstSeq get_value_code;
         if (is_symbol(cadr(expr))) {
+            // (define var val)
+            var = cadr(expr);
             get_value_code = compile(caddr(expr), Register::VAL, LinkageEnum::NEXT);
         }
         else {
-            auto f = make_lambda(cdadr(expr), cddr(expr));
-            get_value_code = compile_lambda(f, Register::VAL, LinkageEnum::NEXT, is_macro).second;
+            // (define (var arg) body)
+            auto maybe_var = caadr(expr);
+            if (is_symbol(maybe_var)) {
+                var = maybe_var;
+                auto f = make_lambda(cdadr(expr), cddr(expr));
+                get_value_code = compile_lambda(f, Register::VAL, LinkageEnum::NEXT, is_macro).second;
+            }
+            else {
+                // DEBUG_OUTPUT(maybe_var);
+                // (define ((var arg0) arg1) body)
+                // maybe_var => (var arg0)
+                // cdadr arg1
+                var = car(maybe_var);
+                auto ff = make_lambda(cdadr(expr), cddr(expr));
+                // DEBUG_OUTPUT(ff);
+                auto f = make_lambda(cdr(maybe_var), scm.cons(ff, nil));
+                // DEBUG_OUTPUT(f);
+                get_value_code = compile_lambda(f, Register::VAL, LinkageEnum::NEXT, is_macro).second;
+            }
         }
         auto code = CodeList{ Instruction::PERFORM,
                               Intern::op_define_variable,
