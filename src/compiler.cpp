@@ -626,6 +626,20 @@ struct CompilerImpl {
         return {};
     }
 
+    InstSeq compile_with_module(const Cell& expr, Target target, Linkage linkage) {
+        auto seq1 = InstSeq{ Instruction::SAVE, Register::ENV };
+        auto seq2 = compile(cadr(expr), Register::VAL, LinkageEnum::NEXT);
+        auto seq3 = InstSeq{
+            Instruction::ASSIGN,
+            Register::ENV,
+            Intern::op_module_env,
+            Register::VAL,
+        };
+        auto seq4 = compile_sequence(cddr(expr), target, linkage);
+        auto seq5 = InstSeq{ Instruction::RESTORE, Register::ENV };
+        return append_instruction_sequences(seq1, seq2, seq3, seq4, seq5);
+    }
+
     InstSeq compile_expand(const Cell& expr, Target target, Linkage linkage) {
         auto expr_to_expand = cadr(expr);
         // DEBUG_OUTPUT(expr_to_expand);
@@ -939,6 +953,10 @@ struct CompilerImpl {
         }
         case Intern::_inherit_module: {
             seq = compile_inherit_module(expr, target, linkage);
+            break;
+        }
+        case Intern::_with_module: {
+            seq = compile_with_module(expr, target, linkage);
             break;
         }
         case Intern::_expand: {

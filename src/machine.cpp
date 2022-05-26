@@ -150,6 +150,11 @@ void CodeListPrinter::print_op() {
         print_args(3);
         break;
     }
+    case Intern::op_module_env: {
+        print("module-env");
+        print_args(1);
+        break;
+    }
     default: {
         print(op);
         //        DEBUG_OUTPUT("unknown op:", op);
@@ -723,6 +728,18 @@ Cell CodeRunner::run_op(Intern op) {
         auto env = get<SymenvPtr>(m.reg[r2]);
         env->set(sym, val);
         return none;
+    }
+    case Intern::op_module_env: {
+        auto r = fetch_reg();
+        LOG_TRACE("module-env ");
+        LOG_TRACE(r);
+        auto v = m.reg.at(r);
+        if (!is_module(v)) {
+            throw bytecode_error("except Module but got:", v);
+        }
+        auto module = get<Module>(v);
+        auto env = module.env();
+        return env;
     }
     default: {
         return op;
