@@ -184,6 +184,10 @@ public:
         };
     }
 
+    void export_sym(const Sym& sym) {
+        export_set.insert(sym);
+    }
+
     //! Insert a new symbol and value or reassigns a bound value of an existing symbol
     //! in this environment only.
     void add(const Sym& sym, const T& val, bool is_public = false) {
@@ -370,6 +374,7 @@ private:
     std::unordered_map<Sym, T, Hash> table;
     std::unordered_map<Sym, T, Hash> public_table;
     std::unordered_map<Sym, T, Hash> use_table;
+    std::unordered_set<Sym, Hash> export_set;
 };
 
 } // namespace pscm

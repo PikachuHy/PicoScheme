@@ -3261,6 +3261,8 @@ SymenvPtr add_environment_defaults(Scheme& scm) {
           { scm.symbol("values"),             Intern::_values },
 
           { scm.symbol("1+"),                 Intern::op_inc },
+
+          { scm.symbol("export"),             Intern::op_export },
        });
     // clang-format on
     return std_env;

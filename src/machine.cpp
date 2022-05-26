@@ -467,6 +467,23 @@ Cell CodeRunner::run_intern(const SymenvPtr& env, Intern op, const std::vector<C
         m.wind.pop_back();
         return none;
     }
+    case Intern::op_export: {
+        for (const auto& arg : args) {
+            if (is_symbol(arg)) {
+                auto sym = get<Symbol>(arg);
+                m.scm.get_current_module_env()->export_sym(sym);
+            }
+            else {
+                Cell head = arg;
+                while (!is_nil(head)) {
+                    auto sym = get<Symbol>(car(head));
+                    m.scm.get_current_module_env()->export_sym(sym);
+                    head = cdr(head);
+                }
+            }
+        }
+        return none;
+    }
     default: {
         return m.scm.apply(env, op, args);
     }

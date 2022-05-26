@@ -490,6 +490,8 @@ enum class Intern {
     op_machine_print_trace,
 
     op_inc,
+
+    op_export,
 };
 } // namespace pscm
 #endif // TYPES_HPP
