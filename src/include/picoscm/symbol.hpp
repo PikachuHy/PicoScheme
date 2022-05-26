@@ -166,8 +166,8 @@ public:
     }
 
     void use(const SymbolEnv& env) {
-        for (const auto& [k, v] : env.public_table) {
-            use_table[k] = v;
+        for (const auto& f : env.export_set) {
+            table.template insert_or_assign(f, env.get(f));
         }
     }
 

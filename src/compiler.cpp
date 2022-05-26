@@ -612,8 +612,8 @@ struct CompilerImpl {
     }
 
     InstSeq compile_module(const Cell& expr, Target target, Linkage linkage) {
-        scm.syntax_module(cur_env(), cdr(expr));
-        return {};
+        auto seq = InstSeq{ Instruction::ASSIGN, Register::ENV, Intern::op_make_module, cdr(expr), Register::ENV };
+        return seq;
     }
 
     InstSeq compile_use_module(const Cell& expr, Target target, Linkage linkage) {

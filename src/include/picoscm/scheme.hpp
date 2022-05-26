@@ -22,8 +22,10 @@
 namespace pscm {
 class GCollector;
 class Machine;
+class MachineImpl;
 class Compiler;
 class CompilerImpl;
+class CodeRunner;
 
 class module_error : public std::runtime_error {
 public:
@@ -372,6 +374,8 @@ private:
     sptr<Compiler> m_compiler;
 
     friend class CompilerImpl;
+    friend class MachineImpl;
+    friend class CodeRunner;
 };
 
 } // namespace pscm
