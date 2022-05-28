@@ -200,37 +200,6 @@ struct CompilerImpl {
         return or_to_if_sub(cdr(expr));
     }
 
-    bool is_self_evaluating(const Cell& expr) {
-        if (is_nil(expr)) {
-            return true;
-        }
-        if (is_intern(expr)) {
-            return true;
-        }
-        if (is_number(expr)) {
-            return true;
-        }
-        if (is_string(expr)) {
-            return true;
-        }
-        if (is_char(expr)) {
-            return true;
-        }
-        if (is_bool(expr)) {
-            return true;
-        }
-        if (is_none(expr)) {
-            return true;
-        }
-        if (is_proc(expr)) {
-            return true;
-        }
-        if (is_port(expr)) {
-            return true;
-        }
-        return false;
-    }
-
     InstSeq compile_self_evaluating(Cell expr, Target target, const Linkage& linkage) {
         auto seq = CodeList{ Instruction::ASSIGN, target, expr };
         auto inst_seq = make_instruction_sequence({}, { target }, seq);
@@ -264,10 +233,6 @@ struct CompilerImpl {
         auto seq = CodeList{ Instruction::ASSIGN, target, text_of_quotation(expr) };
         auto inst_seq = make_instruction_sequence({}, { target }, seq);
         return end_with_linkage(linkage, inst_seq);
-    }
-
-    bool is_variable(const Cell& expr) {
-        return is_symbol(expr);
     }
 
     InstSeq compile_variable(Cell expr, Target target, const Linkage& linkage) {
@@ -988,11 +953,11 @@ struct CompilerImpl {
     InstSeq compile(Cell expr, Target target, Linkage linkage) {
         // DEBUG_OUTPUT("compile expr:", expr);
         InstSeq seq;
-        if (is_self_evaluating(expr)) {
-            seq = compile_self_evaluating(expr, target, linkage);
-        }
-        else if (is_variable(expr)) {
+        if (is_symbol(expr)) {
             seq = compile_variable(expr, target, linkage);
+        }
+        else if (!is_pair(expr)) {
+            seq = compile_self_evaluating(expr, target, linkage);
         }
         else {
             auto op = eval_op(car(expr));
