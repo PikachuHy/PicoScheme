@@ -40,15 +40,6 @@
       (begin (apply f (for-each-car l))
 	     (for-each-sub f (for-each-cdr l)))))
 
-(define (dynamic-wind before thunk after)
-  (generate-dynamic-wind before thunk after)
-  (let ((t #f))
-    (before)
-    (set! t (thunk))
-    (after)
-    (pop-dynamic-wind)
-    t))
-
 (define (call-with-values producer consumer)
   (apply consumer (producer)))
 
@@ -262,3 +253,12 @@
        (export ',sym))))
 
 (define (noop) #f)
+
+(define (dynamic-wind before thunk after)
+  (generate-dynamic-wind before thunk after)
+  (let ((t #f))
+    (before)
+    (set! t (thunk))
+    (after)
+    (pop-dynamic-wind)
+    t))
