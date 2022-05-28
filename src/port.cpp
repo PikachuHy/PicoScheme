@@ -239,6 +239,10 @@ static std::wostream& print_string(std::wostream& os, const StringPtr& arg) {
             os << "\\\"";
             break;
         }
+        case '\n': {
+            os << "\\n";
+            break;
+        }
         default: {
             os << ch;
         }

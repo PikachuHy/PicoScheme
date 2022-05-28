@@ -155,6 +155,16 @@ void CodeListPrinter::print_op() {
         print_args(1);
         break;
     }
+    case Intern::op_make_module: {
+        print("make-module");
+        print_args(2);
+        break;
+    }
+    case Intern::op_use_module: {
+        print("use-module");
+        print_args(1);
+        break;
+    }
     default: {
         print(op);
         //        DEBUG_OUTPUT("unknown op:", op);
@@ -753,7 +763,7 @@ Cell CodeRunner::run_op(Intern op) {
         }
         auto vv = get<Cell>(v);
         auto env = get<SymenvPtr>(m.reg.at(r));
-        auto module_name = car(vv);
+        auto module_name = vv;
         auto it = m.scm.module_table.find(module_name);
         if (it != m.scm.module_table.end()) {
             throw module_error("module exist: ", module_name);
@@ -763,14 +773,20 @@ Cell CodeRunner::run_op(Intern op) {
         m.scm.current_module = Module(module_name, env);
         m.scm.module_table.insert_or_assign(module_name, m.scm.current_module);
         m.scm.module_stack.push(m.scm.current_module);
-        if (!is_nil(cdr(vv))) {
-            auto use = cadr(vv);
-            if (get<Symbol>(car(use)).value() == L":use") {
-                return m.scm.syntax_use_module(env, cdr(use));
-            }
-            throw module_error("module syntax error: ", module_name);
-        }
         m.reg[Register::ENV] = new_env;
+        return none;
+    }
+    case Intern::op_use_module: {
+        auto v = fetch_code();
+        LOG_TRACE("use-module ");
+        LOG_TRACE(v);
+        if (!is_type<Cell>(v)) {
+            throw bytecode_error("except Cell but got:", v);
+        }
+        auto vv = get<Cell>(v);
+        auto cur_env = m.scm.get_current_module_env();
+        auto env = m.scm.get_module_env(vv);
+        cur_env->use(*env);
         return none;
     }
     default: {

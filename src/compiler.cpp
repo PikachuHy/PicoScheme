@@ -612,8 +612,23 @@ struct CompilerImpl {
     }
 
     InstSeq compile_module(const Cell& expr, Target target, Linkage linkage) {
-        auto seq = InstSeq{ Instruction::ASSIGN, Register::ENV, Intern::op_make_module, cdr(expr), Register::ENV };
-        return seq;
+        auto seq = InstSeq{ Instruction::ASSIGN, Register::ENV, Intern::op_make_module, cadr(expr), Register::ENV };
+        auto maybe_use = cddr(expr);
+        if (!is_nil(maybe_use)) {
+            auto use = car(maybe_use);
+            if (is_symbol(car(use))) {
+                auto sym = get<Symbol>(car(use));
+                if (sym.value() == L":use") {
+                    auto use_list = cdr(use);
+                    while (is_pair(use_list)) {
+                        auto use_seq = InstSeq{ Instruction::PERFORM, Intern::op_use_module, car(use_list) };
+                        seq = append_instruction_sequences(seq, use_seq);
+                        use_list = cdr(use_list);
+                    }
+                }
+            }
+        }
+        return end_with_linkage(linkage, seq);
     }
 
     InstSeq compile_use_module(const Cell& expr, Target target, Linkage linkage) {

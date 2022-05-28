@@ -482,6 +482,7 @@ enum class Intern {
     op_pop_dynamic_wind,
     op_module_env,
     op_make_module,
+    op_use_module,
 
     op_genport,
     op_get_port_string,
