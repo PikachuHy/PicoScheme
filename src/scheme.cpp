@@ -7,6 +7,7 @@
  * @author    Paul Pudewills
  * @copyright MIT License
  *************************************************************************************/
+#include <chrono>
 #include <filesystem>
 #include <functional>
 #include <iomanip>
@@ -183,6 +184,8 @@ void Scheme::repl(const SymenvPtr& env) {
 
 void Scheme::load(const String& filename, const SymenvPtr& env) {
     DEBUG("load:", filename);
+    using namespace std::chrono;
+    auto t0 = high_resolution_clock::now();
     cur_file = filename;
     module_stack.push(get_current_module());
     using file_port = FilePort<Char>;
@@ -220,6 +223,9 @@ void Scheme::load(const String& filename, const SymenvPtr& env) {
         print_frames(true);
     }
     module_stack.pop();
+    auto t1 = high_resolution_clock::now();
+    duration<double, std::ratio<1, 1>> cost_time = t1 - t0;
+    DEBUG_OUTPUT("load", filename, "cost time:", cost_time.count(), "seconds");
 }
 
 Cell Scheme::syntax_begin(const SymenvPtr& env, Cell args) {
