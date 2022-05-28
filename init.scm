@@ -275,3 +275,5 @@
 	 (display "mode:") (display mode) (newline)
 	 (error "not support mode"))))
 
+(define (acons a b c)
+  (cons (cons a b) c))
