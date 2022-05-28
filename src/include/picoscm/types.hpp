@@ -70,6 +70,7 @@ using Symtab      = SymbolTable<String>;
 using Symbol      = Symtab::Symbol;
 using Symenv      = SymbolEnv<Symbol, Cell, Symbol::hash>;
 using SymenvPtr   = std::shared_ptr<Symenv>;
+using Keyword     = Symtab::Keyword;
 using FrameStack  = std::vector<Frame>;
 using Variant = std::variant <
 
@@ -77,7 +78,7 @@ using Variant = std::variant <
     None, Nil, Intern, Bool, Char, Number,
 
     /* Compound value types: */
-    Symbol, Procedure,
+    Symbol, Keyword, Procedure,
 
     /* Pointer types: */
     Cons*, StringPtr, VectorPtr, PortPtr, FunctionPtr, SymenvPtr,

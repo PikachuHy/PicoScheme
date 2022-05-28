@@ -141,6 +141,7 @@ inline bool is_cobj   (const Cell& cell) { return is_type<CObjPtr>(cell); }
 inline bool is_number (const Cell& cell) { return is_type<Number>(cell); }
 inline bool is_label  (const Cell& cell) { return is_type<Label>(cell); }
 inline bool is_symbol (const Cell& cell) { return is_type<Symbol>(cell); }
+inline bool is_keyword(const Cell& cell) { return is_type<Keyword>(cell); }
 inline bool is_symenv (const Cell& cell) { return is_type<SymenvPtr>(cell); }
 inline bool is_vector (const Cell& cell) { return is_type<VectorPtr>(cell); }
 inline bool is_cont   (const Cell& cell) { return is_type<ContPtr>(cell); }
@@ -415,6 +416,7 @@ std::size_t hash<Cell>::operator()(const Cell& cell) const {
         [](const Procedure& arg) -> result_type { return Procedure::hash{}(arg); },
         [](const Module& arg)    -> result_type { return Module::hash{}(arg); },
         [](const Symbol& arg)    -> result_type { return Symbol::hash{}(arg); },
+        [](const Keyword& arg)   -> result_type { return Keyword::hash{}(arg); },
         [](const StringPtr& arg) -> result_type { return std::hash<String>{}(*arg);},
         [](const CObjPtr& arg)   -> result_type { return CObj::hash{}(*arg);},
         [](auto& arg)            -> result_type { return std::hash<std::decay_t<decltype(arg)>>{}(arg); },

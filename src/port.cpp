@@ -78,6 +78,15 @@ static std::wostream& operator<<(std::wostream& os, const Symbol& sym) {
         return os << name;
 }
 
+static std::wostream& operator<<(std::wostream& os, const Keyword& keyword) {
+    const String& name = keyword.value();
+
+    if (name.find_first_of(' ') != String::npos)
+        return os << '|' << name << '|';
+    else
+        return os << name;
+}
+
 static std::wostream& operator<<(std::wostream& os, const DisplayManip<StringPtr>& manip) {
     const StringPtr::element_type& str = *manip.value;
 

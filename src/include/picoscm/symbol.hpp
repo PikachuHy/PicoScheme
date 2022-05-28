@@ -81,6 +81,42 @@ struct SymbolTable {
         const T *ptr;
     };
 
+    class Keyword {
+    public:
+        Keyword(Symbol sym)
+            : sym(sym) {
+        }
+
+        const typename Symbol::value_type& value() const noexcept {
+            return sym.value();
+        }
+
+        //! Equality predicates.
+        bool operator==(const Keyword& keyword) const noexcept {
+            return sym == keyword.sym;
+        }
+
+        bool operator!=(const Keyword& keyword) const noexcept {
+            return sym != keyword.sym;
+        }
+
+        bool operator<(const Keyword& keyword) const noexcept {
+            return sym < keyword.sym;
+        }
+
+        struct hash : private std::hash<const typename Symbol::value_type *> {
+            using argument_type = Keyword;
+            using result_type = std::size_t;
+
+            result_type operator()(const Keyword& keyword) const noexcept {
+                return std::hash<const typename Symbol::value_type *>::operator()(keyword.sym.ptr);
+            }
+        };
+
+    private:
+        Symbol sym;
+    };
+
     /**
      * Construct a symbol table
      * @param bucket_count Initial hash table bucket count hint.

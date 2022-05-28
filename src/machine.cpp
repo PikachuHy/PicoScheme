@@ -85,6 +85,22 @@ private:
     std::string reason;
 };
 
+class unbound_variable_exception : public std::exception {
+public:
+    unbound_variable_exception(Symbol sym) {
+        std::wstringstream ss;
+        ss << sym;
+        reason.append(string_convert<char>(ss.str()));
+    }
+
+    [[nodiscard]] const char *what() const noexcept override {
+        return reason.c_str();
+    }
+
+private:
+    std::string reason{ "Unbound variable: " };
+};
+
 void CodeListPrinter::print_op() {
     auto op = get_op(code_list[i]);
     print(" ");
@@ -530,7 +546,17 @@ Cell CodeRunner::run_op(Intern op) {
             LOG_TRACE(env);
             LOG_TRACE(" sym:");
             LOG_TRACE(sym);
-            return env->get(sym);
+            if (env->defined_sym(sym)) {
+                return env->get(sym);
+            }
+            auto s = sym.value();
+            if (!s.empty()) {
+                if (s.front() == ':' || s.back() == ':') {
+                    return Keyword(sym);
+                }
+            }
+            DEBUG_OUTPUT("Unbound variable:", sym);
+            throw unbound_variable_exception(sym);
         }
         DEBUG_OUTPUT("error operand:", v);
         throw std::runtime_error("error");
