@@ -262,3 +262,16 @@
     (after)
     (pop-dynamic-wind)
     t))
+
+(define OPEN_READ "r")
+(define OPEN_WRITE "w")
+(define (open-file filename mode)
+  ;; (display "mode:") (display mode) (newline)
+  (cond ((eq? mode OPEN_READ)
+	 (open-input-file filename))
+	((eq? mode OPEN_WRITE)
+	 (open-output-file filename))
+	(else
+	 (display "mode:") (display mode) (newline)
+	 (error "not support mode"))))
+
