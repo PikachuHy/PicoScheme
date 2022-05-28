@@ -549,12 +549,6 @@ Cell CodeRunner::run_op(Intern op) {
             if (env->defined_sym(sym)) {
                 return env->get(sym);
             }
-            auto s = sym.value();
-            if (!s.empty()) {
-                if (s.front() == ':' || s.back() == ':') {
-                    return Keyword(sym);
-                }
-            }
             DEBUG_OUTPUT("Unbound variable:", sym);
             throw unbound_variable_exception(sym);
         }

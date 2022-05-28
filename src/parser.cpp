@@ -475,8 +475,16 @@ Cell Parser::read(istream_type& in) {
         case Token::Regex:
             return regex(strtok);
 
-        case Token::Symbol:
-            return scm.symbol(strtok);
+        case Token::Symbol: {
+            auto sym = scm.symbol(strtok);
+            auto s = sym.value();
+            if (!s.empty()) {
+                if (s.front() == ':' || s.back() == ':') {
+                    return Keyword(sym);
+                }
+            }
+            return sym;
+        }
 
         case Token::Vector:
             return parse_vector(in);
