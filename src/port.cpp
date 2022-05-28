@@ -239,21 +239,7 @@ static std::wostream& print_string(std::wostream& os, const StringPtr& arg) {
     }
     os << "\"";
     auto s = *arg;
-    for (const auto& ch : s) {
-        switch (ch) {
-        case '\\': {
-            os << "\\\\";
-            break;
-        case '"': {
-            os << "\\\"";
-            break;
-        }
-        default: {
-            os << ch;
-        }
-        }
-        }
-    }
+    os << display(arg);
     os << "\"";
     return os;
 }
@@ -268,7 +254,7 @@ std::wostream& operator<<(std::wostream& os, const Cell& cell) {
         [&os](Nil)                    -> std::wostream& { return os << "()"; },
         [&os](Bool arg)               -> std::wostream& { return os << (arg ? "#t" : "#f"); },
         [&os](Char arg)               -> std::wostream& { return print_char(os, arg); },
-        [&os](const StringPtr& arg)   -> std::wostream& { return os << '"' << *arg << '"';},
+        [&os](const StringPtr& arg)   -> std::wostream& { return print_string(os, arg);},
         [&os](const RegexPtr&)        -> std::wostream& { return os << "#<regex>"; },
         [&os](const MapPtr&)          -> std::wostream& { return os << "#<dict>"; },
         [&os](const SymenvPtr& arg)   -> std::wostream& { return os << "#<symenv " << arg.get() << '>'; },

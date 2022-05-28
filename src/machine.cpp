@@ -404,6 +404,10 @@ void CodeRunner::run(std::size_t pos) {
                 }
                 throw bytecode_error("except Label or <primop _done_> but got:", pos);
             }
+            catch (const std::bad_variant_access& ex) {
+                m.print_reg();
+                throw ex;
+            }
             catch (const std::runtime_error& ex) {
                 m.print_reg();
                 throw ex;
@@ -515,6 +519,13 @@ Cell CodeRunner::run_intern(const SymenvPtr& env, Intern op, const std::vector<C
             }
         }
         return none;
+    }
+    case Intern::op_scm_error: {
+        DEBUG_OUTPUT("key:", args[0]);
+        DEBUG_OUTPUT("subr:", args[1]);
+        DEBUG_OUTPUT("message:", args[2]);
+        DEBUG_OUTPUT("args:", args[3]);
+        throw std::runtime_error("scm-error");
     }
     default: {
         return m.scm.apply(env, op, args);

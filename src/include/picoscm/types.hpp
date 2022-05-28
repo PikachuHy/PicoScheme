@@ -497,6 +497,8 @@ enum class Intern {
     op_inc,
 
     op_export,
+
+    op_scm_error,
 };
 } // namespace pscm
 #endif // TYPES_HPP
