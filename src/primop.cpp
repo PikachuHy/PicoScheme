@@ -2489,6 +2489,8 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args) {
         return cdar(args.at(0));
     case Intern::op_caddr:
         return caddr(args.at(0));
+    case Intern::op_cdadr:
+        return cdadr(args.at(0));
     case Intern::op_setcar:
         return (void)(set_car(args.at(0), args.at(1))), none;
     case Intern::op_setcdr:
@@ -3038,6 +3040,7 @@ SymenvPtr add_environment_defaults(Scheme& scm) {
           { scm.symbol("cadr"),             Intern::op_cadr },
           { scm.symbol("cdar"),             Intern::op_cdar },
           { scm.symbol("caddr"),            Intern::op_caddr },
+          { scm.symbol("cdadr"),            Intern::op_cdadr },
           { scm.symbol("set-car!"),         Intern::op_setcar },
           { scm.symbol("set-cdr!"),         Intern::op_setcdr },
           { scm.symbol("list"),             Intern::op_list },

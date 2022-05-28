@@ -214,6 +214,7 @@ enum class Intern {
     op_cadr,
     op_cdar,
     op_caddr,
+    op_cdadr,
     op_setcdr,
     op_setcar,
     op_list,
