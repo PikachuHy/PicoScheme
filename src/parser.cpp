@@ -93,19 +93,8 @@ Parser::Token Parser::lex_string(String& str, istream_type& in) {
             return Token::String;
 
         case '\\':
+            str.push_back('\\');
             in >> c;
-            switch (c) {
-            case 'n':
-                str.push_back('\n');
-                continue;
-            case '\\':
-                str.push_back('\\');
-                continue;
-            case 'r':
-                str.push_back('\r');
-            default: {
-            }
-            }
             [[fallthrough]];
 
         default:
