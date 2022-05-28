@@ -581,9 +581,9 @@ struct CompilerImpl {
         auto maybe_use = cddr(expr);
         if (!is_nil(maybe_use)) {
             auto use = car(maybe_use);
-            if (is_symbol(car(use))) {
-                auto sym = get<Symbol>(car(use));
-                if (sym.value() == L":use") {
+            if (is_keyword(car(use))) {
+                auto keyword = get<Keyword>(car(use));
+                if (keyword.value() == L":use") {
                     auto use_list = cdr(use);
                     while (is_pair(use_list)) {
                         auto use_seq = InstSeq{ Instruction::PERFORM, Intern::op_use_module, car(use_list) };
