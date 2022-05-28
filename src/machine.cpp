@@ -337,7 +337,7 @@ private:
     const CodeList& code_list;
     std::wofstream stream;
     std::size_t i;
-    bool print_trace = true;
+    bool print_trace = false;
     bool print_cont = false;
 };
 
@@ -1037,7 +1037,7 @@ size_t MachineImpl::load(const CodeList& code_list) {
     fill_label_map(code_list);
     auto pos = all_code_list.size();
     // DEBUG_OUTPUT("print bytecode:");
-    CodeListPrinter(code_list, pos).print();
+    // CodeListPrinter(code_list, pos).print();
     all_code_list.merge(code_list);
     return pos;
 }

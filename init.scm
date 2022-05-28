@@ -17,6 +17,7 @@
 	      (map-sub f (map-cdr l)))))
   (map-sub f l))
 
+(define map-in-order map)
 
 (define (for-each f . l)
   (define (for-each-car l)

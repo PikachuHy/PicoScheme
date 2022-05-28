@@ -532,7 +532,8 @@ Cell Parser::parse_list(istream_type& in) {
     Token tok;
 
     while (in.good()) {
-        switch (tok = get_token(in)) {
+        tok = get_token(in);
+        switch (tok) {
         case Token::Comment:
             break;
         case Token::CBrace:

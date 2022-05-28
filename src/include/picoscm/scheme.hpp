@@ -349,7 +349,7 @@ private:
     //<! Initial default hash table bucket count.
     static constexpr size_t dflt_bucket_count = 1024;
     //<! GC cycle after dflt_gccycle_count cons-cell allocations.
-    static constexpr size_t dflt_gccycle_count = 10000;
+    static constexpr size_t dflt_gccycle_count = 10000 * 1000;
 
     using standard_port = StandardPort<Char>;
     PortPtr m_stdin = std::make_shared<standard_port>(standard_port::in);
