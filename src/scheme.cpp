@@ -642,20 +642,6 @@ void Scheme::init_op_table() {
         }
     };
 
-    m_op_table[Intern::_macro] = [this](const SymenvPtr& senv, const Cell& cell) {
-        auto sym = get<Symbol>(caar(cell));
-        auto m = Procedure{ senv, cdar(cell), cdr(cell), true };
-        senv->add(sym, m);
-        return none;
-    };
-
-    m_op_table[Intern::_macro_public] = [this](const SymenvPtr& senv, const Cell& cell) {
-        auto sym = get<Symbol>(caar(cell));
-        auto m = Procedure{ senv, cdar(cell), cdr(cell), true };
-        senv->add(sym, m, true);
-        return none;
-    };
-
     m_op_table[Intern::_define_syntax] = [this](const SymenvPtr& senv, const Cell& cell) {
         return this->syntax_define_syntax(senv, cell);
     };
