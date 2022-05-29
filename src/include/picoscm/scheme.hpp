@@ -299,8 +299,6 @@ protected:
 public:
     Cell syntax_with_module(const SymenvPtr& env, Cell args);
 
-    Cell syntax_module(const SymenvPtr& senv, const Cell& args);
-
     Cell syntax_inherit_module(const SymenvPtr& senv, Cell args);
 
     Cell syntax_use_module(const SymenvPtr& senv, Cell args);

@@ -409,27 +409,6 @@ Cell Scheme::eval(SymenvPtr env, Cell expr) {
     return m_machine->run(std::move(env), expr);
 }
 
-Cell Scheme::syntax_module(const SymenvPtr& senv, const Cell& args) {
-    auto module_name = car(args);
-    auto it = module_table.find(module_name);
-    if (it != module_table.end()) {
-        throw module_error("module exist: ", module_name);
-    }
-    auto cur_env = get_current_module_env();
-    auto env = newenv(cur_env);
-    current_module = Module(module_name, env);
-    module_table.insert_or_assign(module_name, current_module);
-    module_stack.push(current_module);
-    if (!is_nil(cdr(args))) {
-        auto use = cadr(args);
-        if (get<Symbol>(car(use)).value() == L":use") {
-            return syntax_use_module(senv, cdr(use));
-        }
-        throw module_error("module syntax error: ", module_name);
-    }
-    return none;
-}
-
 Cell Scheme::syntax_inherit_module(const SymenvPtr& senv, Cell args) {
     auto cur_env = get_current_module_env();
     while (is_pair(args)) {
@@ -770,10 +749,6 @@ void Scheme::init_op_table() {
 
     m_op_table[Intern::_with_module] = [this](const SymenvPtr& senv, const Cell& cell) {
         return this->syntax_with_module(senv, cell);
-    };
-
-    m_op_table[Intern::_module] = [this](const SymenvPtr& senv, const Cell& cell) {
-        return this->syntax_module(senv, cell);
     };
 
     m_op_table[Intern::_inherit_module] = [this](const SymenvPtr& senv, const Cell& cell) {
