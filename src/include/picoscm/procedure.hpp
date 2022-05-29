@@ -84,17 +84,6 @@ public:
     bool operator!=(const Procedure& proc) const noexcept;
     bool operator==(const Procedure& proc) const noexcept;
 
-    /**
-     * Replace expression with the expanded closure macro.
-     * @param expr (closure-macro arg0 ... arg_n)
-     * @return The expanded macro body.
-     */
-    Cell expand(Scheme& scm, Cell& expr) const;
-
-    Cell expand_syntax(Scheme& scm, const Cell& expr) const;
-
-    Cell expand_only(Scheme& scm, const Cell& expr) const;
-
     struct Closure;
 
     struct hash : private std::hash<Closure *> {
@@ -105,10 +94,6 @@ public:
             return std::hash<Closure *>::operator()(proc.impl.get());
         }
     };
-
-private:
-    Cell partial_replace(Scheme& scm, const SymenvPtr& senv, const Cell& cell) const;
-
 private:
     std::shared_ptr<Closure> impl;
 };

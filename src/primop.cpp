@@ -2007,20 +2007,6 @@ static Cell gcdump(Scheme& scm, const varg& args) {
     return none;
 }
 
-static Cell macroexp(Scheme& scm, const SymenvPtr& senv, const varg& args) {
-    Cell expr = args.at(0);
-
-    if (!is_pair(expr)) {
-        return expr;
-    }
-
-    Cell proc = scm.eval(senv, car(expr));
-    if (!is_macro(proc)) {
-        return expr;
-    }
-
-    return get<Procedure>(proc).expand(scm, expr);
-}
 
 static Cell for_each(Scheme& scm, const SymenvPtr& senv, const varg& args) {
     args.size() > 1 || ((void)(throw std::invalid_argument("for-each - not enough arguments")), 0);
@@ -2708,8 +2694,7 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args) {
         return primop::gcollect(scm, senv, args);
     case Intern::op_gcdump:
         return primop::gcdump(scm, args);
-    case Intern::op_macroexp:
-        return primop::macroexp(scm, senv, args);
+
 
     /* Section 6.13: Input and output */
     case Intern::op_isport:
@@ -3160,7 +3145,6 @@ SymenvPtr add_environment_defaults(Scheme& scm) {
           { scm.symbol("repl"),                    Intern::op_repl },
           { scm.symbol("gc"),                      Intern::op_gc },
           { scm.symbol("gc-dump"),                 Intern::op_gcdump },
-          { scm.symbol("macro-expand"),            Intern::op_macroexp },
 
           /* Section 6.13: Input and output */
           { scm.symbol("port?"),                 Intern::op_isport },
