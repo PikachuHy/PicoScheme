@@ -241,16 +241,6 @@ Cell Scheme::syntax_begin(const SymenvPtr& env, Cell args) {
     return ret;
 }
 
-Cell Scheme::syntax_unless(const SymenvPtr& env, Cell args) {
-    if (is_false(eval(env, car(args))) && is_pair(args = cdr(args))) {
-        for (/* */; is_pair(cdr(args)); args = cdr(args))
-            eval(env, car(args));
-
-        return car(args);
-    }
-    return none;
-}
-
 Cell Scheme::syntax_with_let(const SymenvPtr& env, Cell args) {
     auto cur_env = get<SymenvPtr>(eval(env, car(args)));
     auto cur_args = cdr(args);
@@ -613,10 +603,6 @@ void Scheme::init_op_table() {
 
     m_op_table[Intern::_begin] = [this](const SymenvPtr& senv, const Cell& cell) {
         return this->syntax_begin(senv, cell);
-    };
-
-    m_op_table[Intern::_unless] = [this](const SymenvPtr& senv, const Cell& cell) {
-        return this->syntax_unless(senv, cell);
     };
 
     m_op_table[Intern::_with_let] = [this](const SymenvPtr& senv, const Cell& cell) {
