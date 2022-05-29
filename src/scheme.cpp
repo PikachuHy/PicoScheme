@@ -506,11 +506,6 @@ Cell Scheme::partial_eval(const SymenvPtr& senv, const Cell& cell, int nesting) 
 }
 
 void Scheme::init_op_table() {
-    m_op_table[Intern::_lambda] = [this](const SymenvPtr& senv, const Cell& cell) {
-        DEBUG("cell:", cell);
-        return Procedure{ senv, car(cell), cdr(cell) };
-    };
-
     m_op_table[Intern::_begin] = [this](const SymenvPtr& senv, const Cell& cell) {
         return this->syntax_begin(senv, cell);
     };
