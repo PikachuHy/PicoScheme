@@ -275,8 +275,6 @@ public:
 public:
     Cell syntax_with_module(const SymenvPtr& env, Cell args);
 
-    Cell syntax_inherit_module(const SymenvPtr& senv, Cell args);
-
 private:
     /**
      * Scheme syntax define-syntax.

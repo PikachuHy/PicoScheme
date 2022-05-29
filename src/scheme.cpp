@@ -321,16 +321,6 @@ Cell Scheme::eval(SymenvPtr env, Cell expr) {
     return m_machine->run(std::move(env), expr);
 }
 
-Cell Scheme::syntax_inherit_module(const SymenvPtr& senv, Cell args) {
-    auto cur_env = get_current_module_env();
-    while (is_pair(args)) {
-        auto env = get_module_env(car(args));
-        cur_env->inherit(*env);
-        args = cdr(args);
-    }
-    return none;
-}
-
 Cell Scheme::append_module_path(const std::vector<Cell>& vargs) {
     for (const auto& args : vargs) {
         auto path = get<StringPtr>(args);
@@ -502,10 +492,6 @@ void Scheme::init_op_table() {
 
     m_op_table[Intern::_with_module] = [this](const SymenvPtr& senv, const Cell& cell) {
         return this->syntax_with_module(senv, cell);
-    };
-
-    m_op_table[Intern::_inherit_module] = [this](const SymenvPtr& senv, const Cell& cell) {
-        return this->syntax_inherit_module(senv, cell);
     };
 }
 
