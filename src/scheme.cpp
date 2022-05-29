@@ -256,48 +256,6 @@ Cell Scheme::syntax_if(const SymenvPtr& env, const Cell& args) {
         return none;
 }
 
-Cell Scheme::syntax_cond(const SymenvPtr& env, Cell args) {
-    Cell test = false, expr = nil;
-    DEBUG("args:", args);
-    // For each clause evaluate <test> condition
-    for (/* */; is_pair(args); args = cdr(args)) {
-        is_pair(car(args)) || (void(throw std::invalid_argument("invalid cond syntax")), 0);
-
-        if (is_false(test)) {
-            test = eval(env, caar(args));
-
-            if (is_true(test)) {
-                expr = cdar(args);
-                break;
-            }
-        }
-    }
-    if (is_true(test)) {
-        if (is_nil(expr))
-            return test;
-
-        const Cell& first = car(expr);
-        // clause: (<test> => <expr> ...)  -> (apply <expr> <test> nil) ...
-        if (is_arrow(first) || (is_symbol(first) && is_arrow(eval(env, first)))) {
-            !is_else(test) || (void(throw std::invalid_argument("invalid cond syntax")), 0);
-
-            Cons cons[4], argv[2];
-            Cell apply_expr = pscm::list(cons, Intern::_apply, none, pscm::list(argv, Intern::_quote, test), nil);
-
-            // For each expression, first replace none in apply_expr and then call eval:
-            for (expr = cdr(expr); is_pair(cdr(expr)); expr = cdr(expr)) {
-                set_car(cdr(apply_expr), car(expr));
-                eval(env, apply_expr);
-            }
-            // Return last expression to evaluated at the call site to maintain unbound tail-recursion:
-            return eval(env, list(Intern::_apply, car(expr), list(Intern::_quote, test), nil));
-        }
-        else
-            return syntax_begin(env, expr);
-    }
-    return none;
-}
-
 Cell Scheme::syntax_when(const SymenvPtr& env, Cell args) {
     if (is_true(eval(env, car(args))) && is_pair(args = cdr(args))) {
         for (/* */; is_pair(cdr(args)); args = cdr(args))
@@ -729,10 +687,6 @@ void Scheme::init_op_table() {
 
     m_op_table[Intern::_if] = [this](const SymenvPtr& senv, const Cell& cell) {
         return this->syntax_if(senv, cell);
-    };
-
-    m_op_table[Intern::_cond] = [this](const SymenvPtr& senv, const Cell& cell) {
-        return this->syntax_cond(senv, cell);
     };
 
     m_op_table[Intern::_when] = [this](const SymenvPtr& senv, const Cell& cell) {
