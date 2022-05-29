@@ -181,6 +181,11 @@ void CodeListPrinter::print_op() {
         print_args(1);
         break;
     }
+    case Intern::op_inherit_module: {
+        print("use-module");
+        print_args(1);
+        break;
+    }
     default: {
         print(op);
         //        DEBUG_OUTPUT("unknown op:", op);
@@ -818,6 +823,19 @@ Cell CodeRunner::run_op(Intern op) {
         auto cur_env = m.scm.get_current_module_env();
         auto env = m.scm.get_module_env(vv);
         cur_env->use(*env);
+        return none;
+    }
+    case Intern::op_inherit_module: {
+        auto v = fetch_code();
+        LOG_TRACE("inherit-module ");
+        LOG_TRACE(v);
+        if (!is_type<Cell>(v)) {
+            throw bytecode_error("except Cell but got:", v);
+        }
+        auto vv = get<Cell>(v);
+        auto cur_env = m.scm.get_current_module_env();
+        auto env = m.scm.get_module_env(vv);
+        cur_env->inherit(*env);
         return none;
     }
     default: {

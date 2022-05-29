@@ -608,8 +608,14 @@ struct CompilerImpl {
     }
 
     InstSeq compile_inherit_module(const Cell& expr, Target target, Linkage linkage) {
-        scm.syntax_inherit_module(cur_env(), cdr(expr));
-        return {};
+        auto module_list = cdr(expr);
+        InstSeq seq;
+        while (is_pair(module_list)) {
+            auto use_seq = InstSeq{ Instruction::PERFORM, Intern::op_inherit_module, car(module_list) };
+            seq = append_instruction_sequences(seq, use_seq);
+            module_list = cdr(module_list);
+        }
+        return seq;
     }
 
     InstSeq compile_with_module(const Cell& expr, Target target, Linkage linkage) {
