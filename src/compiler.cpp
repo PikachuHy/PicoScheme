@@ -880,11 +880,6 @@ struct CompilerImpl {
             seq = compile_definition(expr, target, linkage, true);
             break;
         }
-        case Intern::_define_syntax: {
-            scm.syntax_define_syntax(cur_env(), cdr(expr));
-            seq = {};
-            break;
-        }
         case Intern::_if: {
             seq = compile_if(expr, target, linkage);
             break;
