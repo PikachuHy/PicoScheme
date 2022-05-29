@@ -292,8 +292,6 @@ private:
 
     void init_op_table();
 
-    void print_frames(bool flag = false);
-
 private:
     friend class GCollector;
     //<! Initial default hash table bucket count.

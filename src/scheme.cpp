@@ -206,7 +206,6 @@ void Scheme::load(const String& filename, const SymenvPtr& env) {
         // TODO: record line number
         out << filename << ":1" << std::endl;
         out << "trace" << std::endl;
-        print_frames(true);
     }
     module_stack.pop();
     auto t1 = high_resolution_clock::now();
@@ -453,14 +452,5 @@ void Scheme::init_op_table() {
     m_op_table[Intern::_with_module] = [this](const SymenvPtr& senv, const Cell& cell) {
         return this->syntax_with_module(senv, cell);
     };
-}
-
-void Scheme::print_frames(bool flag) {
-    if (debugging() || flag) {
-        for (size_t i = 0; i < m_frames.size(); i++) {
-            DEBUG_OUTPUT(i, m_frames[i].expr());
-            DEBUG_OUTPUT("args:", m_frames[i].varg());
-        }
-    }
 }
 } // namespace pscm
