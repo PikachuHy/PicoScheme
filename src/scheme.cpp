@@ -241,17 +241,6 @@ Cell Scheme::syntax_begin(const SymenvPtr& env, Cell args) {
     return ret;
 }
 
-Cell Scheme::syntax_with_let(const SymenvPtr& env, Cell args) {
-    auto cur_env = get<SymenvPtr>(eval(env, car(args)));
-    auto cur_args = cdr(args);
-    Cell expr = none;
-    while (!is_nil(cur_args)) {
-        expr = eval(cur_env, cur_args);
-        cur_args = cdr(cur_args);
-    }
-    return expr;
-}
-
 Cell Scheme::syntax_with_module(const SymenvPtr& env, Cell args) {
     auto cur_m = eval(env, car(args));
     if (!is_module(cur_m)) {
@@ -603,10 +592,6 @@ void Scheme::init_op_table() {
 
     m_op_table[Intern::_begin] = [this](const SymenvPtr& senv, const Cell& cell) {
         return this->syntax_begin(senv, cell);
-    };
-
-    m_op_table[Intern::_with_let] = [this](const SymenvPtr& senv, const Cell& cell) {
-        return this->syntax_with_let(senv, cell);
     };
 
     m_op_table[Intern::_with_module] = [this](const SymenvPtr& senv, const Cell& cell) {

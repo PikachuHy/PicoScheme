@@ -272,9 +272,6 @@ public:
      */
     Cell syntax_begin(const SymenvPtr& env, Cell args);
 
-protected:
-    Cell syntax_with_let(const SymenvPtr& env, Cell args);
-
 public:
     Cell syntax_with_module(const SymenvPtr& env, Cell args);
 
