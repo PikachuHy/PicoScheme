@@ -248,36 +248,6 @@ Cell Scheme::syntax_with_module(const SymenvPtr& env, Cell args) {
     return expr;
 }
 
-Cell Scheme::eval_list(const SymenvPtr& env, Cell list, bool is_list) {
-    if (!is_pair(list))
-        return nil;
-
-    if (is_list) {
-        Cell head = cons(eval(env, car(list)), cdr(list));
-        list = cdr(list);
-
-        for (Cell tail = head; is_pair(list); tail = cdr(tail), list = cdr(list))
-            set_cdr(tail, cons(eval(env, car(list)), cdr(list)));
-
-        return head;
-    }
-    Cell tail, head;
-
-    if (is_pair(cdr(list)))
-        head = cons(eval(env, car(list)), cdr(list));
-    else
-        head = eval(env, car(list));
-
-    for (tail = head, list = cdr(list); is_pair(list); tail = cdr(tail), list = cdr(list))
-        if (is_pair(cdr(list)))
-            set_cdr(tail, cons(eval(env, car(list)), cdr(list)));
-        else
-            set_cdr(tail, eval(env, car(list)));
-
-    is_nil(tail) || is_pair(tail) || (void(throw std::invalid_argument("invalid apply argument list")), 0);
-    return head;
-}
-
 std::vector<Cell> Scheme::eval_args(const SymenvPtr& env, Cell args, bool is_list) {
     std::vector<Cell> stack;
 

@@ -227,18 +227,6 @@ public:
     }
 
     /**
-     * Return a new list of evaluated expressions in argument list.
-     *
-     * @param env Symbol environment, where to evaluate the argument list.
-     * @param args Argument list to evaluate.
-     * @param is_list true:   procedure call argument list.
-     *                false:  apply expression argument list, where the last list item
-     *                        must be nil or an argument list itself.
-     * @return List of evaluated argument expressions.
-     */
-    Cell eval_list(const SymenvPtr& env, Cell list, bool is_list = true);
-
-    /**
      * Evaluate argument list into an argument vector.
      *
      * @param senv Symbol environment, where to evaluate the argument list.
