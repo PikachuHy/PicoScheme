@@ -73,11 +73,6 @@ public:
     Module load_module(const Cell& module_name, const SymenvPtr& env);
     Cell append_module_path(const std::vector<Cell>& vargs);
 
-    void push_frame(SymenvPtr& env, const Cell& expr);
-    void replace_frame(SymenvPtr& env, const Cell& expr);
-    void pop_frame();
-
-    Cell eval_frame_based_on_stack();
     //! Insert a new symbol and value or reassign an already bound value of an existing symbol
     //! at the top environment of this scheme interpreter.
     void addenv(const Symbol& sym, const Cell& val);
