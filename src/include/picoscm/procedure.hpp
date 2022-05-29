@@ -53,8 +53,6 @@ public:
     Cell code() const noexcept;
     Label entry() const noexcept;
 
-    void compile(Scheme& scm);
-
     bool operator!=(const Procedure& proc) const noexcept;
     bool operator==(const Procedure& proc) const noexcept;
 

@@ -136,8 +136,4 @@ bool Procedure::operator==(const Procedure& proc) const noexcept {
     return !(*impl != *proc.impl);
 }
 
-void Procedure::compile(Scheme& scm) {
-    //    Compiler c(impl);
-    //    impl->compiled_code = c.compile(scm, impl->senv, impl->code);
-}
 } // namespace pscm
