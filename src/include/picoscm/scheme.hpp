@@ -245,10 +245,6 @@ public:
     Cell apply(const SymenvPtr& env, const FunctionPtr& proc, const std::vector<Cell>& args);
     Cell apply(const SymenvPtr& env, const Cell& cell, const std::vector<Cell>& args);
     Cell apply(const SymenvPtr& env, const Cell& op, const Cell& args);
-
-private:
-    void init_op_table();
-
 private:
     friend class GCollector;
     //<! Initial default hash table bucket count.
@@ -274,7 +270,6 @@ private:
     bool debug = false;
 
     FrameStack m_frames;
-    std::unordered_map<Intern, std::function<Cell(const SymenvPtr&, const Cell&)>> m_op_table;
     sptr<Machine> m_machine;
     sptr<Compiler> m_compiler;
 

@@ -55,7 +55,6 @@ Scheme::Scheme(const SymenvPtr& env)
     else {
         DEBUG_OUTPUT("PSCM_PATH is empty");
     }
-    init_op_table();
 }
 
 SymenvPtr Scheme::get_module_env(const Cell& module_name) {
@@ -92,19 +91,7 @@ Module Scheme::load_module(const Cell& module_name, const SymenvPtr& env) {
 
 Cell Scheme::apply(const SymenvPtr& env, Intern opcode, const std::vector<Cell>& args) {
     DEBUG("opcode:", opcode);
-    auto it = m_op_table.find(opcode);
-    if (it != m_op_table.end()) {
-        Cell head = cons(none, nil);
-        Cell tail = head;
-        for (const auto& arg : args) {
-            set_cdr(tail, cons(arg, nil));
-            tail = cdr(tail);
-        }
-        return it->second(env, cdr(head));
-    }
-    else {
-        return pscm::call(*this, env, opcode, args);
-    }
+    return pscm::call(*this, env, opcode, args);
 }
 
 Cell Scheme::apply(const SymenvPtr& env, const FunctionPtr& proc, const std::vector<Cell>& args) {
@@ -284,8 +271,5 @@ Module Scheme::set_current_module(const Cell& cell) {
     auto ret = current_module;
     current_module = get<Module>(cell);
     return ret;
-}
-
-void Scheme::init_op_table() {
 }
 } // namespace pscm
