@@ -213,23 +213,6 @@ void Scheme::load(const String& filename, const SymenvPtr& env) {
     DEBUG_OUTPUT("load", filename, "cost time:", cost_time.count(), "seconds");
 }
 
-Cell Scheme::syntax_with_module(const SymenvPtr& env, Cell args) {
-    auto cur_m = eval(env, car(args));
-    if (!is_module(cur_m)) {
-        DEBUG_OUTPUT("args:", args);
-        throw module_error("No modules:", car(args));
-    }
-
-    auto cur_env = get<Module>(cur_m).env();
-    auto cur_args = cdr(args);
-    Cell expr = none;
-    while (!is_nil(cur_args)) {
-        expr = eval(cur_env, cur_args);
-        cur_args = cdr(cur_args);
-    }
-    return expr;
-}
-
 std::vector<Cell> Scheme::eval_args(const SymenvPtr& env, Cell args, bool is_list) {
     std::vector<Cell> stack;
 
@@ -304,8 +287,5 @@ Module Scheme::set_current_module(const Cell& cell) {
 }
 
 void Scheme::init_op_table() {
-    m_op_table[Intern::_with_module] = [this](const SymenvPtr& senv, const Cell& cell) {
-        return this->syntax_with_module(senv, cell);
-    };
 }
 } // namespace pscm

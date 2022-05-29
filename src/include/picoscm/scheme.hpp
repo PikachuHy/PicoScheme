@@ -246,9 +246,6 @@ public:
     Cell apply(const SymenvPtr& env, const Cell& cell, const std::vector<Cell>& args);
     Cell apply(const SymenvPtr& env, const Cell& op, const Cell& args);
 
-public:
-    Cell syntax_with_module(const SymenvPtr& env, Cell args);
-
 private:
     void init_op_table();
 
