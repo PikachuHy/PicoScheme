@@ -495,12 +495,6 @@ struct CompilerImpl {
             // DEBUG_OUTPUT("expand code:", expand_code);
             return compile(expand_code, target, linkage);
         }
-        else if (is_syntax(op)) {
-            const auto& matched = get<SyntaxPtr>(op)->match(cdr(expr));
-            auto expand_code = matched.expand_syntax(scm, expr);
-            // DEBUG_OUTPUT("expand code:", expand_code);
-            return compile_sequence(cdr(expand_code), target, linkage);
-        }
         else if (is_intern(op)) {
             switch (get<Intern>(op)) {
             case Intern::op_callcc: {
