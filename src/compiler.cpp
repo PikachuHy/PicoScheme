@@ -14,7 +14,6 @@
 #include "picoscm/syntax.h"
 
 #include "impl/CodeListPrinter.h"
-#include "impl/CompiledProcedureImpl.h"
 #include "impl/MachineImpl.h"
 
 #include <algorithm>
@@ -43,23 +42,6 @@ compiler_error::compiler_error(const std::string& msg, const InstCode& code) {
     reason.append(string_convert<char>(os.str()));
 }
 class Machine;
-
-bool CompiledProcedure::operator!=(const CompiledProcedure& proc) const noexcept {
-    return *impl != *proc.impl;
-}
-
-bool CompiledProcedure::operator==(const CompiledProcedure& proc) const noexcept {
-    return !(*impl != *proc.impl);
-}
-
-Cell CompiledProcedure::env() const {
-    return impl->senv;
-}
-
-Cell CompiledProcedure::entry() const {
-    return impl->entry();
-}
-
 struct CompilerImpl {
     CompilerImpl(Scheme& scm, SymenvPtr env)
         : scm(scm)

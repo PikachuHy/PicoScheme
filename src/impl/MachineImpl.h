@@ -35,7 +35,6 @@ private:
     CodeList all_code_list;
     friend class Machine;
     friend class CodeRunner;
-    friend class CompiledProcedureImpl;
     friend class CompilerImpl;
 };
 

@@ -30,7 +30,6 @@ struct Number;
 struct Label;
 class  Clock;
 class  Procedure;
-class  CompiledProcedure;
 class  Function;
 class  CObj;
 class  Syntax;

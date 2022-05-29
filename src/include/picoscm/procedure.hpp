@@ -20,32 +20,6 @@
 namespace pscm {
 
 class Scheme;
-struct CompiledProcedureImpl;
-
-class CompiledProcedure {
-public:
-    CompiledProcedure(std::shared_ptr<CompiledProcedureImpl> impl)
-        : impl(std::move(impl)) {
-    }
-
-    bool operator!=(const CompiledProcedure& proc) const noexcept;
-    bool operator==(const CompiledProcedure& proc) const noexcept;
-    Cell env() const;
-    Cell entry() const;
-
-    struct hash : private std::hash<CompiledProcedureImpl *> {
-        using argument_type = CompiledProcedure;
-        using result_type = std::size_t;
-
-        result_type operator()(const CompiledProcedure& proc) const noexcept {
-            return std::hash<CompiledProcedureImpl *>::operator()(proc.impl.get());
-        }
-    };
-
-private:
-    std::shared_ptr<CompiledProcedureImpl> impl;
-    friend class CodeRunner;
-};
 
 /**
  * Procedure type to represent a scheme closure.

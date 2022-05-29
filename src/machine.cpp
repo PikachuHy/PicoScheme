@@ -15,7 +15,6 @@
 #include "picoscm/scheme.hpp"
 
 #include "impl/CodeListPrinter.h"
-#include "impl/CompiledProcedureImpl.h"
 #include "impl/MachineImpl.h"
 
 namespace pscm {
@@ -335,8 +334,6 @@ private:
 
     Cell run_intern(const SymenvPtr& env, Intern op, const std::vector<Cell>& args);
 
-    Cell apply(const CompiledProcedure& proc, const Cell& args);
-
 private:
     MachineImpl& m;
     const CodeList& code_list;
@@ -438,21 +435,6 @@ void CodeRunner::run(std::size_t pos) {
             throw std::runtime_error("bad instruction");
         }
     };
-}
-
-Cell CodeRunner::apply(const CompiledProcedure& proc, const Cell& args) {
-    m.reg[Register::CONTINUE] = Int(i);
-    auto entry = proc.entry();
-    if (is_number(entry)) {
-        auto num = get<Number>(entry);
-        if (is_type<Int>(num)) {
-            auto pos = get<Int>(num);
-            i = pos;
-            return none;
-        }
-    }
-    DEBUG_OUTPUT("entry:", entry);
-    throw std::runtime_error("error proc entry");
 }
 
 Cell CodeRunner::run_intern(const SymenvPtr& env, Intern op, const std::vector<Cell>& args) {
@@ -1124,20 +1106,6 @@ void MachineImpl::fill_label_map(const CodeList& code_list) {
             }
         }
         i++;
-    }
-}
-
-Int CompiledProcedureImpl::entry() const {
-    auto it = m.label_map.find(label);
-    if (it == m.label_map.end()) {
-        DEBUG_OUTPUT("error:", label);
-        for (const auto& [k, v] : m.label_map) {
-            std::wcout << k << " --> " << v << std::endl;
-        }
-        throw std::runtime_error("error");
-    }
-    else {
-        return it->second;
     }
 }
 
