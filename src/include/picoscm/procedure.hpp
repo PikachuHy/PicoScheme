@@ -85,22 +85,6 @@ public:
     bool operator==(const Procedure& proc) const noexcept;
 
     /**
-     * Closure application.
-     * @param senv  Current environment, where to evaluate expressions of the argument list.
-     * @param args  Argument expression list of a scheme lambda or apply expression.
-     *
-     * @param is_list
-     *        true:  args is a (lambda args body) expression argument list
-     *        false: args is a (apply proc args) expression argument list,
-     *               where the last element in expr must be nil or a list itself:
-     *               (arg_0 ... arg_i  [list | nil])
-     *
-     * @return New child environment of the closure parent environment and the closure body
-     *         expression list.
-     */
-    std::pair<SymenvPtr, Cell> apply(Scheme& scm, const SymenvPtr& env, Cell args, bool is_list = true) const;
-    Cell call(Scheme& scm, const SymenvPtr& env, const std::vector<Cell>& args) const;
-    /**
      * Replace expression with the expanded closure macro.
      * @param expr (closure-macro arg0 ... arg_n)
      * @return The expanded macro body.
