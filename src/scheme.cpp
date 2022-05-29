@@ -245,17 +245,6 @@ Cell Scheme::syntax_begin(const SymenvPtr& env, Cell args) {
     return ret;
 }
 
-Cell Scheme::syntax_if(const SymenvPtr& env, const Cell& args) {
-    if (is_true(eval(env, car(args))))
-        return eval(env, cadr(args));
-
-    else if (const Cell& last = cddr(args); !is_nil(last))
-        return eval(env, car(last));
-
-    else
-        return none;
-}
-
 Cell Scheme::syntax_when(const SymenvPtr& env, Cell args) {
     if (is_true(eval(env, car(args))) && is_pair(args = cdr(args))) {
         for (/* */; is_pair(cdr(args)); args = cdr(args))
@@ -683,10 +672,6 @@ void Scheme::init_op_table() {
 
     m_op_table[Intern::_begin] = [this](const SymenvPtr& senv, const Cell& cell) {
         return this->syntax_begin(senv, cell);
-    };
-
-    m_op_table[Intern::_if] = [this](const SymenvPtr& senv, const Cell& cell) {
-        return this->syntax_if(senv, cell);
     };
 
     m_op_table[Intern::_when] = [this](const SymenvPtr& senv, const Cell& cell) {

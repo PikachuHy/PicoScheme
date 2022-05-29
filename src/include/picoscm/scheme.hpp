@@ -275,8 +275,6 @@ public:
     Cell syntax_begin(const SymenvPtr& env, Cell args);
 
 protected:
-    Cell syntax_if(const SymenvPtr& env, const Cell& args);
-
     Cell syntax_when(const SymenvPtr& env, Cell args);
 
     Cell syntax_unless(const SymenvPtr& env, Cell args);
