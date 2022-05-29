@@ -111,10 +111,6 @@ Cell Scheme::apply(const SymenvPtr& env, const FunctionPtr& proc, const std::vec
     return (*proc)(*this, env, args);
 }
 
-Cell Scheme::apply(const SymenvPtr& env, const Procedure& proc, const std::vector<Cell>& args) {
-    return proc.call(*this, env, args);
-}
-
 Cell Scheme::apply(const SymenvPtr& env, const Procedure& proc, const Cell& args, bool is_list) {
     auto [new_env, code] = proc.apply(*this, env, args, is_list);
     DEBUG("code:", code);

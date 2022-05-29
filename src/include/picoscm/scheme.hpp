@@ -260,7 +260,6 @@ public:
      */
     Cell apply(const SymenvPtr& env, Intern opcode, const std::vector<Cell>& args);
     Cell apply(const SymenvPtr& env, const FunctionPtr& proc, const std::vector<Cell>& args);
-    Cell apply(const SymenvPtr& env, const Procedure& proc, const std::vector<Cell>& args);
     Cell apply(const SymenvPtr& env, const Cell& cell, const std::vector<Cell>& args);
     Cell apply(const SymenvPtr& env, const Procedure& proc, const Cell& args, bool is_list = true);
     Cell apply(const SymenvPtr& env, const Cell& op, const Cell& args);
