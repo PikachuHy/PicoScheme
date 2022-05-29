@@ -670,13 +670,6 @@ Cell Scheme::partial_eval(const SymenvPtr& senv, const Cell& cell, int nesting) 
     return cdr(ret);
 }
 
-Cell Scheme::callcc(const SymenvPtr& senv, const Cell& cell) {
-    auto cont = std::make_shared<ContPtr::element_type>(m_frames);
-    auto f = eval(senv, cadr(cell));
-    Cell expr = list(f, cont);
-    return eval(senv, expr);
-}
-
 void Scheme::init_op_table() {
     m_op_table[Intern::_quote] = [this](const SymenvPtr& senv, const Cell& cell) {
         return car(cell);

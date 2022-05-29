@@ -338,8 +338,6 @@ private:
     void partial_eval_sub(const SymenvPtr& senv, const Cell& item, Cell& tail, int nesting);
     void concat_list(Cell& cell, Cell l);
 
-    Cell callcc(const SymenvPtr& senv, const Cell& cell);
-
     void init_op_table();
 
     void print_frames(bool flag = false);
