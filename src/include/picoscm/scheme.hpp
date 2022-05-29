@@ -280,7 +280,6 @@ public:
     Cell syntax_use_module(const SymenvPtr& senv, Cell args);
 
 private:
-    Cell syntax_define(const SymenvPtr& senv, Cell args, bool is_public = false);
     /**
      * Scheme syntax define-syntax.
      *

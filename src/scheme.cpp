@@ -341,28 +341,6 @@ Cell Scheme::syntax_use_module(const SymenvPtr& senv, Cell args) {
     return none;
 }
 
-Cell Scheme::syntax_define(const SymenvPtr& senv, Cell args, bool is_public) {
-    if (is_pair(car(args))) {
-        auto name = caar(args);
-        if (is_pair(name)) {
-            Cell f2 = list(Intern::_lambda, cdar(args));
-            Cell it = cdr(f2);
-            concat_list(it, cdr(args));
-            auto f1 = Procedure{ senv, cdr(name), cons(f2, nil) };
-            f1.compile(*this);
-            senv->add(get<Symbol>(car(name)), f1, is_public);
-        }
-        else {
-            auto proc = Procedure{ senv, cdar(args), cdr(args) };
-            senv->add(get<Symbol>(name), proc, is_public);
-            proc.compile(*this);
-        }
-    }
-    else {
-        senv->add(get<Symbol>(car(args)), eval(senv, cadr(args)));
-    }
-    return none;
-}
 Cell Scheme::append_module_path(const std::vector<Cell>& vargs) {
     for (const auto& args : vargs) {
         auto path = get<StringPtr>(args);
@@ -537,14 +515,6 @@ void Scheme::init_op_table() {
         auto val = eval(senv, cadr(cell));
         senv->set(sym, val);
         return none;
-    };
-
-    m_op_table[Intern::_define] = [this](const SymenvPtr& senv, const Cell& cell) {
-        return this->syntax_define(senv, cell);
-    };
-
-    m_op_table[Intern::_define_public] = [this](const SymenvPtr& senv, const Cell& cell) {
-        return this->syntax_define(senv, cell, true);
     };
 
     m_op_table[Intern::_lambda] = [this](const SymenvPtr& senv, const Cell& cell) {
