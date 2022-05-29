@@ -255,34 +255,6 @@ public:
     Cell syntax_with_module(const SymenvPtr& env, Cell args);
 
 private:
-    /**
-     * Scheme syntax define-syntax.
-     *
-     * @verbatim
-     * (define-syntax <keyword> <transformer spec>)
-     *
-     * <transformer spec> := (syntax-rules <literals> <syntax rule> ...)
-     *
-     * <literals> := (<pattern> <template>)
-     *
-     * <pattern> := (<pattern> ...)
-     *           |  (<pattern> <pattern> ... . <pattern>)
-     *           |  (<pattern> ... <pattern> <ellipsis>)
-     *           |  #(<pattern> ...)
-     *           |  #(<pattern> ... <pattern> <ellipsis>)
-     *
-     * <template> := (<element> ...)
-     *            |  (<element> <element> ... . <template>)
-     *            |  (<element> ...)
-     *
-     * @endverbatim
-     */
-    Intern _get_intern(const SymenvPtr& senv, const Cell& cell);
-
-    Cell partial_eval(const SymenvPtr& senv, const Cell& cell, int nesting = 0);
-    void partial_eval_sub(const SymenvPtr& senv, const Cell& item, Cell& tail, int nesting);
-    void concat_list(Cell& cell, Cell l);
-
     void init_op_table();
 
 private:
