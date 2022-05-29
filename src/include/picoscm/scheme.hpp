@@ -251,13 +251,6 @@ public:
     Cell apply(const SymenvPtr& env, const Cell& cell, const std::vector<Cell>& args);
     Cell apply(const SymenvPtr& env, const Cell& op, const Cell& args);
 
-    /**
-     * Evaluate each expression in argument list up the last, which
-     * is returned unevaluated. This last expression is evaluated at
-     * the call site to support unbound tail-recursion.
-     */
-    Cell syntax_begin(const SymenvPtr& env, Cell args);
-
 public:
     Cell syntax_with_module(const SymenvPtr& env, Cell args);
 

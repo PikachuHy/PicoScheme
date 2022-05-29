@@ -213,23 +213,6 @@ void Scheme::load(const String& filename, const SymenvPtr& env) {
     DEBUG_OUTPUT("load", filename, "cost time:", cost_time.count(), "seconds");
 }
 
-Cell Scheme::syntax_begin(const SymenvPtr& env, Cell args) {
-    if (is_nil(args)) {
-        return none;
-    }
-    if (!is_pair(args)) {
-        DEBUG("args:", args);
-        throw std::invalid_argument("invalid begin syntax");
-    }
-    Cell ret;
-    while (is_pair(args)) {
-        DEBUG("eval", car(args));
-        ret = eval(env, car(args));
-        args = cdr(args);
-    }
-    return ret;
-}
-
 Cell Scheme::syntax_with_module(const SymenvPtr& env, Cell args) {
     auto cur_m = eval(env, car(args));
     if (!is_module(cur_m)) {
@@ -445,10 +428,6 @@ Cell Scheme::partial_eval(const SymenvPtr& senv, const Cell& cell, int nesting) 
 }
 
 void Scheme::init_op_table() {
-    m_op_table[Intern::_begin] = [this](const SymenvPtr& senv, const Cell& cell) {
-        return this->syntax_begin(senv, cell);
-    };
-
     m_op_table[Intern::_with_module] = [this](const SymenvPtr& senv, const Cell& cell) {
         return this->syntax_with_module(senv, cell);
     };
