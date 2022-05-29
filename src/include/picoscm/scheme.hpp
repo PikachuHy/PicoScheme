@@ -265,8 +265,6 @@ public:
     Cell apply(const SymenvPtr& env, const Procedure& proc, const Cell& args, bool is_list = true);
     Cell apply(const SymenvPtr& env, const Cell& op, const Cell& args);
 
-    Cell expand(const Cell& macro, Cell& args);
-
     /**
      * Evaluate each expression in argument list up the last, which
      * is returned unevaluated. This last expression is evaluated at

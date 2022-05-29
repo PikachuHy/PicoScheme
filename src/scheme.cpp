@@ -147,10 +147,6 @@ Cell Scheme::apply(const SymenvPtr& env, const Cell& op, const Cell& args) {
     throw std::runtime_error("bad op, expect proc, func or intern");
 }
 
-Cell Scheme::expand(const Cell& macro, Cell& args) {
-    return get<Procedure>(macro).expand(*this, args);
-}
-
 void Scheme::repl(const SymenvPtr& env) {
     const SymenvPtr& senv = env ? env : get_current_module_env();
     Parser parser{ *this };
@@ -609,37 +605,6 @@ void Scheme::init_op_table() {
     m_op_table[Intern::_lambda] = [this](const SymenvPtr& senv, const Cell& cell) {
         DEBUG("cell:", cell);
         return Procedure{ senv, car(cell), cdr(cell) };
-    };
-
-    m_op_table[Intern::_expand] = [this](const SymenvPtr& senv, const Cell& cell) {
-        DEBUG("cell:", cell);
-        auto expr = cell;
-        while (true) {
-            if (!is_pair(expr)) {
-                return expr;
-            }
-            if (!is_pair(car(expr))) {
-                return expr;
-            }
-            expr = car(expr);
-            auto op = eval(senv, car(expr));
-            if (is_proc(op)) {
-                auto proc = get<Procedure>(op);
-                if (!proc.is_macro()) {
-                    return expr;
-                }
-                auto expand_code = proc.expand_only(*this, expr);
-                DEBUG("expand code:", expand_code);
-                return expand_code;
-            }
-            if (is_syntax(op)) {
-                const auto& matched = get<SyntaxPtr>(op)->match(cdr(expr));
-                auto expand_code = matched.expand_syntax(*this, expr);
-                DEBUG("expand code:", expand_code);
-                return expand_code;
-            }
-            expr = eval(senv, expr);
-        }
     };
 
     m_op_table[Intern::_define_syntax] = [this](const SymenvPtr& senv, const Cell& cell) {
