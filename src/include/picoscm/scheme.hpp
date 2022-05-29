@@ -303,9 +303,6 @@ private:
      *
      * @endverbatim
      */
-    Cell syntax_define_syntax(const SymenvPtr& senv, Cell args);
-    Cell syntax_syntax_rules(const SymenvPtr& senv, Cell args);
-
     Intern _get_intern(const SymenvPtr& senv, const Cell& cell);
 
     Cell partial_eval(const SymenvPtr& senv, const Cell& cell, int nesting = 0);

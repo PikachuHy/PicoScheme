@@ -363,40 +363,6 @@ Cell Scheme::syntax_define(const SymenvPtr& senv, Cell args, bool is_public) {
     }
     return none;
 }
-
-Cell Scheme::syntax_define_syntax(const SymenvPtr& senv, Cell args) {
-    auto keyword = car(args);
-    auto transformer_spec = cdr(args);
-    auto syntax_rules = car(transformer_spec);
-    auto syntax = syntax_syntax_rules(senv, syntax_rules);
-    senv->add(get<Symbol>(keyword), syntax);
-    return none;
-}
-
-Cell Scheme::syntax_syntax_rules(const SymenvPtr& senv, Cell args) {
-    auto expr = args;
-    if (_get_intern(senv, car(expr)) != Intern::_syntax_rules) {
-        DEBUG_OUTPUT("syntax error:", args);
-        throw std::runtime_error("syntax error");
-    }
-    expr = cdr(expr);
-    auto literals = car(expr);
-    expr = cdr(expr);
-    auto syntax_rule = car(expr);
-    auto rules = cdr(expr);
-
-    SyntaxPtr syntaxPtr = std::make_shared<Syntax>();
-    while (!is_nil(rules)) {
-        auto rule = car(rules);
-        auto head = cdar(rule);
-        auto body = cadr(rule);
-        DEBUG("body:", body);
-        syntaxPtr->add(head, Procedure{ senv, head, body, true });
-        rules = cdr(rules);
-    }
-    return syntaxPtr;
-}
-
 Cell Scheme::append_module_path(const std::vector<Cell>& vargs) {
     for (const auto& args : vargs) {
         auto path = get<StringPtr>(args);
@@ -584,10 +550,6 @@ void Scheme::init_op_table() {
     m_op_table[Intern::_lambda] = [this](const SymenvPtr& senv, const Cell& cell) {
         DEBUG("cell:", cell);
         return Procedure{ senv, car(cell), cdr(cell) };
-    };
-
-    m_op_table[Intern::_define_syntax] = [this](const SymenvPtr& senv, const Cell& cell) {
-        return this->syntax_define_syntax(senv, cell);
     };
 
     m_op_table[Intern::_begin] = [this](const SymenvPtr& senv, const Cell& cell) {
