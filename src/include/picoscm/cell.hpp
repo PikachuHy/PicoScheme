@@ -130,6 +130,7 @@ inline bool is_nil    (const Cell& cell) { return is_type<Nil>(cell); }
 inline bool is_none   (const Cell& cell) { return is_type<None>(cell); }
 inline bool is_bool   (const Cell& cell) { return is_type<Bool>(cell); }
 inline bool is_char   (const Cell& cell) { return is_type<Char>(cell); }
+inline bool is_eof    (const Cell& cell) { return is_type<Char>(cell) && get<Char>(cell) == static_cast<Char>(EOF); }
 inline bool is_string (const Cell& cell) { return is_type<StringPtr>(cell); }
 inline bool is_regex  (const Cell& cell) { return is_type<RegexPtr>(cell); }
 inline bool is_dict   (const Cell& cell) { return is_type<MapPtr>(cell); }

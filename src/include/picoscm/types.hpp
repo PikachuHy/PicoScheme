@@ -53,6 +53,7 @@ using Char        = wchar_t;
 using Cons        = std::tuple</*car*/Cell, /*cdr*/Cell, /*gc-mark*/bool>;
 using String      = std::basic_string<Char>;
 using StringPtr   = std::shared_ptr<String>;
+using StringView  = std::basic_string_view<Char>;
 using ClockPtr    = std::shared_ptr<Clock>;
 using RegexPtr    = std::shared_ptr<std::basic_regex<Char>>;
 using MapPtr      = std::shared_ptr<std::multimap<Cell,Cell,less<Cell>>>;

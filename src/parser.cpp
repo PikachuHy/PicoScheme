@@ -11,28 +11,41 @@
 #include <cctype>
 #include <cstring>
 
+#include "picoscm/cell.hpp"
 #include "picoscm/parser.hpp"
 
 namespace pscm {
 
 using namespace std::string_literals;
 
-double str2double(const wchar_t *str, std::size_t *pos = nullptr) {
-    errno = 0;
-    wchar_t *end;
-    double x = std::wcstod(str, &end);
-
-    if (errno == ERANGE) { // Ignore it for denormals
-        if (!(x != 0 && x > -HUGE_VAL && x < HUGE_VAL))
-            throw std::out_of_range("strtod: ERANGE");
+struct parse_eof_error : public std::exception {
+    parse_eof_error(std::size_t row, std::size_t col) {
+        reason.append("row ");
+        reason.append(std::to_string(row));
+        reason.append(", col ");
+        reason.append(std::to_string(col));
     }
-    else if (errno)
-        throw std::invalid_argument("strtod failed");
 
-    if (pos)
-        *pos = end - str;
+    [[nodiscard]] const char *what() const noexcept override {
+        return reason.c_str();
+    }
 
-    return x;
+private:
+    std::string reason{ "eof: " };
+};
+
+Parser::Parser(Scheme& scm, StringView in)
+    : scm(scm) {
+    std::size_t start_index = 0;
+    for (std::size_t i = 0; i < in.size(); ++i) {
+        if (in.at(i) == '\n') {
+            string_list.emplace_back(in.substr(start_index, i - start_index + 1));
+            start_index = i + 1;
+        }
+    }
+    if (start_index < in.size()) {
+        string_list.emplace_back(in.substr(start_index));
+    }
 }
 
 /**
@@ -81,12 +94,12 @@ Cell Parser::strnum(const String& str) {
 /**
  * @brief Read characters from input stream into argument string.
  */
-Parser::Token Parser::lex_string(String& str, istream_type& in) {
+Parser::Token Parser::lex_string(String& str) {
     str.clear();
     Char c;
 
-    while (in) {
-        in >> std::noskipws >> c;
+    while (true) {
+        c = read_char();
         switch (c) {
 
         case '"':
@@ -94,7 +107,7 @@ Parser::Token Parser::lex_string(String& str, istream_type& in) {
 
         case '\\':
             str.push_back('\\');
-            in >> c;
+            c = read_char();
             [[fallthrough]];
 
         default:
@@ -104,15 +117,14 @@ Parser::Token Parser::lex_string(String& str, istream_type& in) {
                 return Token::Error;
         }
     }
-    return Token::Error;
 }
 
-Parser::Token Parser::lex_regex(String& str, istream_type& in) {
-    if (str != L"#re" || in.get() != '\"') {
+Parser::Token Parser::lex_regex(String& str) {
+    if (str != L"#re" || read_char() != '\"') {
         return Token::Error;
     }
 
-    if (lex_string(str, in) != Token::String) {
+    if (lex_string(str) != Token::String) {
         return Token::Error;
     }
 
@@ -137,7 +149,7 @@ Parser::Token Parser::lex_symbol(const String& str) {
     return Token::Symbol;
 }
 
-Parser::Token Parser::lex_char(const String& str, Char& c, istream_type& in) {
+Parser::Token Parser::lex_char(const String& str, Char& c) {
     constexpr struct {
         const Char *name;
         Int c;
@@ -228,8 +240,8 @@ Parser::Token Parser::lex_char(const String& str, Char& c, istream_type& in) {
 
     constexpr size_t ntab = sizeof(stab) / sizeof(*stab);
 
-    if (str.size() == 2 && (std::isspace(in.peek()) || is_special(in.peek()))) {
-        c = in.get();
+    if (str.size() == 2 && (std::isspace(peak_char()) || is_special(peak_char()))) {
+        c = read_char();
         return Token::Char;
     }
     if (str.size() == 3) {
@@ -246,9 +258,9 @@ Parser::Token Parser::lex_char(const String& str, Char& c, istream_type& in) {
         String name;
         transform(str.begin(), str.end(), back_inserter(name), ::tolower);
 
-        for (size_t i = 0; i < ntab; ++i)
-            if (stab[i].name == name) {
-                c = static_cast<Char>(stab[i].c);
+        for (const auto& tab : stab)
+            if (tab.name == name) {
+                c = static_cast<Char>(tab.c);
                 return Token::Char;
             }
     }
@@ -256,7 +268,7 @@ Parser::Token Parser::lex_char(const String& str, Char& c, istream_type& in) {
 }
 
 //! Lexical analyse a special scheme symbol.
-Parser::Token Parser::lex_special(String& str, istream_type& in) {
+Parser::Token Parser::lex_special(String& str) {
     if (str == L"#")
         return Token::Vector;
 
@@ -274,7 +286,7 @@ Parser::Token Parser::lex_special(String& str, istream_type& in) {
         [[fallthrough]];
 
     case '\\':
-        return lex_char(str, chrtok, in);
+        return lex_char(str, chrtok);
 
     case 'e':
         tok = lex_number(str.substr(2), numtok);
@@ -286,7 +298,7 @@ Parser::Token Parser::lex_special(String& str, istream_type& in) {
         return lex_number(str.substr(2), numtok);
 
     case 'r':
-        return lex_regex(str, in);
+        return lex_regex(str);
 
     default:
         return Token::Error;
@@ -294,56 +306,22 @@ Parser::Token Parser::lex_special(String& str, istream_type& in) {
 }
 
 //! Scan if str contains an scheme unquote "," or unquote-splicing ",@"
-Parser::Token Parser::lex_unquote(const String& str, istream_type& in) {
+Parser::Token Parser::lex_unquote(const String& str) {
     if (str.size() != 1)
         return Token::Error;
 
-    if (in.peek() == '@') {
-        in.get();
+    if (peak_char() == '@') {
+        read_char();
         return Token::UnquoteSplice;
     }
     return Token::Unquote;
 }
 
 //! Skip a comment line.
-Parser::Token Parser::skip_comment(istream_type& in) const {
-    in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+Parser::Token Parser::skip_comment() {
+    row++;
+    col = 0;
     return Token::Comment;
-}
-
-/**
- * Predicate returns true if the first n characters in str could form a
- * a number.
- *
- * Check if the first n caracters are digits, contains a floating point,
- * an exponent characters (e,E) or an imaginary unit characters (i,I).
- *
- * @param str String to test.
- * @param n   Unless zero, test the first n characters or the whole string
- *            otherwise.
- */
-bool Parser::is_digit(const String& str, size_t n) {
-    n = n ? std::min(n, str.size()) : str.size();
-
-    bool has_digit = iswdigit(str.front());
-    bool has_sign = strchr("+-", str.front());
-    bool end_with_sign = strchr("+-", str.back());
-    bool has_imag = false;
-
-    if (str.empty() || (str.size() == 1 && !has_digit))
-        return false;
-    else
-        for (auto ic = str.begin(), ie = ic + n; ic != ie; ++ic) {
-            if (!has_digit)
-                has_digit = iswdigit(*ic);
-
-            if (!has_imag)
-                has_imag = strchr("iI", *ic);
-
-            if (!iswdigit(*ic) && !strchr("+-.iIeE", *ic))
-                return false;
-        }
-    return (has_digit && !end_with_sign) || (str.size() <= 2 && (has_sign || has_imag));
 }
 
 //! Predicate returns true if the argument character is a special
@@ -363,7 +341,7 @@ bool Parser::is_alpha(int c) {
  * Depending on the token type, the token value is stored in member variable
  * strtok, numtok or chrtok. For invalid input an Error token is returned.
  */
-Parser::Token Parser::get_token(istream_type& in) {
+Parser::Token Parser::get_token() {
     // Check if there is a put-back token available:
     if (put_back != Token::None) {
         Token tok = put_back;
@@ -372,25 +350,26 @@ Parser::Token Parser::get_token(istream_type& in) {
     }
     // Ignore all leading whitespaces:
     Char c;
-    while (in >> c && iswspace(c))
-        ;
-
-    if (!in.good())
-        return in.eof() ? Token::Eof : Token::Error;
-
+    try {
+        do {
+            c = read_char();
+        } while (iswspace(c));
+    }
+    catch (const parse_eof_error& ex) {
+        return Token::Eof;
+    }
     strtok.clear();
     strtok.push_back(static_cast<Char>(c));
 
-    // Read chars until a trailing whitespace, a special scheme character or EOF is reached:
-    if (!is_special(c)) {
-        while (in >> std::noskipws >> c && !iswspace(c) && !is_special(c))
+    // Read chars until a trailing whitespace,
+    // a special scheme character or EOF is reached:
+    if (!is_special(c) && !is_finished()) {
+        c = read_char(true);
+        while (!iswspace(c) && !is_special(c) && !is_eof(c)) {
             strtok.push_back(static_cast<Char>(c));
-
-        if (!in.good() && !in.eof())
-            return Token::Error;
-
-        // in.unget();
-        in.putback(c);
+            c = read_char(true);
+        }
+        putback_char(c);
     }
     // Lexical analyse token string according to the first character:
     switch (c = strtok.front()) {
@@ -408,16 +387,16 @@ Parser::Token Parser::get_token(istream_type& in) {
         return Token::QuasiQuote;
 
     case ',':
-        return lex_unquote(strtok, in);
+        return lex_unquote(strtok);
 
     case ';':
-        return skip_comment(in);
+        return skip_comment();
 
     case '#':
-        return lex_special(strtok, in);
+        return lex_special(strtok);
 
     case '"':
-        return lex_string(strtok, in);
+        return lex_string(strtok);
 
     case '.':
         if (strtok.size() == 1)
@@ -437,11 +416,27 @@ Parser::Token Parser::get_token(istream_type& in) {
     }
 }
 
-Cell Parser::read(istream_type& in) {
-    in.clear();
-    for (;;)
-        switch (get_token(in)) {
+bool Parser::is_finished() {
+    try {
+        peak_char();
+        return false;
+    }
+    catch (const parse_eof_error& ex) {
+        return true;
+    }
+}
 
+Cell Parser::read() {
+    start_pos = { row, col };
+    for (;;) {
+        Token token;
+        try {
+            token = get_token();
+        }
+        catch (const parse_eof_error& ex) {
+            token = Token::Eof;
+        }
+        switch (token) {
         case Token::Comment:
             break;
 
@@ -454,17 +449,29 @@ Cell Parser::read(istream_type& in) {
         case Token::Char:
             return chrtok;
 
-        case Token::Quote:
-            return scm.list(s_quote, read(in));
+        case Token::Quote: {
+            auto expr = read();
+            // DEBUG_OUTPUT("read quote:", expr);
+            return scm.list(s_quote, expr);
+        }
 
-        case Token::QuasiQuote:
-            return scm.list(s_quasiquote, read(in));
+        case Token::QuasiQuote: {
+            auto expr = read();
+            // DEBUG_OUTPUT("read quasiquote:", expr);
+            return scm.list(s_quasiquote, expr);
+        }
 
-        case Token::Unquote:
-            return scm.list(s_unquote, read(in));
+        case Token::Unquote: {
+            auto expr = read();
+            // DEBUG_OUTPUT("read unquote:", expr);
+            return scm.list(s_unquote, expr);
+        }
 
-        case Token::UnquoteSplice:
-            return scm.list(s_unquotesplice, read(in));
+        case Token::UnquoteSplice: {
+            auto expr = read();
+            // DEBUG_OUTPUT("read unquotesplice:", expr);
+            return scm.list(s_unquotesplice, expr);
+        }
 
         case Token::Number:
             return numtok;
@@ -480,35 +487,44 @@ Cell Parser::read(istream_type& in) {
             auto s = sym.value();
             if (!s.empty()) {
                 if (s.front() == ':' || s.back() == ':') {
+                    // DEBUG_OUTPUT("read keyword:", sym);
                     return Keyword(sym);
                 }
             }
+            // DEBUG_OUTPUT("read symbol:", sym);
             return sym;
         }
 
-        case Token::Vector:
-            return parse_vector(in);
+        case Token::Vector: {
+            auto expr = parse_vector();
+            // DEBUG_OUTPUT("read vector:", expr);
+            return expr;
+        }
 
-        case Token::OBrace:
-            return parse_list(in);
+        case Token::OBrace: {
+            auto expr = parse_list();
+            // DEBUG_OUTPUT("read list:", expr);
+            return expr;
+        }
 
         case Token::Eof:
             return static_cast<Char>(EOF);
 
         case Token::Error:
         default:
-            throw parse_error("invalid token");
+            throw parse_error("invalid token", row, col);
         }
+    }
 }
 
 //! Read a scheme vector from stream.
-Cell Parser::parse_vector(istream_type& in) {
+Cell Parser::parse_vector() {
     VectorPtr vptr = vec(0, none);
-    Token tok = get_token(in);
+    Token tok = get_token();
 
     if (tok == Token::OBrace)
-        while (in.good()) {
-            switch (tok = get_token(in)) {
+        while (true) {
+            switch (tok = get_token()) {
             case Token::Comment:
                 break;
             case Token::CBrace:
@@ -518,21 +534,21 @@ Cell Parser::parse_vector(istream_type& in) {
                 goto error;
             default:
                 put_back = tok;
-                vptr->push_back(read(in));
+                vptr->push_back(read());
             }
         }
 error:
-    throw parse_error("error while reading vector");
+    throw parse_error("error while reading vector", row, col);
 }
 
 //! Read a scheme list from stream.
-Cell Parser::parse_list(istream_type& in) {
+Cell Parser::parse_list() {
     Cell list = nil, tail = nil;
     Cell cell;
     Token tok;
 
-    while (in.good()) {
-        tok = get_token(in);
+    while (true) {
+        tok = get_token();
         switch (tok) {
         case Token::Comment:
             break;
@@ -540,8 +556,8 @@ Cell Parser::parse_list(istream_type& in) {
             return list;
 
         case Token::Dot:
-            cell = read(in);
-            tok = get_token(in);
+            cell = read();
+            tok = get_token();
 
             if (tok == Token::CBrace) {
                 set_cdr(tail, cell);
@@ -554,7 +570,7 @@ Cell Parser::parse_list(istream_type& in) {
 
         default:
             put_back = tok;
-            cell = read(in);
+            cell = read();
 
             if (is_pair(tail)) {
                 set_cdr(tail, scm.cons(cell, nil));
@@ -567,6 +583,59 @@ Cell Parser::parse_list(istream_type& in) {
         }
     }
 error:
-    throw parse_error("error while reading list");
+    DEBUG_OUTPUT("error while reading list at", "row:", row, "col:", col);
+    for (std::size_t i = start_pos.row; i < row; ++i) {
+        std::wcout << string_list.at(i) << std::endl;
+    }
+    if (row >= string_list.size()) {
+        std::wcout << std::endl;
+        // print nothing
+        std::wcout << "^";
+        std::wcout << std::endl;
+    }
+    else {
+        std::wcout << string_list.at(row) << std::endl;
+        for (size_t i = 0; i < col; ++i) {
+            std::wcout << " ";
+        }
+        std::wcout << "^";
+        std::wcout << std::endl;
+    }
+    throw parse_error("error while reading list", row, col);
 }
+
+Char Parser::read_char(bool return_eof) {
+    if (row >= string_list.size()) {
+        if (return_eof) {
+            return EOF;
+        }
+        throw parse_eof_error(row, col);
+    }
+    else if (col >= string_list[row].size()) {
+        row++;
+        col = 0;
+    }
+    else {
+        return string_list.at(row).at(col++);
+    }
+    return read_char(return_eof);
+}
+
+Char Parser::peak_char() {
+    auto c = read_char();
+    putback_char(c);
+    return c;
+}
+
+void Parser::putback_char(Char c) {
+    if (c == EOF) {
+        return;
+    }
+    if (col == 0) {
+        DEBUG_OUTPUT("error putback char");
+        throw std::runtime_error("error");
+    }
+    col--;
+}
+
 } // namespace pscm
