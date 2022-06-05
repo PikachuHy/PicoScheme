@@ -16,11 +16,12 @@
 #include <memory>
 #include <numeric>
 
+#include "picoscm/cell.hpp"
 #include "picoscm/gc.hpp"
 #include "picoscm/parser.hpp"
 #include "picoscm/primop.hpp"
 #include "picoscm/procedure.hpp"
-#include "picoscm/scheme.hpp"
+#include "picoscm/scheme.h"
 
 using varg = std::vector<pscm::Cell>;
 
@@ -575,7 +576,8 @@ static Cell apply(Scheme& scm, const SymenvPtr& senv, const Cell& proc, const va
         }
     }
     else {
-        return scm.apply(senv, proc, args);
+        DEBUG_OUTPUT("proc:", proc);
+        throw std::runtime_error("error apply");
     }
 }
 
@@ -638,12 +640,12 @@ struct scheme_exception : std::exception {
             return cdr(args[0]);
         };
         // clang-format off
-        scm.function(senv, "raise",                  std::move(raise));
-        scm.function(senv, "raise-continuable",      std::move(raisecont));
-        scm.function(senv, "error",                  std::move(error));
-        scm.function(senv, "error-object?",          std::move(is_errobj));
-        scm.function(senv, "error-object-message",   std::move(errmsg));
-        scm.function(senv, "error-object-irritants", std::move(errirr));
+        scm.function(senv, "raise",                  raise);
+        scm.function(senv, "raise-continuable",      raisecont);
+        scm.function(senv, "error",                  error);
+        scm.function(senv, "error-object?",          is_errobj);
+        scm.function(senv, "error-object-message",   errmsg);
+        scm.function(senv, "error-object-irritants", errirr);
         // clang-format on
     }
 
@@ -2846,7 +2848,7 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args) {
     case Intern::op_defined:
         return primop::defined_sym(scm, senv, args);
     case Intern::op_current_module:
-        return scm.get_current_module();
+        return scm.current_module();
     case Intern::op_set_current_module:
         return scm.set_current_module(args.at(0));
     case Intern::op_module_name:

@@ -1,266 +1,298 @@
-/*********************************************************************************/
+/********************************************************************************/
 /**
  * @file scheme.cpp
  *
  * @version   0.1
- * @date      2018-
- * @author    Paul Pudewills
+ * @date      2022-
+ * @author    PikachuHy
  * @copyright MIT License
  *************************************************************************************/
-#include <chrono>
-#include <filesystem>
-#include <functional>
-#include <iomanip>
-#include <utility>
-
-#include "picoscm/continuation.h"
-#include "picoscm/gc.hpp"
+#include "picoscm/scheme.h"
+#include "picoscm/cell.hpp"
 #include "picoscm/machine.h"
 #include "picoscm/parser.hpp"
 #include "picoscm/port.hpp"
 #include "picoscm/primop.hpp"
-#include "picoscm/scheme.hpp"
-#include "picoscm/syntax.h"
-// clang-format off
-#define DEBUG(...) if (debugging()) DEBUG_OUTPUT(__VA_ARGS__)
+#include <iostream>
+#include <list>
+#include <string>
 
-// clang-format on
-namespace pscm {
 namespace fs = std::filesystem;
-using namespace std::string_literals;
 
-static_assert(std::is_same_v<Char, String::value_type>);
-static_assert(std::is_same_v<String, StringPtr::element_type>);
-static_assert(std::is_same_v<String, Symbol::value_type>);
-static_assert(std::is_same_v<Port<Char>, PortPtr::element_type>);
-static_assert(std::is_same_v<Symbol, Symtab::Symbol>);
-static_assert(std::is_same_v<Symenv, SymenvPtr::element_type>);
-static_assert(std::is_same_v<Function, FunctionPtr::element_type>);
-
-Scheme::Scheme(const SymenvPtr& env)
-    : m_machine(std::make_shared<Machine>(*this)) {
-    auto std_env = add_environment_defaults(*this);
-    auto cwd = fs::current_path().string();
-    module_paths.push_back(string_convert<Char>(cwd));
-    current_module = Module(list(symbol("root")), Symenv::create(std_env));
-    module_table.insert_or_assign(current_module.name(), current_module);
-    module_stack.push(current_module);
-    const char *val = getenv("PSCM_PATH");
-    if (val) {
-        auto pscm_path = string_convert<Char>(std::string(val));
-        if (!pscm_path.empty()) {
-            module_paths.push_back(pscm_path);
-        }
+namespace pscm {
+struct SchemeImpl {
+    SchemeImpl(Scheme& scm)
+        : scm(scm)
+        , m_machine(std::make_shared<Machine>(scm)) {
     }
-    else {
-        DEBUG_OUTPUT("PSCM_PATH is empty");
-    }
-}
 
-SymenvPtr Scheme::get_module_env(const Cell& module_name) {
-    auto it = module_table.find(module_name);
-    if (it != module_table.end()) {
-        return it->second.env();
-    }
-    // load module
-    return load_module(module_name, get_current_module_env()).env();
-}
-
-Module Scheme::load_module(const Cell& module_name, const SymenvPtr& env) {
-    String module_file;
-    Cell name = module_name;
-    while (is_pair(name)) {
-        module_file += L"/";
-        module_file += get<Symbol>(car(name)).value();
-        name = cdr(name);
-    }
-    for (const auto& path : module_paths) {
-        String module_path = path + module_file + L".scm";
-        if (!fs::exists(module_path)) {
-            continue;
-        }
-        load(module_path);
-        auto it = module_table.find(module_name);
-        if (it == module_table.end()) {
-            throw module_error("load module, no module defined", module_name);
-        }
-        return it->second;
-    }
-    throw module_error("no module: ", module_name);
-}
-
-Cell Scheme::apply(const SymenvPtr& env, Intern opcode, const std::vector<Cell>& args) {
-    DEBUG("opcode:", opcode);
-    return pscm::call(*this, env, opcode, args);
-}
-
-Cell Scheme::apply(const SymenvPtr& env, const FunctionPtr& proc, const std::vector<Cell>& args) {
-    return (*proc)(*this, env, args);
-}
-
-Cell Scheme::apply(const SymenvPtr& env, const Cell& cell, const std::vector<Cell>& args) {
-    if (is_intern(cell)) {
-        return apply(env, get<Intern>(cell), args);
-    }
-    else if (is_proc(cell)) {
-        return apply(env, get<Procedure>(cell), args);
-    }
-    else {
-        return apply(env, get<FunctionPtr>(cell), args);
-    }
-}
-
-Cell Scheme::apply(const SymenvPtr& env, const Cell& op, const Cell& args) {
-    if (is_proc(op)) {
-        return apply(env, get<Procedure>(op), args);
-    }
-    else if (is_func(op)) {
-        return apply(env, get<FunctionPtr>(op), eval_args(env, args));
-    }
-    else if (is_intern(op)) {
-        return apply(env, get<Intern>(op), eval_args(env, args));
-    }
-    DEBUG_OUTPUT("op:", op);
-    throw std::runtime_error("bad op, expect proc, func or intern");
-}
-
-void Scheme::repl(const SymenvPtr& env) {
-    const SymenvPtr& senv = env ? env : get_current_module_env();
-    Parser parser{ *this };
-
-    auto &out = outPort().stream(), &in = inPort().stream();
-
-    for (Cell expr;;)
-        try {
-            for (;;) {
-                out << "> ";
-                expr = none;
-                expr = parser.read(in);
-                expr = eval(senv, expr);
-
-                if (is_none(expr))
-                    continue;
-
-                if (is_exit(expr))
-                    return;
-
-                out << expr << std::endl;
+    void init() {
+        auto std_env = add_environment_defaults(scm);
+        auto cwd = fs::current_path().string();
+        module_paths.push_back(string_convert<Char>(cwd));
+        current_module = Module(list(symbol(L"root")), Symenv::create(std_env));
+        module_table.insert_or_assign(current_module.name(), current_module);
+        module_stack.push(current_module);
+        const char *val = getenv("PSCM_PATH");
+        if (val) {
+            auto pscm_path = string_convert<Char>(std::string(val));
+            if (!pscm_path.empty()) {
+                module_paths.push_back(pscm_path);
             }
         }
-        catch (std::exception& e) {
-            if (is_none(expr))
-                out << e.what() << std::endl;
-            else
-                out << e.what() << ": " << expr << std::endl;
+        else {
+            DEBUG_OUTPUT("PSCM_PATH is empty");
         }
+    }
+
+    Symbol symbol(const String& name) {
+        return symtab[name];
+    }
+
+    Symbol new_symbol() {
+        String name = L"symbol ";
+        name.append(std::to_wstring(symtab.size()));
+        return symtab[name];
+    }
+
+    void repl(const SymenvPtr& env) {
+        auto senv = env ? env : current_module.env();
+        Cell expr;
+        String s;
+        try {
+            while (true) {
+                expr = none;
+                s.clear();
+                std::wcout << "> ";
+                std::getline(std::wcin, s);
+                Parser parser(scm, s);
+                expr = parser.read();
+                auto ret = m_machine->run(senv, expr);
+                if (is_none(ret)) {
+                    continue;
+                }
+                if (is_exit(expr)) {
+                    return;
+                }
+                std::wcout << ret << std::endl;
+            }
+        }
+        catch (const std::exception& ex) {
+            std::wcout << "ERROR MESSAGE: " << ex.what() << std::endl;
+            std::wcout << "RAW STRING   : " << s << std::endl;
+            if (is_none(expr)) {
+                return;
+            }
+            std::wcout << "PARSED EXPR  : " << expr << std::endl;
+        }
+    }
+
+    void load(const String& filename, const SymenvPtr& env) {
+        DEBUG_OUTPUT("load:", filename);
+        using namespace std::chrono;
+        auto t0 = high_resolution_clock::now();
+        auto senv = env ? env : current_module.env();
+        Cell expr;
+        try {
+            std::wifstream in(filename, std::ifstream::in);
+            using Iter = std::istreambuf_iterator<Char>;
+            String content((Iter(in)), Iter());
+            Parser parser(scm, content);
+            while (!parser.is_finished()) {
+                expr = parser.read();
+                if (is_eof(expr)) {
+                    break;
+                }
+                // DEBUG_OUTPUT("expr:", expr);
+                auto ret = m_machine->run(senv, expr);
+            }
+        }
+        catch (const parse_error& ex) {
+            DEBUG_OUTPUT(ex.what());
+            std::wcout << filename << ":" << ex.row << std::endl;
+            std::wcout << "ERROR MESSAGE: " << ex.what() << std::endl;
+            // std::wcout << "RAW STRING   : " << s << std::endl;
+            if (is_none(expr)) {
+                return;
+            }
+            std::wcout << "PARSED EXPR  : " << expr << std::endl;
+        }
+        catch (const std::bad_variant_access& ex) {
+            DEBUG_OUTPUT(ex.what());
+            std::wcout << filename << std::endl;
+            std::wcout << "ERROR MESSAGE: " << ex.what() << std::endl;
+            // std::wcout << "RAW STRING   : " << s << std::endl;
+            if (is_none(expr)) {
+                return;
+            }
+            std::wcout << "PARSED EXPR  : " << expr << std::endl;
+        }
+        auto t1 = high_resolution_clock::now();
+        duration<double, std::ratio<1, 1>> cost_time = t1 - t0;
+        DEBUG_OUTPUT("load", filename, "cost time:", cost_time.count(), "seconds");
+    }
+
+    Cell cons(const Cell& a, const Cell& b) {
+        return pscm::cons(store, a, b);
+    }
+
+    //! Build a cons list of all arguments.
+    template <typename T, typename... Args>
+    Cons *list(T&& t, Args&&...args) {
+        return pscm::list(store, std::forward<T>(t), std::forward<Args>(args)...);
+    }
+
+    Cell eval(const SymenvPtr& env, const Cell& expr) {
+        auto senv = env ? env : current_module.env();
+        return m_machine->run(senv, expr);
+    }
+
+    template <typename FunctionT>
+    FunctionPtr function(const SymenvPtr& env, const String& name, const FunctionT& f) {
+        auto senv = env ? env : current_module.env();
+        auto sym = symbol(name);
+        auto new_f = Function::create(sym, f);
+        senv->add(sym, new_f);
+        return new_f;
+    }
+
+    Module module(const Cell& module_name) {
+        auto it = module_table.find(module_name);
+        if (it != module_table.end()) {
+            return it->second;
+        }
+        // load module
+        return load_module(module_name, current_module.env());
+    }
+
+    Module load_module(const Cell& module_name, const SymenvPtr& env) {
+        String module_file;
+        Cell name = module_name;
+        while (is_pair(name)) {
+            module_file += L"/";
+            module_file += get<Symbol>(car(name)).value();
+            name = cdr(name);
+        }
+        for (const auto& path : module_paths) {
+            String module_path = path + module_file + L".scm";
+            if (!fs::exists(module_path)) {
+                continue;
+            }
+            load(module_path, nullptr);
+            auto it = module_table.find(module_name);
+            if (it == module_table.end()) {
+                throw module_error("load module, no module defined", module_name);
+            }
+            return it->second;
+        }
+        throw module_error("no module: ", module_name);
+    }
+
+    Symtab symtab{ 1024 };
+    CellHashMap<Module> module_table;
+    std::vector<String> module_paths;
+    std::stack<Module> module_stack;
+    std::list<Cons> store;
+    Module current_module;
+    using standard_port = StandardPort<Char>;
+    PortPtr m_stdin = std::make_shared<standard_port>(standard_port::in);
+    PortPtr m_stdout = std::make_shared<standard_port>(standard_port::out);
+    Scheme& scm;
+    sptr<Machine> m_machine;
+};
+
+Scheme::Scheme()
+    : impl(std::make_shared<SchemeImpl>(*this)) {
+    impl->init();
+}
+
+Symbol Scheme::symbol(const std::string& name) {
+    return impl->symbol(string_convert<Char>(name));
+}
+
+Symbol Scheme::symbol(const String& name) {
+    return impl->symbol(name);
+}
+
+Symbol Scheme::symbol() {
+    return impl->new_symbol();
+}
+
+void Scheme::load(const std::string& filename, const SymenvPtr& env) {
+    impl->load(string_convert<Char>(filename), env);
 }
 
 void Scheme::load(const String& filename, const SymenvPtr& env) {
-    DEBUG("load:", filename);
-    using namespace std::chrono;
-    auto t0 = high_resolution_clock::now();
-    cur_file = filename;
-    module_stack.push(get_current_module());
-    using file_port = FilePort<Char>;
-    const SymenvPtr& senv = env ? env : get_current_module_env();
-
-    Parser parser{ *this };
-    Cell expr = none;
-
-    auto& out = outPort().stream();
-
-    try {
-        file_port in{ filename, file_port::in };
-
-        if (!in.is_open())
-            throw std::ios_base::failure("couldn't open input file: '"s + string_convert<char>(filename) + "'"s);
-
-        while (!in.eof()) {
-            expr = parser.read(in);
-            DEBUG(expr);
-            expr = m_machine->run(senv, expr);
-            // expr = eval_with_continuation(senv, expr);
-            DEBUG("-->", expr);
-            expr = none;
-        }
-    }
-    catch (const std::exception& e) {
-        if (is_none(expr))
-            out << e.what() << '\n';
-        else
-            out << e.what() << ": " << expr << '\n';
-        out << "exception occurred when loading file:" << std::endl;
-        // TODO: record line number
-        out << filename << ":1" << std::endl;
-        out << "trace" << std::endl;
-    }
-    module_stack.pop();
-    auto t1 = high_resolution_clock::now();
-    duration<double, std::ratio<1, 1>> cost_time = t1 - t0;
-    DEBUG_OUTPUT("load", filename, "cost time:", cost_time.count(), "seconds");
+    impl->load(filename, env);
 }
 
-std::vector<Cell> Scheme::eval_args(const SymenvPtr& env, Cell args, bool is_list) {
-    std::vector<Cell> stack;
-
-    if (is_list) { // expression: (proc x y ... z)
-        for (/* */; is_pair(args); args = cdr(args))
-            stack.push_back(eval(env, car(args)));
-
-        return stack;
-    }
-    // expression: (apply proc x y ... (args ...))
-    Cell last = nil;
-
-    // evaluate (x y ...)
-    for (/* */; is_pair(args); args = cdr(args))
-        stack.push_back(last = eval(env, car(args)));
-
-    if (is_nil(last)) { // last list (args ...) is nil
-        if (!stack.empty())
-            stack.pop_back();
-        return stack;
-    }
-    // append arguments from last list (args ...)
-    stack.back() = car(last);
-    for (args = cdr(last); is_pair(args); args = cdr(args))
-        stack.push_back(car(args));
-
-    return stack;
+void Scheme::repl(const SymenvPtr& env) {
+    impl->repl(env);
 }
 
-Cell Scheme::eval(SymenvPtr env, Cell expr) {
-    return m_machine->run(std::move(env), expr);
+Cell Scheme::cons(const Cell& a, const Cell& b) {
+    return impl->cons(a, b);
 }
 
-Cell Scheme::append_module_path(const std::vector<Cell>& vargs) {
-    for (const auto& args : vargs) {
-        auto path = get<StringPtr>(args);
-        module_paths.push_back(*path);
-    }
+Cell Scheme::list(const Cell& a) {
+    return impl->list(a);
+}
+
+Cell Scheme::list(const Cell& a, const Cell& b) {
+    return impl->list(a, b);
+}
+
+Cell Scheme::list(const Cell& a, const Cell& b, const Cell& c) {
+    return impl->list(a, b, c);
+}
+
+Cell Scheme::list(const Cell& a, const Cell& b, const Cell& c, const Cell& d) {
+    return impl->list(a, b, c, d);
+}
+
+Cell Scheme::eval(const SymenvPtr& env, const Cell& expr) {
+    return impl->eval(env, expr);
+}
+
+FunctionPtr Scheme::function(const SymenvPtr& env, const std::string& name, const FuncObj& f) {
+    return impl->function(env, string_convert<Char>(name), f);
+}
+
+void Scheme::addenv(const Symbol& sym, const Cell& cell) {
+    impl->current_module.env()->add(sym, cell);
+}
+
+Cell Scheme::apply(const SymenvPtr& env, const Cell& cell, const std::vector<Cell>& args) {
     return none;
 }
 
-Cell Scheme::eval_string(SymenvPtr env, const String& code) {
-    Parser parser{ *this };
-    Cell expr = none;
-    std::wstringstream ss;
-    ss << code;
-    expr = parser.read(ss);
-    expr = eval(env, expr);
-    return expr;
+Port<Char>& Scheme::outPort() {
+    return *impl->m_stdout;
 }
 
-void Scheme::addenv(const Symbol& sym, const Cell& val) {
-    get_current_module_env()->add(sym, val);
+Port<Char>& Scheme::inPort() {
+    return *impl->m_stdin;
 }
 
-void Scheme::addenv(std::initializer_list<std::pair<Symbol, Cell>> args) {
-    get_current_module_env()->add(args);
+sptr<Machine>& Scheme::machine() {
+    return impl->m_machine;
 }
 
-SymenvPtr Scheme::newenv(const SymenvPtr& env) {
-    return Symenv::create(env ? env : get_current_module_env());
+Module Scheme::module(const Cell& module_name) {
+    return impl->module(module_name);
+}
+
+bool Scheme::module_exist(const Cell& module_name) {
+    return impl->module_table.find(module_name) != impl->module_table.end();
+}
+
+void Scheme::add_module(const Cell& module_name, const Module& module) {
+    impl->module_table.insert_or_assign(module_name, module);
+    impl->module_stack.push(module);
+}
+
+Module& Scheme::current_module() {
+    return impl->current_module;
 }
 
 Module Scheme::set_current_module(const Cell& cell) {
@@ -268,8 +300,16 @@ Module Scheme::set_current_module(const Cell& cell) {
         DEBUG_OUTPUT("args");
         throw module_error("No module:", cell);
     }
-    auto ret = current_module;
-    current_module = get<Module>(cell);
+    auto ret = impl->current_module;
+    impl->current_module = get<Module>(cell);
     return ret;
+}
+
+Cell Scheme::append_module_path(const std::vector<Cell>& vargs) {
+    for (const auto& args : vargs) {
+        auto path = get<StringPtr>(args);
+        impl->module_paths.push_back(*path);
+    }
+    return none;
 }
 } // namespace pscm

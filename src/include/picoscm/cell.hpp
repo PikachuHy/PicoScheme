@@ -343,6 +343,7 @@ struct bad_cell_access : public std::bad_variant_access {
                       .append(" is not a ")
                       .append(type_name());
         // clang-format on
+        std::cout << _reason << std::endl;
         std::cout << boost::stacktrace::stacktrace();
     }
 

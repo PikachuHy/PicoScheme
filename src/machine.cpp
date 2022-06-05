@@ -12,7 +12,8 @@
 #include "picoscm/compiler.h"
 #include "picoscm/continuation.h"
 #include "picoscm/dynamic_wind.h"
-#include "picoscm/scheme.hpp"
+#include "picoscm/primop.hpp"
+#include "picoscm/scheme.h"
 
 #include "impl/CodeListPrinter.h"
 #include "impl/MachineImpl.h"
@@ -62,6 +63,7 @@ bool is_label(const InstCode& code) {
 Label get_label(const InstCode& code) {
     return get<Label>(get<Cell>(code));
 }
+
 bool is_inst(const InstCode& code) {
     return is_type<Instruction>(code);
 }
@@ -206,7 +208,7 @@ void CodeListPrinter::print_op() {
         break;
     }
     case Intern::op_inherit_module: {
-        print("use-module");
+        print("inherit-module");
         print_args(1);
         break;
     }
@@ -468,7 +470,7 @@ Cell CodeRunner::run_intern(const SymenvPtr& env, Intern op, const std::vector<C
         auto f = args[0];
         Cell cont = std::make_shared<Continuation>(m.stack, m.reg, m.wind);
         if (is_intern(f)) {
-            return m.scm.apply(env, f, { cont });
+            return pscm::call(m.scm, env, get<Intern>(f), { cont });
         }
         if (is_proc(f)) {
             auto proc = get<Procedure>(f);
@@ -519,13 +521,13 @@ Cell CodeRunner::run_intern(const SymenvPtr& env, Intern op, const std::vector<C
         for (const auto& arg : args) {
             if (is_symbol(arg)) {
                 auto sym = get<Symbol>(arg);
-                m.scm.get_current_module_env()->export_sym(sym);
+                m.scm.current_module().env()->export_sym(sym);
             }
             else {
                 Cell head = arg;
                 while (!is_nil(head)) {
                     auto sym = get<Symbol>(car(head));
-                    m.scm.get_current_module_env()->export_sym(sym);
+                    m.scm.current_module().env()->export_sym(sym);
                     head = cdr(head);
                 }
             }
@@ -540,7 +542,7 @@ Cell CodeRunner::run_intern(const SymenvPtr& env, Intern op, const std::vector<C
         throw std::runtime_error("scm-error");
     }
     default: {
-        return m.scm.apply(env, op, args);
+        return pscm::call(m.scm, env, op, args);
     }
     }
 }
@@ -573,6 +575,7 @@ Cell CodeRunner::run_op(Intern op) {
                 return env->get(sym);
             }
             DEBUG_OUTPUT("Unbound variable:", sym);
+            m.print_reg();
             throw unbound_variable_exception(sym);
         }
         DEBUG_OUTPUT("error operand:", v);
@@ -654,7 +657,7 @@ Cell CodeRunner::run_op(Intern op) {
         auto env = get<SymenvPtr>(m.reg[Register::ENV]);
         if (is_func(proc)) {
             auto f = get<FunctionPtr>(proc);
-            return m.scm.apply(env, f, args);
+            return (*f)(m.scm, env, args);
         }
         else {
             return run_intern(env, get<Intern>(proc), args);
@@ -865,19 +868,16 @@ Cell CodeRunner::run_op(Intern op) {
         if (!is_type<Cell>(v)) {
             throw bytecode_error("except Cell but got:", v);
         }
-        auto vv = get<Cell>(v);
+        auto module_name = get<Cell>(v);
         auto env = get<SymenvPtr>(m.reg.at(r));
-        auto module_name = vv;
-        auto it = m.scm.module_table.find(module_name);
-        if (it != m.scm.module_table.end()) {
+        if (m.scm.module_exist(module_name)) {
             throw module_error("module exist: ", module_name);
         }
-        auto cur_env = m.scm.get_current_module_env();
-        auto new_env = m.scm.newenv(cur_env);
-        m.scm.current_module = Module(module_name, env);
-        m.scm.module_table.insert_or_assign(module_name, m.scm.current_module);
-        m.scm.module_stack.push(m.scm.current_module);
-        m.reg[Register::ENV] = new_env;
+        auto cur_env = m.scm.current_module().env();
+        auto new_env = Symenv::create(cur_env);
+        auto module = Module(module_name, env);
+        m.scm.set_current_module(module);
+        m.scm.add_module(module_name, module);
         return none;
     }
     case Intern::op_use_module: {
@@ -888,8 +888,8 @@ Cell CodeRunner::run_op(Intern op) {
             throw bytecode_error("except Cell but got:", v);
         }
         auto vv = get<Cell>(v);
-        auto cur_env = m.scm.get_current_module_env();
-        auto env = m.scm.get_module_env(vv);
+        auto cur_env = m.scm.current_module().env();
+        auto env = m.scm.module(vv).env();
         cur_env->use(*env);
         return none;
     }
@@ -901,8 +901,8 @@ Cell CodeRunner::run_op(Intern op) {
             throw bytecode_error("except Cell but got:", v);
         }
         auto vv = get<Cell>(v);
-        auto cur_env = m.scm.get_current_module_env();
-        auto env = m.scm.get_module_env(vv);
+        auto cur_env = m.scm.current_module().env();
+        auto env = m.scm.module(vv).env();
         cur_env->inherit(*env);
         return none;
     }
@@ -963,10 +963,10 @@ void CodeRunner::run_inst(Instruction inst) {
         break;
     }
     case Instruction::LABEL: {
-        i += 1;
         LOG_TRACE(code_list[i]);
         LOG_TRACE(":");
         LOG_TRACE(LF);
+        i += 1;
         break;
     }
     case Instruction::BRANCH: {
@@ -1197,11 +1197,6 @@ void MachineImpl::fill_label_map(const CodeList& code_list) {
 
 Machine::Machine(Scheme& scm)
     : impl(std::make_shared<MachineImpl>(scm)) {
-}
-
-bool is_eof(const Cell& cell) {
-    Cell eof = -1;
-    return cell == eof;
 }
 
 Cell Machine::run(SymenvPtr env, Cell expr) {

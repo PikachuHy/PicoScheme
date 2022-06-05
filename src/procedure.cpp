@@ -11,7 +11,7 @@
 
 #include "picoscm/compiler.h"
 #include "picoscm/procedure.hpp"
-#include "picoscm/scheme.hpp"
+#include "picoscm/scheme.h"
 
 namespace pscm {
 

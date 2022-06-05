@@ -10,7 +10,7 @@
 #include "picoscm/compiler.h"
 #include "picoscm/machine.h"
 #include "picoscm/port.hpp"
-#include "picoscm/scheme.hpp"
+#include "picoscm/scheme.h"
 #include "picoscm/syntax.h"
 
 #include "impl/CodeListPrinter.h"
@@ -599,7 +599,7 @@ struct CompilerImpl {
             seq = append_instruction_sequences(seq, use_seq);
             use_list = cdr(use_list);
         }
-        return seq;
+        return end_with_linkage(linkage, seq);
     }
 
     InstSeq compile_inherit_module(const Cell& expr, Target target, Linkage linkage) {
@@ -610,7 +610,7 @@ struct CompilerImpl {
             seq = append_instruction_sequences(seq, use_seq);
             module_list = cdr(module_list);
         }
-        return seq;
+        return end_with_linkage(linkage, seq);
     }
 
     InstSeq compile_with_module(const Cell& expr, Target target, Linkage linkage) {

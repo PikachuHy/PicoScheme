@@ -11,8 +11,9 @@
 #include <iostream>
 
 #include "magic_enum.hpp"
+#include "picoscm/cell.hpp"
 #include "picoscm/port.hpp"
-#include "picoscm/scheme.hpp"
+#include "picoscm/scheme.h"
 
 namespace pscm {
 
