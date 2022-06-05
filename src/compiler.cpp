@@ -556,17 +556,12 @@ struct CompilerImpl {
     }
 
     InstSeq compile_values(const Cell& expr, Target target, Linkage linkage) {
-        std::vector<InstSeq> operand_codes;
-        auto it = cdr(expr);
-        while (is_pair(it)) {
-            auto inst_seq = compile(car(it), Register::VAL, LinkageEnum::NEXT);
-            operand_codes.push_back(inst_seq);
-            it = cdr(it);
-        }
-        auto seq1 = construct_arglist(operand_codes);
-        auto seq2 = InstSeq{ Instruction::ASSIGN, Register::VAL, Register::ARGL };
-        auto seq3 = InstSeq{ Instruction::GOTO, Register::CONTINUE };
-        auto seq4 = append_instruction_sequences(seq1, seq2, seq3);
+        auto seq1 =
+            InstSeq{ Instruction::ASSIGN, Register::ARGL, Intern::op_lookup_variable_value, cadr(expr), Register::ENV };
+        auto seq3 = InstSeq{ Instruction::RESTORE, Register::CONTINUE,
+
+                             Instruction::GOTO, Register::CONTINUE };
+        auto seq4 = append_instruction_sequences(seq1, seq3);
         seq4.statements.push_front(Comment{ L"values", expr });
         return seq4;
     }
@@ -643,6 +638,32 @@ struct CompilerImpl {
         }
         // DEBUG_OUTPUT("expand:", expand_code);
         return compile_self_evaluating(expand_code, target, linkage);
+    }
+
+    InstSeq compile_call_with_values(const Cell& expr, Target target, Linkage linkage) {
+        auto producer = cadr(expr);
+        auto consumer = caddr(expr);
+        auto after_producer_call = make_label(LabelEnum::AFTER_VALUES_PRODUCER_CALL);
+        auto seq = InstSeq{
+            Comment{L"call-with-values", expr},
+            Instruction::ASSIGN,
+            Register::ARGL,
+            nil,
+        };
+        auto seq0 = compile(producer, Register::PROC, LinkageEnum::NEXT);
+        auto seq00 = InstSeq{
+            Instruction::SAVE,  Register::ENV,       Instruction::SAVE, Register::CONTINUE, Instruction::ASSIGN,
+            Register::CONTINUE, after_producer_call, Instruction::SAVE, Register::CONTINUE,
+        };
+        auto seq1 = compile_procedure_call(Register::VAL, LinkageEnum::NEXT);
+        auto seq11 = InstSeq{
+            Instruction::ASSIGN,  Register::ARGL,     Intern::op_list,      Register::VAL,
+            Instruction::RESTORE, Register::CONTINUE, Instruction::LABEL,   after_producer_call,
+            Instruction::RESTORE, Register::CONTINUE, Instruction::RESTORE, Register::ENV,
+        };
+        auto seq2 = compile(consumer, Register::PROC, LinkageEnum::NEXT);
+        auto seq3 = compile_procedure_call(target, linkage);
+        return append_instruction_sequences(seq, seq0, seq00, seq1, seq11, seq2, seq3);
     }
 
     InstSeq compile_procedure_call(Target target, const Linkage& linkage) {
@@ -943,6 +964,10 @@ struct CompilerImpl {
         }
         case Intern::_expand: {
             seq = compile_expand(expr, target, linkage);
+            break;
+        }
+        case Intern::op_callwval: {
+            seq = compile_call_with_values(expr, target, linkage);
             break;
         }
         default: {

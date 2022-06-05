@@ -176,6 +176,10 @@ static Cell add(const varg& args) {
  * Scheme number substraction - operator function.
  */
 static Cell sub(const varg& args) {
+    if (args.empty()) {
+        DEBUG_OUTPUT("args error, need 1 arg");
+        throw std::runtime_error("args error");
+    }
     auto res = args.size() > 1 ? get<Number>(args.at(0)) : -get<Number>(args.at(0));
 
     for (auto ip = args.begin() + 1, ie = args.end(); ip != ie; ++ip)
@@ -3132,7 +3136,7 @@ SymenvPtr add_environment_defaults(Scheme& scm) {
           { scm.symbol("for-each"),                       Intern::op_foreach },
           { scm.symbol("call/cc"),                        Intern::op_callcc },
           { scm.symbol("call-with-current-continuation"), Intern::op_callcc },
-          { scm.symbol("call-with-values"),               Intern::op_callwval },
+          { scm.symbol("primitive-call-with-values"),     Intern::op_callwval },
 
           /* Section 6.11: Exceptions */
           { scm.symbol("error"),                  Intern::op_error },
@@ -3245,7 +3249,7 @@ SymenvPtr add_environment_defaults(Scheme& scm) {
           { scm.symbol("generate-dynamic-wind"),        Intern::op_make_dynamic_wind },
           { scm.symbol("pop-dynamic-wind"),             Intern::op_pop_dynamic_wind },
 
-          { scm.symbol("values"),             Intern::_values },
+          { scm.symbol("primitive-values"),             Intern::_values },
 
           { scm.symbol("1+"),                 Intern::op_inc },
 

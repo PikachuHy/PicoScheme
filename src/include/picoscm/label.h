@@ -26,7 +26,8 @@ enum class LabelEnum {
     AFTER_LAMBDA,
     APPLY_ENTRY,
     APPLY_CALL,
-    AFTER_APPLY
+    AFTER_APPLY,
+    AFTER_VALUES_PRODUCER_CALL,
 };
 
 struct Label {
@@ -89,6 +90,9 @@ std::basic_ostream<CharT>& operator<<(std::basic_ostream<CharT>& os, const Label
         break;
     case LabelEnum::AFTER_APPLY:
         os << "after-apply";
+        break;
+    case LabelEnum::AFTER_VALUES_PRODUCER_CALL:
+        os << "after-values-producer-call";
         break;
     }
     os << label.num;

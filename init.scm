@@ -44,7 +44,10 @@
 	     (for-each-sub f (for-each-cdr l)))))
 
 (define (call-with-values producer consumer)
-  (apply consumer (producer)))
+  (primitive-call-with-values producer consumer))
+
+(define (values . args)
+  (primitive-values args))
 
 (define-macro  (quasiquote x)
 
