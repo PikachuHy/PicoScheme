@@ -473,6 +473,8 @@ enum class Intern {
     op_set_variable_value,
     op_define_variable,
     op_is_false,
+    op_is_apply,
+    op_make_apply_args,
     op_make_compiled_procedure,
     op_make_compiled_macro,
     op_compiled_procedure_env,

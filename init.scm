@@ -1,3 +1,6 @@
+(define (apply fun . args)
+  (primitive-apply fun args))
+
 (define (map f . l)
 
   (define (map-car l)

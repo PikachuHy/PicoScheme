@@ -523,6 +523,9 @@ struct CompilerImpl {
         auto args = caddr(expr);
         // DEBUG_OUTPUT("proc:", proc);
         // DEBUG_OUTPUT("args:", args);
+        auto apply_entry = make_label(LabelEnum::APPLY_ENTRY);
+        auto apply_call = make_label(LabelEnum::APPLY_CALL);
+        auto after_apply = make_label(LabelEnum::AFTER_APPLY);
         auto proc_code = compile(proc, Register::PROC, LinkageEnum::NEXT);
         proc_code.statements.push_front(Comment{ L"apply proc:", proc });
         // CodeListPrinter(proc_code, true).print();
@@ -530,8 +533,24 @@ struct CompilerImpl {
         auto args_code = compile(args, Register::ARGL, LinkageEnum::NEXT);
         args_code.statements.push_front(Comment{ L"apply proc args:", args });
         // CodeListPrinter(args_code, true).print();
+        auto seq0 = InstSeq{
+            Instruction::ASSIGN,
+            Register::ARGL,
+            Intern::op_make_apply_args,
+            Register::ARGL,
+        };
+        auto seq = InstSeq{
+            Instruction::LABEL,  apply_entry,       Instruction::ASSIGN, Register::VAL,     Intern::op_is_apply,
+            Register::PROC,      Instruction::TEST, Intern::op_is_false, Register::VAL,     Instruction::BRANCH,
+            apply_call,
 
-        auto seq2 = compile_procedure_call(target, linkage);
+            Instruction::ASSIGN, Register::PROC,    Intern::op_car,      Register::ARGL,    Instruction::ASSIGN,
+            Register::ARGL,      Intern::op_cdr,    Register::ARGL,      Instruction::GOTO, apply_entry,
+
+            Instruction::LABEL,  apply_call,
+        };
+        auto seq1 = compile_procedure_call(target, linkage);
+        auto seq2 = append_instruction_sequences(seq0, seq, seq1);
         auto seq3 = preserving({ Register::PROC, Register::CONTINUE }, args_code, seq2);
         return append_instruction_sequences(proc_code, seq3);
     }

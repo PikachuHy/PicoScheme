@@ -2688,8 +2688,6 @@ Cell call(Scheme& scm, const SymenvPtr& senv, Intern primop, const varg& args) {
         return none;
     case Intern::op_eval:
         return scm.eval(args.size() > 1 ? get<SymenvPtr>(args[1]) : senv, args.at(0));
-    case Intern::_apply:
-        return primop::apply(scm, senv, args);
     case Intern::op_gc:
         return primop::gcollect(scm, senv, args);
     case Intern::op_gcdump:
@@ -2937,7 +2935,7 @@ SymenvPtr add_environment_defaults(Scheme& scm) {
           { scm.symbol("quasiquote"),       Intern::_quasiquote },
           { scm.symbol("unquote"),          Intern::_unquote },
           { scm.symbol("unquote-splicing"), Intern::_unquotesplice },
-          { scm.symbol("apply"),            Intern::_apply },
+          { scm.symbol("primitive-apply"),  Intern::_apply },
           { scm.symbol("dynamic-wind"),     Intern::op_dynamic_wind },
           { scm.symbol("expand"),           Intern::_expand },
 

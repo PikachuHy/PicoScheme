@@ -145,6 +145,21 @@ void CodeListPrinter::print_op() {
         print_args(2);
         break;
     }
+    case Intern::op_car: {
+        print("car");
+        print_args(1);
+        break;
+    }
+    case Intern::op_cdr: {
+        print("cdr");
+        print_args(1);
+        break;
+    }
+    case Intern::op_cadr: {
+        print("cadr");
+        print_args(1);
+        break;
+    }
     case Intern::op_is_primitive_procedure: {
         print("primitive-procedure?");
         print_args(1);
@@ -157,6 +172,16 @@ void CodeListPrinter::print_op() {
     }
     case Intern::op_is_false: {
         print("false?");
+        print_args(1);
+        break;
+    }
+    case Intern::op_is_apply: {
+        print("apply?");
+        print_args(1);
+        break;
+    }
+    case Intern::op_make_apply_args: {
+        print("make-apply-args");
         print_args(1);
         break;
     }
@@ -569,6 +594,24 @@ Cell CodeRunner::run_op(Intern op) {
         LOG_TRACE(r2);
         return m.scm.cons(m.reg[r1], m.reg[r2]);
     }
+    case Intern::op_car: {
+        auto r = fetch_reg();
+        LOG_TRACE("car ");
+        LOG_TRACE(r);
+        return car(m.reg[r]);
+    }
+    case Intern::op_cdr: {
+        auto r = fetch_reg();
+        LOG_TRACE("cdr ");
+        LOG_TRACE(r);
+        return cdr(m.reg[r]);
+    }
+    case Intern::op_cadr: {
+        auto r = fetch_reg();
+        LOG_TRACE("cadr ");
+        LOG_TRACE(r);
+        return cadr(m.reg[r]);
+    }
     case Intern::op_is_primitive_procedure: {
         auto v = fetch_code();
         LOG_TRACE("primitive-procedure? ");
@@ -733,6 +776,49 @@ Cell CodeRunner::run_op(Intern op) {
         LOG_TRACE(r);
         auto v = m.reg[r];
         return is_false(v);
+    }
+    case Intern::op_is_apply: {
+        auto r = fetch_reg();
+        LOG_TRACE("apply? ");
+        LOG_TRACE(r);
+        auto v = m.reg[r];
+        return is_intern(v) && get<Intern>(v) == Intern::_apply;
+    }
+    case Intern::op_make_apply_args: {
+        auto r = fetch_reg();
+        LOG_TRACE("make-apply-args ");
+        LOG_TRACE(r);
+        auto v = m.reg[r];
+        Cell head = m.scm.cons(none, nil);
+        Cell it = head;
+        if (is_nil(v)) {
+            return v;
+        }
+        /*
+        if (!is_pair(v)) {
+            DEBUG_OUTPUT("Wrong type argument, expect #<cons> but got:", v);
+            throw std::runtime_error("Wrong type argument");
+        }
+         */
+        while (is_pair(v) && !is_nil(cdr(v))) {
+            set_cdr(it, m.scm.cons(car(v), nil));
+            it = cdr(it);
+            v = cdr(v);
+        }
+        v = car(v);
+        if (is_nil(v)) {
+            return v;
+        }
+        if (!is_pair(v)) {
+            DEBUG_OUTPUT("Wrong type argument, expect #<cons> but got:", v);
+            throw std::runtime_error("Wrong type argument");
+        }
+        while (is_pair(v)) {
+            set_cdr(it, m.scm.cons(car(v), nil));
+            it = cdr(it);
+            v = cdr(v);
+        }
+        return cdr(head);
     }
     case Intern::op_set_variable_value: {
         auto v = fetch_code();
