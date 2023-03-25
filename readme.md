@@ -1,5 +1,11 @@
 PicoScheme
 ==========
+
+This project is no longer being maintained.
+
+The successor is pscm: https://github.com/PikachuHy/pscm
+
+
 A small, embeddable scheme interpreter in c++17. This project started as a
 test bed to evaluate the new [std::variant] class template as plain c-union
 replacement and to test shared, reference counting pointers for basic memory
